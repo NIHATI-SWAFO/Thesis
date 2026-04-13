@@ -1,58 +1,67 @@
-# SWAFO Academic Portal Development Progress
+# SWAFO Academic Portal & UWear Enhancement Progress Tracking
 
-## Completed
+**Project Title:** Development of a Standalone SWAFO Web Application for Violation Management and Enhancement of UWear for Uniform Compliance Monitoring at De La Salle University-Dasmariñas
+**Institution:** De La Salle University-Dasmariñas (DLSU-D)
+**Offices:** SWAFO, OSS, SDAO
 
-### Authentication & Core Architecture
-- [x] Setup React 19, Vite, and TailwindCSS environment.
-- [x] Implement robust Router architecture (`App.jsx`) with protected routes.
-- [x] Integrate **Microsoft MSAL SSO** for production-grade authentication via redirect method.
-- [x] Address cross-tenant login requirements natively for the `@dlsud.edu.ph` domain.
-- [x] Enforce secure application entry (unauthenticated users redirect to `/login`).
+---
 
-### Global UI / UX Engineering
-- [x] Apply comprehensive global typography (Plus Jakarta Sans for headers, Manrope for body text).
-- [x] Enforce a global 90% scaling factor (`html { font-size: 90%; }`) for a high-density, professional "zoom-out" target aesthetic.
-- [x] Finalize `StudentLayout.jsx` including the custom Sidebar (`w-[270px]`) and Topbar (`h-[72px]`).
-- [x] Implement strict color guidelines: replacing raw generic utility colors with custom hex codes (e.g., `#0b4d3c`, `#2bd99b`, pure `bg-white`).
+## 1. MODULE 1: ENHANCED UWEAR (AI Detection Pipeline)
 
-### Frontend Modules (Pixel-Perfect Implementations)
-- [x] **Student Dashboard**: Scaled down paddings, rounded corners, implemented target typography, and structured the initial mock data loading.
-- [x] **Academic Profile**: Refined the user details grid, shrank redundant avatars, tightened padding, and enforced the pure-white cell rule.
-- [x] **Violation Records**: Condensed the stats cards and list items to ensure they don't blend with the background, resolving "almost green" contrast failures.
-- [x] **Campus Handbook**: 
-    - [x] Built complex, state-driven accordions.
-    - [x] Added distinct green top/left accent bars to open items.
-    - [x] Implemented a functional live search filter.
-    - [x] Removed off-white tints to ensure crisp contrast.
-- [x] **System Configuration (Settings)**:
-    - [x] Replicated layout fidelity 1:1.
-    - [x] Built custom toggle switches for notifications.
-    - [x] Added subtle watermark features (e.g., the 15% opacity shield icon on the Account Verified card).
-    - [x] Mapped dynamic "ACTIVE" vs "REVOKE" device status pills.
+### Core Detection Enhancements
+- [ ] Evaluate and select the precise object detection algorithm (e.g., YOLOv5 vs. YOLOv8).
+- [ ] Aggregate dataset via Roboflow (combining primary self-gathered data + secondary sources).
+- [ ] Train AI for full-body uniform compliance (moving beyond basic upper-body detection).
+- [ ] Train AI to detect valid civilian attire restrictions during wash days.
+
+---
+
+## 2. MODULE 2: SWAFO WEB APP (Frontend & UI)
+
+### Authentication & Architecture
+- [x] Set up React 19 + Vite + TailwindCSS.
+- [x] Finalize `App.jsx` React Router v6 architecture with protected routes.
+- [x] Integrate Microsoft MSAL SSO (Redirect method, `@dlsud.edu.ph` cross-tenant handling).
+- [x] Setup global typography standards (Plus Jakarta Sans, Manrope).
+
+### Student Portal UI implementation (The "Academic Curator" Design)
+- [x] **Global Layout**: Built `StudentLayout.jsx` with custom `270px` sidebar, matching strict topbar constraints. Implemented global 90% scaling.
+- [x] **Dashboard Module**: Finalized high-density cards, matching scale and padding requirements without sharp 1px borders.
+- [x] **Violation Records Module**: Built the history table, implementing specific `surface-container-lowest` color shifts. 
+- [x] **Academic Profile Module**: Tightened padding, refined the student detail grid metrics.
+- [x] **Campus Handbook Module**: Engineered state-driven accordions that enforce pure `bg-white` on expansion to avoid off-green blending against `#f2fcf8` background. Fixed gradient/shine layout on main headers natively.
+- [x] **System Configuration (Settings)**: 
+    - Replicated system layout fidelity 1:1.
+    - Implemented Deep Green verification card with subtle 15% opacity `shield` background watermark.
+    - Added custom Notification toggles and active Session mapping pills.
 - [x] **AI Curator (Chatbot)**:
-    - [x] Rebuilt standard layout into a robust 2-column interface matching the specific `chatbot_student.jpg` design.
-    - [x] Constructed custom message bubbles and complex response elements (source citations, action buttons).
-    - [x] Developed React state mapping to handle conversational input.
-    - [x] Connected "Suggested Prompts" to instantly fire chat queries.
+    - Entirely rebuilt the interface matching the requested 2-column layout.
+    - Implemented Chatbot functionality mapping: 5 interactive Suggested Prompts update the primary message stream natively.
 
-## In Progress
+---
 
-- [ ] **Transition from Mock Data**: The UI works perfectly, but the chat responses, violation tables, and profile stats are currently hardcoded state logic used to validate the UI design.
-- [ ] **Backend Alignment**: Ensuring the data structures established in the frontend components perfectly match the API payload structures expected from the backend.
+## 3. PENDING: SWAFO WEB APP (Backend & Officer Features)
 
-## Pending
+### Platform API & Database Layer (Django/Postgres)
+- [ ] Setup Django + Django REST Framework (DRF) environment.
+- [ ] Configure PostgreSQL database mapping to defined models (Users, Students, Violations, PatrolLogs, HandbookEntries).
+- [ ] Secure file/evidence upload to robust cloud storage (S3/Cloudinary).
 
-### Backend & API Connectivity
-- [ ] Connect the **Student Dashboard** to a secure live endpoint to pull real academic standing constraints.
-- [ ] Interface the **Violation Management** table to fetch live ticket updates from the disciplinary database.
-- [ ] Wire up the **Campus Handbook** search to execute server-side or vector-database queries rather than relying entirely on client-side arrays.
-- [ ] Point the **Chatbot module** to an actual LLM/RAG backend instance to handle dynamic, knowledge-based policy inquiries.
+### SWAFO Officer / Admin Tools
+- [ ] **ID Barcode Scanner**: Integrate `html5-qrcode` or `Quagga2` for automated student lookup.
+- [ ] **Violation Encoder**: Officer form to submit active cases linked to scanned IDs.
+- [ ] **Patrol System**: Build custom timestamping interface overriding the third-party application limitation (capturing photo, GPS, datetime natively).
 
-### Application Refinements
-- [ ] Implement live User Settings mutation (saving notification toggles securely to the DB).
-- [ ] Wire up the active session "Logout All Devices" logic.
-- [ ] Refine Microsoft MSAL token caching edge-cases in production.
+### Intelligent Features & Algorithms
+- [ ] **Patrol Route Optimization**: Build graph-based logic (Dijkstra/greedy) for patrol suggestions.
+- [ ] **Duplicate Case Detection**: Build string similarity matching to flag recurring violation submissions automatically.
+- [ ] **Corrective Action Recommendation**: Map DLSU-D handbook rules into decision-tree logic to suggest automated actions.
+- [ ] **Violation Analytics & Heatmap**: Aggregate location/time data via clustering on a global dashboard map.
+- [ ] Connect the Student Chatbot UI to actual automated rule-retrieval APIs.
 
-## Key Context
-- **Strict Visual Hierarchy**: The development so far has been heavily concentrated on resolving "blending" issues. A core project rule established is that interactive surface areas must be **pure white (`bg-white`)** with crisp shadow elevations, specifically avoiding light green/gray "tints" that cause eye strain against the `#f2fcf8` background.
-- **Development Workflow**: The methodology involves dissecting high-fidelity mockups module by module, explicitly discarding standard template aesthetics in favor of custom flex/grid pixel mapping, and verifying contrast scales constantly.
+---
+
+## 4. DESIGN & TECHNICAL DEVIATIONS (Project Governance)
+
+- **Color/Space Rule Affirmation**: We strictly bypassed standard Tailwind defaults, enforcing a custom `primary` and `surface` map preventing component blending. Replaced harsh dividing borders entirely with background color shifts.
+- **Module 2 Integration Focus**: Everything deployed this week strictly falls under Module 2 (Web UI layer). Connection to Module 1 (AI Pipeline) remains pending.
