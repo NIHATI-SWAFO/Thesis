@@ -12,12 +12,8 @@ export default function StudentProfile() {
       <section className="flex flex-col md:flex-row items-center md:items-end gap-6 px-4 relative">
         {/* Profile Image Container */}
         <div className="relative shrink-0">
-          <div className="w-[124px] h-[124px] rounded-3xl overflow-hidden bg-portal-sidebar ring-4 ring-white shadow-xl relative">
-            <img 
-              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=013624&color=fff&size=200&bold=true`} 
-              alt={fullName} 
-              className="w-full h-full object-cover"
-            />
+          <div className="w-[124px] h-[124px] rounded-3xl bg-[#003624] flex items-center justify-center ring-4 ring-white shadow-xl relative overflow-hidden text-white">
+            <span className="material-symbols-outlined text-[80px] opacity-90">account_circle</span>
           </div>
           {/* Verified Badge */}
           <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-portal-primary rounded-full border-[3px] border-white flex items-center justify-center shadow-lg text-white">

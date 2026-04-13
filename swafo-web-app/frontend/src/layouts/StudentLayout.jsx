@@ -36,12 +36,8 @@ export default function StudentLayout() {
         {/* User Info (Mini Profile) */}
         <div className="px-10 mb-10">
           <div className="flex items-center gap-4 p-1">
-            <div className="w-14 h-14 rounded-2xl bg-white shadow-sm ring-1 ring-emerald-50 overflow-hidden relative">
-               <img 
-                  alt={fullName} 
-                  className="w-full h-full object-cover" 
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=013624&color=fff&bold=true`}
-                />
+            <div className="w-14 h-14 rounded-2xl bg-[#003624] ring-1 ring-[#003624]/10 flex items-center justify-center relative overflow-hidden shadow-sm">
+                <span className="material-symbols-outlined text-white text-[40px] opacity-90">account_circle</span>
                 <div className="absolute bottom-1 right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
             </div>
             <div>
@@ -109,12 +105,8 @@ export default function StudentLayout() {
             
             <div className="flex items-center gap-4 ml-2 pl-4 border-l border-emerald-50">
               <span className="text-[14px] font-pjs font-bold text-portal-primary hidden xl:block leading-none uppercase tracking-tight">{fullName}</span>
-              <div className="w-10 h-10 rounded-full bg-portal-bg overflow-hidden ring-4 ring-emerald-50/20 shadow-sm">
-                <img 
-                  alt={fullName} 
-                  className="w-full h-full object-cover" 
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=013624&color=fff&bold=true`}
-                />
+              <div className="w-10 h-10 rounded-full bg-[#003624] flex items-center justify-center ring-4 ring-emerald-50/20 shadow-sm overflow-hidden text-white">
+                <span className="material-symbols-outlined text-[28px]">account_circle</span>
               </div>
             </div>
           </div>

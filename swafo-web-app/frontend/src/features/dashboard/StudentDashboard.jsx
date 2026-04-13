@@ -140,22 +140,22 @@ function StatCard({ icon, label, value, iconBg, iconColor, delay }) {
 
 function LinkCard({ icon, title, description, linkText, linkIcon }) {
   return (
-    <div className="bg-portal-sidebar/50 p-6 rounded-[1.25rem] flex flex-col justify-between hover:bg-portal-surface transition-all shadow-sm group cursor-pointer border border-transparent hover:border-portal-sidebar min-h-[158px]">
-      <div className="flex justify-between items-start mb-12">
-        <div className="w-12 h-12 rounded-xl bg-portal-primary-container text-white flex items-center justify-center shadow-lg">
-          <span className="material-symbols-outlined">{icon}</span>
+    <div className="bg-white p-7 rounded-[2rem] flex flex-col justify-between shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-emerald-50/50 hover:shadow-[0_15px_50px_rgba(0,107,93,0.08)] transition-all group cursor-pointer min-h-[180px] hover:-translate-y-1">
+      <div className="flex justify-between items-start mb-10">
+        <div className="w-12 h-12 rounded-2xl bg-[#003624] text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+          <span className="material-symbols-outlined text-[24px]">{icon}</span>
         </div>
-        <span className="material-symbols-outlined text-portal-text-muted/20 group-hover:text-portal-primary-container group-hover:translate-x-1 group-hover:-translate-y-1 transition-all">arrow_outward</span>
+        <span className="material-symbols-outlined text-portal-text-muted/20 group-hover:text-[#006b5d] group-hover:translate-x-1 group-hover:-translate-y-1 transition-all">arrow_outward</span>
       </div>
       <div>
-        <h4 className="text-xl font-pjs font-bold text-portal-primary-container mb-2 uppercase tracking-tight">{title}</h4>
+        <h4 className="text-xl font-pjs font-bold text-[#003624] mb-2 tracking-tight">{title}</h4>
         {linkText ? (
-          <div className="inline-flex items-center gap-2 text-sm font-pjs font-bold text-portal-primary-container/60 group-hover:text-portal-primary transition-colors">
-            <span className="material-symbols-outlined text-sm">{linkIcon}</span>
+          <div className="inline-flex items-center gap-2 text-[13px] font-manrope font-bold text-[#006b5d] bg-emerald-50 px-3 py-1 rounded-lg">
+            <span className="material-symbols-outlined text-[16px]">{linkIcon}</span>
             {linkText}
           </div>
         ) : (
-          <p className="text-sm font-manrope text-portal-text-muted font-medium">{description}</p>
+          <p className="text-[13px] font-manrope text-portal-text-muted/70 font-medium leading-relaxed">{description}</p>
         )}
       </div>
     </div>
