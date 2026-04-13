@@ -103,6 +103,11 @@ export default function StudentSettings() {
           <div className="bg-[#006b5d] p-8 rounded-[2rem] shadow-[0_12px_40px_rgba(0,107,93,0.15)] text-white relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-[50%] h-full pointer-events-none opacity-10 bg-gradient-to-l from-white to-transparent" />
             
+            {/* Background Icon (Matching User Mockup) */}
+            <div className="absolute -right-4 -bottom-4 opacity-[0.08] pointer-events-none">
+              <span className="material-symbols-outlined text-[160px] fill-1">verified_user</span>
+            </div>
+            
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-6">
               <div className="w-1.5 h-1.5 rounded-full bg-[#2bd99b]" />
               <span className="text-[9px] font-pjs font-bold uppercase tracking-widest text-[#2bd99b]">Good Standing</span>
