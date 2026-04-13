@@ -5,6 +5,7 @@ import StudentDashboard from './features/dashboard/StudentDashboard';
 import StudentProfile from './features/profile/StudentProfile';
 import StudentViolations from './features/violations/StudentViolations';
 import StudentHandbook from './features/handbook/StudentHandbook';
+import StudentSettings from './features/settings/StudentSettings';
 
 function App() {
   return (
@@ -21,7 +22,7 @@ function App() {
           <Route path="profile" element={<StudentProfile />} />
           <Route path="violations" element={<StudentViolations />} />
           <Route path="handbook" element={<StudentHandbook />} />
-          <Route path="settings" element={<div className="p-10 font-bold text-gray-500">Settings View Pending</div>} />
+          <Route path="settings" element={<StudentSettings />} />
         </Route>
 
         {/* Default Redirect */}
