@@ -104,8 +104,8 @@ export default function StudentSettings() {
             <div className="absolute top-0 right-0 w-[50%] h-full pointer-events-none opacity-10 bg-gradient-to-l from-white to-transparent" />
             
             {/* Background Icon (Matching User Mockup) */}
-            <div className="absolute -right-4 -bottom-4 opacity-[0.08] pointer-events-none">
-              <span className="material-symbols-outlined text-[160px] fill-1">verified_user</span>
+            <div className="absolute -right-6 -bottom-8 opacity-15 pointer-events-none rotate-12">
+              <span className="material-symbols-outlined text-[180px]" style={{ fontVariationSettings: "'FILL' 1" }}>shield</span>
             </div>
             
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-6">
