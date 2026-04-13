@@ -1,49 +1,60 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Manrope:wght@200..800&display=swap');
 
 @theme {
-  --color-swafo-900: #051a11;
-  --color-swafo-800: #0a2e1d;
-  --color-swafo-700: #0f4129;
-  --color-swafo-600: #0f684a;
-  --color-swafo-500: #1a8f60;
-  --color-swafo-400: #3eb489;
-  --color-swafo-300: #5ecaa6;
-  --color-swafo-200: #a1dbba;
-  --color-swafo-100: #d0f0df;
-  --color-swafo-50: #e8f5ef;
-  --color-swafo-25: #f0faf5;
+  --color-portal-bg: #f2fcf8;
+  --color-portal-sidebar: #ecf6f3;
+  --color-portal-primary: #003624;
+  --color-portal-primary-container: #124e38;
+  --color-portal-secondary-container: #aeeecb;
+  --color-portal-surface: #ffffff;
+  --color-portal-error: #ba1a1a;
+  --color-portal-error-container: #ffdad6;
+  --color-portal-text: #141d1c;
+  --color-portal-text-muted: #404943;
 
-  --color-surface: #ffffff;
-  --color-surface-muted: #f5f7f6;
-  --color-surface-subtle: #edf1ef;
-  --color-border-subtle: #e3e8e5;
+  --font-pjs: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-manrope: "Manrope", ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 @layer base {
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    display: inline-block;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+  }
+
   * {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  
+
   body {
     margin: 0;
-    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
-    color: #111827;
-    background-color: var(--color-swafo-50);
+    font-family: var(--font-manrope);
+    color: var(--color-portal-text);
+    background-color: var(--color-portal-bg);
   }
 
   /* Custom scrollbar matching the organic green palette */
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
   }
+
   .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background: var(--color-swafo-200);
     border-radius: 99px;
   }
+
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: var(--color-swafo-400);
   }
@@ -51,14 +62,37 @@
 
 /* Dashboard fade-in animation */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 .animate-fade-in-up {
   animation: fadeInUp 0.5s ease-out forwards;
 }
-.animate-delay-1 { animation-delay: 50ms; }
-.animate-delay-2 { animation-delay: 100ms; }
-.animate-delay-3 { animation-delay: 150ms; }
-.animate-delay-4 { animation-delay: 200ms; }
-.animate-delay-5 { animation-delay: 250ms; }
+
+.animate-delay-1 {
+  animation-delay: 50ms;
+}
+
+.animate-delay-2 {
+  animation-delay: 100ms;
+}
+
+.animate-delay-3 {
+  animation-delay: 150ms;
+}
+
+.animate-delay-4 {
+  animation-delay: 200ms;
+}
+
+.animate-delay-5 {
+  animation-delay: 250ms;
+}

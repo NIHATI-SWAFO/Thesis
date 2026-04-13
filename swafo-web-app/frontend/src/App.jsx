@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import SignIn from './features/auth/SignIn';
 import StudentLayout from './layouts/StudentLayout';
 import StudentDashboard from './features/dashboard/StudentDashboard';
+import StudentProfile from './features/profile/StudentProfile';
+import StudentViolations from './features/violations/StudentViolations';
 
 function App() {
   return (
@@ -15,8 +17,8 @@ function App() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<StudentDashboard />} />
           {/* Temporary fallbacks for the other nav links */}
-          <Route path="profile" element={<div className="p-10 font-bold text-gray-500">Profile View Pending</div>} />
-          <Route path="violations" element={<div className="p-10 font-bold text-gray-500">Violations View Pending</div>} />
+          <Route path="profile" element={<StudentProfile />} />
+          <Route path="violations" element={<StudentViolations />} />
           <Route path="handbook" element={<div className="p-10 font-bold text-gray-500">Handbook View Pending</div>} />
           <Route path="settings" element={<div className="p-10 font-bold text-gray-500">Settings View Pending</div>} />
         </Route>
