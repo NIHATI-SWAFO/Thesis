@@ -6,6 +6,7 @@ import StudentProfile from './features/profile/StudentProfile';
 import StudentViolations from './features/violations/StudentViolations';
 import StudentHandbook from './features/handbook/StudentHandbook';
 import StudentSettings from './features/settings/StudentSettings';
+import ChatBot from './features/chatbot/ChatBot';
 
 function App() {
   return (
@@ -20,8 +21,9 @@ function App() {
           <Route path="dashboard" element={<StudentDashboard />} />
           {/* Temporary fallbacks for the other nav links */}
           <Route path="profile" element={<StudentProfile />} />
-          <Route path="violations" element={<StudentViolations />} />
+           <Route path="violations" element={<StudentViolations />} />
           <Route path="handbook" element={<StudentHandbook />} />
+          <Route path="chatbot" element={<ChatBot />} />
           <Route path="settings" element={<StudentSettings />} />
         </Route>
 
