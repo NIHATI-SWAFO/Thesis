@@ -4,6 +4,7 @@ import StudentLayout from './layouts/StudentLayout';
 import StudentDashboard from './features/dashboard/StudentDashboard';
 import StudentProfile from './features/profile/StudentProfile';
 import StudentViolations from './features/violations/StudentViolations';
+import StudentHandbook from './features/handbook/StudentHandbook';
 
 function App() {
   return (
@@ -19,7 +20,7 @@ function App() {
           {/* Temporary fallbacks for the other nav links */}
           <Route path="profile" element={<StudentProfile />} />
           <Route path="violations" element={<StudentViolations />} />
-          <Route path="handbook" element={<div className="p-10 font-bold text-gray-500">Handbook View Pending</div>} />
+          <Route path="handbook" element={<StudentHandbook />} />
           <Route path="settings" element={<div className="p-10 font-bold text-gray-500">Settings View Pending</div>} />
         </Route>
 
