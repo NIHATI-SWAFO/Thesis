@@ -1,5 +1,4 @@
 # IDE
-.agents/
 .vscode/
 .idea/
 .DS_Store
@@ -18,5 +17,4 @@ swafo-web-app/backend/.env
 swafo-web-app/backend/db.sqlite3
 
 # Other
-additional context/
 *.log
