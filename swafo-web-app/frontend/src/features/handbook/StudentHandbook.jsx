@@ -190,7 +190,7 @@ export default function StudentHandbook() {
                 key={section.id} 
                 className={`transition-all duration-300 rounded-[1.25rem] overflow-hidden ${
                   isOpen 
-                    ? 'bg-[#f4fcf9] shadow-[0_8px_30px_rgba(0,107,93,0.06)]' 
+                    ? 'bg-white shadow-[0_10px_40px_rgba(0,107,93,0.08)] border border-black/5' 
                     : 'bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-transparent hover:border-black/5'
                 }`}
               >
