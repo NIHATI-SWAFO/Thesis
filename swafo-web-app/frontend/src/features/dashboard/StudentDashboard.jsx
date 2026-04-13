@@ -99,8 +99,8 @@ export default function StudentDashboard() {
       </div>
 
       {/* ═══════════════════════ RECENT VIOLATIONS ═══════════════════════ */}
-      <div className="bg-portal-surface p-10 rounded-[3rem] shadow-[0_8px_40px_rgba(0,0,0,0.02)] border border-emerald-100/30">
-        <div className="flex items-center justify-between mb-10">
+      <div className="bg-portal-surface p-8 rounded-[2.5rem] shadow-[0_8px_40px_rgba(0,0,0,0.02)] border border-emerald-100/30">
+        <div className="flex items-center justify-between mb-8">
           <h3 className="text-2xl font-pjs font-bold text-[#003624] tracking-tight">Recent Violations</h3>
           <button className="text-[13px] font-pjs font-bold text-[#003624]/40 hover:text-[#003624] tracking-widest uppercase transition-colors">
             View All Records
@@ -164,7 +164,7 @@ function LinkCard({ icon, title, description, linkText, linkIcon }) {
 
 function ViolationEntry({ title, status, location, date, time, action }) {
   return (
-    <div className="p-8 rounded-[2rem] bg-white border border-emerald-50/80 shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex flex-col lg:flex-row items-start lg:items-center gap-8 group hover:shadow-[0_15px_50px_rgba(186,26,26,0.08)] transition-all hover:-translate-y-1 cursor-default">
+    <div className="p-6 rounded-[1.5rem] bg-white border border-emerald-50/80 shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex flex-col lg:flex-row items-start lg:items-center gap-6 group hover:shadow-[0_15px_50px_rgba(186,26,26,0.08)] transition-all hover:-translate-y-1 cursor-default">
       <div className="flex-grow w-full">
         <div className="flex items-center gap-4 mb-4">
           <div className="h-8 w-1 bg-portal-error rounded-full" />

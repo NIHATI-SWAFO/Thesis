@@ -20,10 +20,10 @@ export default function StudentLayout() {
       
       {/* ══════════════════════════════ SIDEBAR ══════════════════════════════ */}
       {/* ══════════════════════════════ SIDEBAR ══════════════════════════════ */}
-      <aside className="fixed left-0 top-0 h-screen w-[300px] z-50 bg-[#F7F9FB] flex flex-col py-10 shadow-[20px_0_60px_rgba(0,0,0,0.03)] border-r border-emerald-50/50 rounded-r-[3.5rem]">
+      <aside className="fixed left-0 top-0 h-screen w-[270px] z-50 bg-[#F7F9FB] flex flex-col py-10 shadow-[20px_0_60px_rgba(0,0,0,0.03)] border-r border-emerald-50/50 rounded-r-[3.5rem]">
         
         {/* Brand */}
-        <div className="px-10 mb-10 flex items-center gap-3">
+        <div className="px-8 mb-10 flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-[#003624] flex items-center justify-center text-white shadow-lg">
             <span className="material-symbols-outlined text-2xl fill-1">school</span>
           </div>
@@ -34,7 +34,7 @@ export default function StudentLayout() {
         </div>
 
         {/* User Info (Mini Profile) */}
-        <div className="px-10 mb-10">
+        <div className="px-8 mb-10">
           <div className="flex items-center gap-4 p-1">
             <div className="w-14 h-14 rounded-2xl bg-[#003624] ring-1 ring-[#003624]/10 flex items-center justify-center relative overflow-hidden shadow-sm">
                 <span className="material-symbols-outlined text-white text-[40px] opacity-90">account_circle</span>
@@ -80,10 +80,10 @@ export default function StudentLayout() {
       </aside>
 
       {/* ══════════════════════════════ CONTENT AREA ══════════════════════════════ */}
-      <div className="flex-1 ml-[280px] flex flex-col h-full overflow-hidden">
+      <div className="flex-1 ml-[270px] flex flex-col h-full overflow-hidden">
         
         {/* Topbar */}
-        <header className="h-[80px] px-8 bg-white flex items-center justify-between z-30 relative shadow-[0_4px_30px_rgba(0,0,0,0.06)]">
+        <header className="h-[72px] px-8 bg-white flex items-center justify-between z-30 relative shadow-[0_4px_30px_rgba(0,0,0,0.06)]">
           {/* Search */}
           <div className="flex-1 max-w-[500px] relative">
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-portal-text-muted/40 text-[20px]">search</span>

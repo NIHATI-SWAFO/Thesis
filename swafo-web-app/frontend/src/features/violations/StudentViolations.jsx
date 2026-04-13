@@ -103,40 +103,40 @@ export default function StudentViolations() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* Total Records */}
-        <div className="bg-white p-8 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 flex flex-col justify-between">
+        <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 flex flex-col justify-between">
           <div>
             <p className="text-xs font-pjs font-bold text-portal-text-muted/60 uppercase tracking-widest mb-2">Total Records</p>
-            <h2 className="text-[3.5rem] font-pjs font-bold text-[#006b5d] leading-none tracking-tighter">
+            <h2 className="text-[3rem] font-pjs font-bold text-[#006b5d] leading-none tracking-tighter">
               {totalRecords.toString().padStart(2, '0')}
             </h2>
           </div>
-          <div className="flex items-center gap-2 mt-8 text-[#006b5d] text-sm font-manrope font-semibold">
+          <div className="flex items-center gap-2 mt-6 text-[#006b5d] text-sm font-manrope font-semibold">
             <span className="material-symbols-outlined text-[18px]">trending_up</span>
             All documented instances
           </div>
         </div>
 
         {/* Pending Review */}
-        <div className="bg-white p-8 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 flex flex-col justify-between">
+        <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 flex flex-col justify-between">
           <div>
             <p className="text-xs font-pjs font-bold text-portal-text-muted/60 uppercase tracking-widest mb-2">Pending Review</p>
-            <h2 className="text-[3.5rem] font-pjs font-bold text-[#1a1a1a] leading-none tracking-tighter">
+            <h2 className="text-[3rem] font-pjs font-bold text-[#1a1a1a] leading-none tracking-tighter">
               {pendingReview.toString().padStart(2, '0')}
             </h2>
           </div>
-          <div className="flex items-center gap-2 mt-8 text-portal-text-muted/70 text-sm font-manrope font-medium">
+          <div className="flex items-center gap-2 mt-6 text-portal-text-muted/70 text-sm font-manrope font-medium">
             <span className="material-symbols-outlined text-[18px]">hourglass_bottom</span>
             Currently under administrative assessment
           </div>
         </div>
 
         {/* Account Status */}
-        <div className="bg-[#006b5d] p-8 rounded-[2rem] shadow-[0_12px_40px_rgba(0,107,93,0.2)] flex flex-col items-center justify-center text-center relative overflow-hidden">
+        <div className="bg-[#006b5d] p-6 rounded-[1.5rem] shadow-[0_12px_40px_rgba(0,107,93,0.2)] flex flex-col items-center justify-center text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
           <div className="relative z-10 w-full">
             <p className="text-xs font-pjs font-bold text-white/80 uppercase tracking-widest mb-6">Account Status</p>
-            <span className="material-symbols-outlined text-[4rem] text-white font-light tracking-tighter mb-4">check_circle</span>
-            <h3 className="text-xl font-pjs font-bold text-white tracking-widest">GOOD STANDING</h3>
+            <span className="material-symbols-outlined text-[3.5rem] text-white font-light tracking-tighter mb-4">check_circle</span>
+            <h3 className="text-lg font-pjs font-bold text-white tracking-widest uppercase">Good Standing</h3>
           </div>
         </div>
 
@@ -163,12 +163,12 @@ export default function StudentViolations() {
         {/* Incidents List */}
         <div className="space-y-4">
           {filteredViolations.length === 0 ? (
-            <div className="p-12 text-center text-portal-text-muted bg-white rounded-[2rem] border border-black/5">
+            <div className="p-10 text-center text-portal-text-muted bg-white rounded-[1.5rem] border border-black/5">
               No matching records found.
             </div>
           ) : (
             filteredViolations.map((violation) => (
-            <div key={violation.id} className="bg-white p-6 sm:p-8 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-black/5 hover:shadow-[0_12px_40px_rgba(0,0,0,0.05)] transition-all">
+            <div key={violation.id} className="bg-white p-6 sm:p-7 rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-black/5 hover:shadow-[0_12px_40px_rgba(0,0,0,0.05)] transition-all">
               
               {/* Card Header (Status, ID, and Action Icon) */}
               <div className="flex items-center justify-between mb-4">

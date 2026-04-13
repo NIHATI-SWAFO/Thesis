@@ -12,8 +12,8 @@ export default function StudentProfile() {
       <section className="flex flex-col md:flex-row items-center md:items-end gap-6 px-4 relative">
         {/* Profile Image Container */}
         <div className="relative shrink-0">
-          <div className="w-[124px] h-[124px] rounded-3xl bg-[#003624] flex items-center justify-center ring-4 ring-white shadow-xl relative overflow-hidden text-white">
-            <span className="material-symbols-outlined text-[80px] opacity-90">account_circle</span>
+          <div className="w-[110px] h-[110px] rounded-3xl bg-[#003624] flex items-center justify-center ring-4 ring-white shadow-xl relative overflow-hidden text-white">
+            <span className="material-symbols-outlined text-[70px] opacity-90">account_circle</span>
           </div>
           {/* Verified Badge */}
           <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-portal-primary rounded-full border-[3px] border-white flex items-center justify-center shadow-lg text-white">
@@ -138,7 +138,7 @@ export default function StudentProfile() {
 
 function SectionCard({ title, icon, subtitle, children, bgColor = "bg-white" }) {
   return (
-    <div className={`${bgColor} p-6 rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 h-full group transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] flex flex-col justify-between`}>
+    <div className={`${bgColor} p-5 rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 h-full group transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] flex flex-col justify-between`}>
       {title && (
         <div className="flex items-start gap-3 mb-5 shrink-0">
           <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-[#006b5d] border border-emerald-50">
@@ -184,7 +184,7 @@ function DetailItem({ icon, label, value, iconBg, iconColor }) {
 
 function DocumentLink({ title, subtitle, icon, actionIcon }) {
   return (
-    <div className="flex items-center justify-between p-3.5 rounded-xl border border-emerald-50/50 hover:bg-[#ecf6f3]/30 transition-all cursor-pointer group shadow-sm">
+    <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-50/50 hover:bg-[#ecf6f3]/30 transition-all cursor-pointer group shadow-sm">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-50">
           <span className="material-symbols-outlined text-[18px]">{icon}</span>
@@ -194,7 +194,7 @@ function DocumentLink({ title, subtitle, icon, actionIcon }) {
           <p className="text-[11px] font-manrope font-medium text-portal-text-muted/50">{subtitle}</p>
         </div>
       </div>
-      <button className="w-10 h-10 rounded-full flex items-center justify-center text-portal-text-muted/40 group-hover:bg-[#003624] group-hover:text-white transition-all shadow-sm">
+      <button className="w-10 h-10 rounded-full flex items-center justify-center text-portal-text-muted/40 group-hover:bg-[#006b5d] group-hover:text-white transition-all shadow-sm">
         <span className="material-symbols-outlined text-[18px]">{actionIcon}</span>
       </button>
     </div>
