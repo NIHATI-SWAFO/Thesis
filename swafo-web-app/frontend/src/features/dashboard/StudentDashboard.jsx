@@ -164,36 +164,37 @@ function LinkCard({ icon, title, description, linkText, linkIcon }) {
 
 function ViolationEntry({ title, status, location, date, time, action }) {
   return (
-    <div className="p-6 rounded-2xl bg-portal-bg/50 border-l-4 border-portal-error flex flex-col lg:flex-row items-start lg:items-center gap-6 group hover:translate-x-1 transition-transform">
-      <div className="flex-grow">
-        <div className="flex items-center gap-3 mb-3">
-          <h4 className="text-lg font-bold text-portal-text font-pjs uppercase tracking-tight">{title}</h4>
-          <span className="px-3 py-1 bg-portal-error-container text-portal-error text-[10px] font-bold rounded-full uppercase tracking-tighter">
+    <div className="p-8 rounded-[2rem] bg-white border border-emerald-50/80 shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex flex-col lg:flex-row items-start lg:items-center gap-8 group hover:shadow-[0_15px_50px_rgba(186,26,26,0.08)] transition-all hover:-translate-y-1 cursor-default">
+      <div className="flex-grow w-full">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="h-8 w-1 bg-portal-error rounded-full" />
+          <h4 className="text-[1.2rem] font-bold text-[#1a1a1a] font-pjs uppercase tracking-tight">{title}</h4>
+          <span className="px-4 py-1.5 bg-portal-error-container text-portal-error text-[10px] font-extrabold rounded-full uppercase tracking-widest shadow-sm">
             {status}
           </span>
         </div>
-        <div className="flex flex-wrap gap-5 text-[11px] text-portal-text-muted/60 font-bold uppercase tracking-widest mb-4">
-          <span className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm">location_on</span>
+        <div className="flex flex-wrap gap-6 text-[12px] text-portal-text-muted/60 font-manrope font-bold uppercase tracking-widest mb-6 ml-5">
+          <span className="flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-[18px]">location_on</span>
             {location}
           </span>
-          <span className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm">calendar_today</span>
+          <span className="flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-[18px]">calendar_today</span>
             {date}
           </span>
-          <span className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm">schedule</span>
+          <span className="flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-[18px]">schedule</span>
             {time}
           </span>
         </div>
-        <div className="bg-portal-surface p-4 rounded-xl border border-portal-sidebar">
-          <p className="text-[9px] font-pjs font-bold uppercase text-portal-primary/40 mb-2 tracking-widest">Corrective Action Details</p>
-          <p className="text-[13px] text-portal-text font-manrope font-medium leading-relaxed">{action}</p>
+        <div className="bg-[#fcf8f8] p-5 rounded-2xl border border-portal-error/5 ml-5">
+          <p className="text-[10px] font-pjs font-bold uppercase text-portal-error/50 mb-2 tracking-widest">Corrective Action Details</p>
+          <p className="text-[14px] text-portal-text font-manrope font-medium leading-relaxed">{action}</p>
         </div>
       </div>
-      <button className="shrink-0 flex items-center gap-2 bg-portal-primary-container text-white px-6 py-3 rounded-xl font-pjs text-sm font-bold uppercase tracking-widest shadow-lg hover:bg-portal-primary active:scale-95 transition-all">
+      <button className="shrink-0 flex items-center gap-3 bg-[#141d1c] text-white px-8 py-4 rounded-2xl font-pjs text-[13px] font-bold uppercase tracking-widest shadow-lg hover:bg-black active:scale-95 transition-all group/btn self-end lg:self-center">
         Acknowledge
-        <span className="material-symbols-outlined text-sm">edit_note</span>
+        <span className="material-symbols-outlined text-[18px] group-hover/btn:translate-x-1 transition-transform">drafts</span>
       </button>
     </div>
   );
