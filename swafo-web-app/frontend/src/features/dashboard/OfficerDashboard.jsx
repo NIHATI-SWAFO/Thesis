@@ -5,7 +5,7 @@ export default function OfficerDashboard() {
   const navigate = useNavigate();
 
   return (
-    <div className="max-w-[1200px] animate-fade-in-up pb-12">
+    <div className="max-w-[1400px] mx-auto animate-fade-in-up pb-12">
       {/* Header */}
       <div className="mb-10">
         <h1 className="text-[28px] font-pjs font-extrabold text-[#003624] tracking-tight mb-1">SWAFO Dashboard</h1>
