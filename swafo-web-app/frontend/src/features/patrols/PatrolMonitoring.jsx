@@ -51,7 +51,7 @@ export default function PatrolMonitoring() {
         {statCards.map((card, idx) => (
           <div key={idx} className="bg-white rounded-2xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.02)] border border-gray-100/50 flex flex-col relative min-h-[120px]">
             {/* Left accent bar */}
-            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#009b69]"></div>
+            <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-[#205F4B]"></div>
             
             <div className="p-6 flex flex-col justify-between h-full pl-8">
               <div>
