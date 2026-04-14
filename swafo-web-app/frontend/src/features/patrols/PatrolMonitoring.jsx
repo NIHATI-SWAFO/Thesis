@@ -33,7 +33,7 @@ export default function PatrolMonitoring() {
   });
 
   return (
-    <div className="max-w-[1240px] animate-fade-in-up">
+    <div className="max-w-[1400px] mx-auto animate-fade-in-up">
       {/* ══════════════════════════════ HEADER ══════════════════════════════ */}
       <div className="flex justify-between items-center mb-10">
         <div>
