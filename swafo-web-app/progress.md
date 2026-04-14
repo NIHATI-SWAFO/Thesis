@@ -7,6 +7,7 @@
 **Stack:** React (Vite) + Tailwind CSS | Django + DRF | PostgreSQL  
 
 > Source: `additional context/plan.md`, `project_context.md`, `research.md`
+> **Current Focus & Status:** Actively implementing the SWAFO Officer Portal Frontend components (Case Management & Record Violation). We are moving through the Figma designs using the MCP with no major blockers. The current step is finalizing the remaining Officer views before backend mapping.
 
 ---
 
@@ -97,9 +98,31 @@
 
 ---
 
-## 3. SWAFO OFFICER PORTAL (Not Started)
+## 3. SWAFO OFFICER PORTAL (In Progress)
 
 > Requirement source: `research.md` §7 — SWAFO Officer sections
+
+### Case Management
+- [x] Create directory `src/features/cases/`
+- [x] Implement `CaseManagement.jsx` component
+- [x] Setup mock data and local filtering logic (search, status, priority, assignments)
+- [x] Build Header & Stats Row with dynamic color coding
+- [x] Build Asymmetric Grid Layout (left table, right utility cards)
+- [x] Incorporate Priority Breakdown Card with 33% scales
+- [x] Incorporate Recent Activity Timeline Card
+- [ ] Map mock data to `DRF` API responses once backend is built.
+> **Approach & Findings:** Used an asymmetric grid layout (`flex-col xl:flex-row`) pitting the Case Table against utility widgets (Priority Breakdown, Recent Activity). Discovered that this desktop layout looks visually perfect only when the table contains ~10 rows (added expanded mock data) to balance vertical height against the sidebars.
+
+### Violation Recording
+- [x] Setup base layout, aesthetic spacing, and generic data fields matching Figma designs (`RecordViolation.jsx`).
+- [x] Map input groupings properly, implement strict `bg-white` and vertical green accent bars for consistency.
+- [ ] Barcode scanner (camera-based, browser) using `html5-qrcode` or `@ericblade/quagga2`
+- [ ] Auto-retrieve student profile from scanned barcode (name, college, department)
+- [ ] Violation type dropdown selector + manual entry option
+- [ ] Written statement / description field
+- [ ] Evidence upload (photo/file) via cloud storage (S3/Cloudinary)
+- [ ] Map each violation to a university handbook entry
+> **Approach:** Extreme high-fidelity visual matching utilizing the Figma developer MCP. Prioritized spacing, typographic hierarchy, and custom accent elements.
 
 ### Patrol Monitoring
 - [ ] "Start Patrol" button to initiate a patrol session
@@ -108,14 +131,6 @@
 - [ ] "End Patrol" button to close session
 - [ ] System records patrol count, duration, and full patrol history
 - [ ] Replace SWAFO's current third-party timestamp app with built-in solution
-
-### Violation Recording
-- [ ] Barcode scanner (camera-based, browser) using `html5-qrcode` or `@ericblade/quagga2`
-- [ ] Auto-retrieve student profile from scanned barcode (name, college, department)
-- [ ] Violation type dropdown selector + manual entry option
-- [ ] Written statement / description field
-- [ ] Evidence upload (photo/file) via cloud storage (S3/Cloudinary)
-- [ ] Map each violation to a university handbook entry
 
 ### System Output After Violation Submission
 - [ ] Auto-generated **case summary** of the incident

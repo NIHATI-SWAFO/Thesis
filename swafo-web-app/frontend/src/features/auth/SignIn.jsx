@@ -114,7 +114,10 @@ export default function SignIn() {
             {/* Forms Container */}
             <div className="min-h-[320px]">
               {activeTab === 'officer' ? (
-                <form className="flex flex-col space-y-6" onSubmit={(e) => e.preventDefault()}>
+                <form className="flex flex-col space-y-6" onSubmit={(e) => {
+                  e.preventDefault();
+                  navigate('/officer/dashboard');
+                }}>
                   
                   {/* ID Input */}
                   <div className="space-y-2">

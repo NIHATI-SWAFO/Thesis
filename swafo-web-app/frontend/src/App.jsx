@@ -7,7 +7,11 @@ import StudentViolations from './features/violations/StudentViolations';
 import StudentHandbook from './features/handbook/StudentHandbook';
 import StudentSettings from './features/settings/StudentSettings';
 import ChatBot from './features/chatbot/ChatBot';
-
+import OfficerLayout from './layouts/OfficerLayout';
+import OfficerDashboard from './features/dashboard/OfficerDashboard';
+import PatrolMonitoring from './features/patrols/PatrolMonitoring';
+import RecordViolation from './features/violations/RecordViolation';
+import CaseManagement from './features/cases/CaseManagement';
 function App() {
   return (
     <BrowserRouter>
@@ -25,6 +29,17 @@ function App() {
           <Route path="handbook" element={<StudentHandbook />} />
           <Route path="chatbot" element={<ChatBot />} />
           <Route path="settings" element={<StudentSettings />} />
+        </Route>
+
+        {/* Officer Protected Routes */}
+        <Route path="/officer" element={<OfficerLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<OfficerDashboard />} />
+          <Route path="patrols" element={<PatrolMonitoring />} />
+          <Route path="violations/new" element={<RecordViolation />} />
+          <Route path="cases" element={<CaseManagement />} />
+          {/* Fallback for unfinished pages */}
+          <Route path="*" element={<div className="p-8 text-2xl font-bold font-pjs">Under Construction</div>} />
         </Route>
 
         {/* Default Redirect */}
