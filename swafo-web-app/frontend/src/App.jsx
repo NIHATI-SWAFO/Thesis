@@ -12,6 +12,7 @@ import OfficerDashboard from './features/dashboard/OfficerDashboard';
 import PatrolMonitoring from './features/patrols/PatrolMonitoring';
 import RecordViolation from './features/violations/RecordViolation';
 import CaseManagement from './features/cases/CaseManagement';
+import StudentRecords from './features/students/StudentRecords';
 function App() {
   return (
     <BrowserRouter>
@@ -38,6 +39,7 @@ function App() {
           <Route path="patrols" element={<PatrolMonitoring />} />
           <Route path="violations/new" element={<RecordViolation />} />
           <Route path="cases" element={<CaseManagement />} />
+          <Route path="students" element={<StudentRecords />} />
           {/* Fallback for unfinished pages */}
           <Route path="*" element={<div className="p-8 text-2xl font-bold font-pjs">Under Construction</div>} />
         </Route>
