@@ -110,27 +110,43 @@
 - [x] Build Asymmetric Grid Layout (left table, right utility cards)
 - [x] Incorporate Priority Breakdown Card with 33% scales
 - [x] Incorporate Recent Activity Timeline Card
+- [x] **Visual Refinement:** ACHIEVED 1:1 parity with target Figma design (Pill badges, borderless clean cards, Teal labels).
 - [ ] Map mock data to `DRF` API responses once backend is built.
-> **Approach & Findings:** Used an asymmetric grid layout (`flex-col xl:flex-row`) pitting the Case Table against utility widgets (Priority Breakdown, Recent Activity). Discovered that this desktop layout looks visually perfect only when the table contains ~10 rows (added expanded mock data) to balance vertical height against the sidebars.
+> **Approach & Findings:** Used an asymmetric grid layout (`flex-col xl:flex-row`) pitting the Case Table against utility widgets (Priority Breakdown, Recent Activity). Refined the KPI system to use status pills and removed bottom borders to align with the "Academic Curator" minimal-line rule.
+
+### Reports & Analytics — *"View violation statistics and officer activity"*
+- [x] Implement `ReportsAnalytics.jsx`
+- [x] KPI Bento Grid (Total Violations, Resolved Rate, Patrol Coverage, Response Time)
+- [x] temporal bar charts showing violation trends over time
+- [x] Multi-segment SVG Donut Charts for status distribution
+- [x] "Officer Intelligence" detail cards with activity heatmaps
+- [x] High-fidelity visual parity (Plus Jakarta Sans, brand green palette)
+- [ ] Connect to backend analytics endpoints for live data visualization
+> **Approach:** Leveraged custom SVG and CSS-based charting for pixel-perfect control over the "Academic Curator" aesthetic.
+
+### Patrol History & Monitoring — *"Replace SWAFO's current third-party timestamp app"*
+- [x] Implement `PatrolHistory.jsx` with 2-column list/detail layout
+- [x] Interactive patrol list with high-fidelity status badges (mint/white)
+- [x] Checkpoint timeline with semantic status indicators (secure/check)
+- [x] Map Navigation module with "View Full Map" interactive state
+- [x] **Visual Refinement:** ACHIEVED 1:1 parity (ultra-thin 2px accents, solid white KPI text, balanced metric scaling)
+- [ ] "Start Patrol" functional module (recording live session)
+- [ ] Select patrol area/checkpoint within university
+- [ ] Timestamped patrol photo capture (overlay: date, time, location, GPS coordinates)
+- [ ] "End Patrol" button to close session
+- [ ] Replace SWAFO's current third-party timestamp app with built-in solution
+> **Approach:** Focused on making a digital replacement for manual patrol logging. The UI matches current high-end security dashboards with a focus on "Checkpoint Verification" data.
 
 ### Violation Recording
 - [x] Setup base layout, aesthetic spacing, and generic data fields matching Figma designs (`RecordViolation.jsx`).
 - [x] Map input groupings properly, implement strict `bg-white` and vertical green accent bars for consistency.
+- [x] **Visual Refinement:** Implemented "Violation History" list within the recording view for context.
 - [ ] Barcode scanner (camera-based, browser) using `html5-qrcode` or `@ericblade/quagga2`
 - [ ] Auto-retrieve student profile from scanned barcode (name, college, department)
 - [ ] Violation type dropdown selector + manual entry option
 - [ ] Written statement / description field
 - [ ] Evidence upload (photo/file) via cloud storage (S3/Cloudinary)
 - [ ] Map each violation to a university handbook entry
-> **Approach:** Extreme high-fidelity visual matching utilizing the Figma developer MCP. Prioritized spacing, typographic hierarchy, and custom accent elements.
-
-### Patrol Monitoring
-- [ ] "Start Patrol" button to initiate a patrol session
-- [ ] Select patrol area/checkpoint within university
-- [ ] Timestamped patrol photo capture (overlay: date, time, location, GPS coordinates)
-- [ ] "End Patrol" button to close session
-- [ ] System records patrol count, duration, and full patrol history
-- [ ] Replace SWAFO's current third-party timestamp app with built-in solution
 
 ### System Output After Violation Submission
 - [ ] Auto-generated **case summary** of the incident

@@ -73,36 +73,25 @@ export default function OfficerDashboard() {
         <p className="text-[12px] text-gray-500 font-medium mb-4">Access frequently used features</p>
         
         <div className="grid grid-cols-4 gap-6">
-          <button 
-            onClick={() => navigate('/officer/patrols')}
-            className="bg-[#115e41] text-white p-6 rounded-[1.5rem] flex flex-col items-center justify-center gap-3 shadow-[0_12px_30px_rgba(17,94,65,0.25)] hover:bg-[#0c4731] hover:shadow-[0_12px_30px_rgba(17,94,65,0.4)] transition-all transform hover:-translate-y-1 active:scale-95"
-          >
-             <span className="material-symbols-outlined text-[32px]">bolt</span>
-             <span className="font-pjs font-bold text-[14px]">Start Patrol</span>
-          </button>
-          
-          <button 
-            className="bg-[#e4e9eb] text-gray-800 p-6 rounded-[1.5rem] flex flex-col items-center justify-center gap-3 hover:bg-[#d8dfe1] transition-all transform hover:-translate-y-1 active:scale-95 shadow-sm border border-gray-200/50"
-          >
-             <span className="material-symbols-outlined text-[32px]">qr_code_scanner</span>
-             <span className="font-pjs font-bold text-[14px]">Scan Student ID</span>
-          </button>
-          
-          <button 
+          <QuickActionButton 
+            onClick={() => navigate('/officer/patrol-history')}
+            icon="bolt"
+            label="Start Patrol"
+          />
+          <QuickActionButton 
+            icon="qr_code_scanner"
+            label="Scan Student ID"
+          />
+          <QuickActionButton 
             onClick={() => navigate('/officer/violations/new')}
-            className="bg-[#e4e9eb] text-gray-800 p-6 rounded-[1.5rem] flex flex-col items-center justify-center gap-3 hover:bg-[#d8dfe1] transition-all transform hover:-translate-y-1 active:scale-95 shadow-sm border border-gray-200/50"
-          >
-             <span className="material-symbols-outlined text-[32px]">history_edu</span>
-             <span className="font-pjs font-bold text-[14px]">Record Violation</span>
-          </button>
-
-          <button 
+            icon="history_edu"
+            label="Record Violation"
+          />
+          <QuickActionButton 
             onClick={() => navigate('/officer/cases')}
-            className="bg-[#e4e9eb] text-gray-800 p-6 rounded-[1.5rem] flex flex-col items-center justify-center gap-3 hover:bg-[#d8dfe1] transition-all transform hover:-translate-y-1 active:scale-95 shadow-sm border border-gray-200/50"
-          >
-             <span className="material-symbols-outlined text-[32px]">menu_book</span>
-             <span className="font-pjs font-bold text-[14px]">Manage Cases</span>
-          </button>
+            icon="menu_book"
+            label="Manage Cases"
+          />
         </div>
       </div>
 
@@ -287,5 +276,21 @@ export default function OfficerDashboard() {
       </div>
 
     </div>
+  );
+}
+
+function QuickActionButton({ onClick, icon, label }) {
+  return (
+    <button 
+      onClick={onClick}
+      className="bg-[#e4e9eb] group p-8 rounded-[1.8rem] flex flex-col items-center justify-center gap-4 transition-all duration-300 transform hover:-translate-y-2 hover:bg-[#004d33] shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] active:scale-95 border border-transparent hover:border-emerald-600/20"
+    >
+      <span className="material-symbols-outlined text-[32px] text-[#003624] group-hover:text-white transition-colors duration-300">
+        {icon}
+      </span>
+      <span className="font-pjs font-bold text-[14px] text-slate-700 group-hover:text-white transition-colors duration-300">
+        {label}
+      </span>
+    </button>
   );
 }

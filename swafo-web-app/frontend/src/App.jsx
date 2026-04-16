@@ -14,6 +14,10 @@ import RecordViolation from './features/violations/RecordViolation';
 import CaseManagement from './features/cases/CaseManagement';
 import StudentRecords from './features/students/StudentRecords';
 import StudentProfileDetail from './features/students/StudentProfileDetail';
+import ReportsAnalytics from './features/analytics/ReportsAnalytics';
+import PatrolHistory from './features/patrols/PatrolHistory';
+
+
 
 function App() {
   return (
@@ -39,6 +43,9 @@ function App() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<OfficerDashboard />} />
           <Route path="patrols" element={<PatrolMonitoring />} />
+          <Route path="reports" element={<ReportsAnalytics />} />
+          <Route path="patrol-history" element={<PatrolHistory />} />
+
           <Route path="violations/new" element={<RecordViolation />} />
           <Route path="cases" element={<CaseManagement />} />
           <Route path="students" element={<StudentRecords />} />
