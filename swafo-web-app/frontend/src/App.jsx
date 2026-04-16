@@ -13,6 +13,8 @@ import PatrolMonitoring from './features/patrols/PatrolMonitoring';
 import RecordViolation from './features/violations/RecordViolation';
 import CaseManagement from './features/cases/CaseManagement';
 import StudentRecords from './features/students/StudentRecords';
+import StudentProfileDetail from './features/students/StudentProfileDetail';
+
 function App() {
   return (
     <BrowserRouter>
@@ -40,6 +42,7 @@ function App() {
           <Route path="violations/new" element={<RecordViolation />} />
           <Route path="cases" element={<CaseManagement />} />
           <Route path="students" element={<StudentRecords />} />
+          <Route path="students/:id" element={<StudentProfileDetail />} />
           {/* Fallback for unfinished pages */}
           <Route path="*" element={<div className="p-8 text-2xl font-bold font-pjs">Under Construction</div>} />
         </Route>

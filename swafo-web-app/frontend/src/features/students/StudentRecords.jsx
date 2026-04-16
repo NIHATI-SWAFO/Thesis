@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const MOCK_STUDENTS = [
   { id: '2021-10023', name: 'John Doe', college: 'College of Arts and Sciences', dept: 'Psychology', year: '4th', violations: 0, status: 'Clean' },
@@ -14,6 +15,7 @@ const MOCK_STUDENTS = [
 ];
 
 export default function StudentRecords() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -49,7 +51,7 @@ export default function StudentRecords() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "SWAFO_Student_Records_Export.pdf"); // Mocking as .pdf extension per request
+    link.setAttribute("download", "SWAFO_Student_Records_Export.pdf");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -57,7 +59,6 @@ export default function StudentRecords() {
 
   return (
     <div className="max-w-[1440px] mx-auto animate-fade-in-up pb-12">
-      {/* ══════════════════════════════ HEADER ══════════════════════════════ */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-[32px] font-pjs font-extrabold text-[#003624] tracking-tight mb-2">Student Records</h1>
@@ -78,41 +79,14 @@ export default function StudentRecords() {
         </div>
       </div>
 
-      {/* ══════════════════════════════ STATS BENTO GRID ══════════════════════════════ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <StatCard 
-          label="TOTAL STUDENTS" 
-          value={stats.total} 
-          icon="people" 
-          color="bg-[#e0f2f1]" 
-          textColor="text-[#00695c]" 
-        />
-        <StatCard 
-          label="WITH VIOLATIONS" 
-          value={stats.withViolations} 
-          icon="warning" 
-          color="bg-[#fff3e0]" 
-          textColor="text-[#ef6c00]" 
-        />
-        <StatCard 
-          label="REPEAT OFFENDERS" 
-          value={stats.repeatOffenders} 
-          icon="error" 
-          color="bg-[#ffebee]" 
-          textColor="text-[#c62828]" 
-        />
-        <StatCard 
-          label="CLEAN RECORD" 
-          value={stats.cleanRecord} 
-          icon="verified" 
-          color="bg-[#f1f8e9]" 
-          textColor="text-[#2e7d32]" 
-        />
+        <StatCard label="TOTAL STUDENTS" value={stats.total} icon="people" color="bg-[#e0f2f1]" textColor="text-[#00695c]" />
+        <StatCard label="WITH VIOLATIONS" value={stats.withViolations} icon="warning" color="bg-[#fff3e0]" textColor="text-[#ef6c00]" />
+        <StatCard label="REPEAT OFFENDERS" value={stats.repeatOffenders} icon="error" color="bg-[#ffebee]" textColor="text-[#c62828]" />
+        <StatCard label="CLEAN RECORD" value={stats.cleanRecord} icon="verified" color="bg-[#f1f8e9]" textColor="text-[#2e7d32]" />
       </div>
 
-      {/* ══════════════════════════════ MAIN RECORD CANVAS ══════════════════════════════ */}
       <div className="bg-white rounded-3xl shadow-[0_8px_40px_rgba(0,54,36,0.03)] border border-[#f1f5f9] overflow-hidden">
-        {/* Table Header / Toolbar */}
         <div className="flex flex-col md:flex-row justify-between items-center p-8 pb-4 gap-4">
           <h2 className="text-[20px] font-pjs font-extrabold text-[#003624]">All Students</h2>
           <div className="relative w-full md:w-[400px]">
@@ -127,7 +101,6 @@ export default function StudentRecords() {
           </div>
         </div>
 
-        {/* The Table */}
         <div className="px-8 pb-8">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-separate border-spacing-y-3">
@@ -183,7 +156,10 @@ export default function StudentRecords() {
                         </span>
                       </td>
                       <td className="py-5 px-6 bg-white border-y border-r border-gray-50 rounded-r-2xl shadow-sm text-right group-hover:border-emerald-100">
-                        <button className="text-[12px] font-pjs font-black text-[#005e43] px-5 py-2 hover:bg-emerald-50 rounded-xl transition-all">
+                        <button 
+                          onClick={() => navigate(`/officer/students/${student.id.replace(/\s+/g, '')}`)}
+                          className="text-[12px] font-pjs font-black text-[#005e43] px-5 py-2 hover:bg-emerald-50 rounded-xl transition-all"
+                        >
                           VIEW PROFILE
                         </button>
                       </td>
@@ -201,35 +177,20 @@ export default function StudentRecords() {
             </table>
           </div>
 
-          {/* Pagination Footer */}
           <div className="mt-8 pt-8 border-t border-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
             <span className="text-[12px] font-pjs font-bold text-gray-400 uppercase tracking-widest">
               SHOWING {currentData.length} OF {filteredStudents.length} RESULTS
             </span>
             <div className="flex gap-2">
-              <button 
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="w-10 h-10 rounded-xl flex items-center justify-center bg-white border border-gray-100 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
-              >
+              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="w-10 h-10 rounded-xl flex items-center justify-center bg-white border border-gray-100 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm">
                 <span className="material-symbols-outlined text-[20px]">chevron_left</span>
               </button>
               {[...Array(totalPages)].map((_, i) => (
-                <button 
-                  key={i}
-                  onClick={() => setCurrentPage(i + 1)}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center text-[13px] font-black transition-all shadow-sm ${
-                    currentPage === i + 1 ? 'bg-[#003624] text-white' : 'bg-white border border-gray-100 text-gray-500 hover:bg-gray-50'
-                  }`}
-                >
+                <button key={i} onClick={() => setCurrentPage(i + 1)} className={`w-10 h-10 rounded-xl flex items-center justify-center text-[13px] font-black transition-all shadow-sm ${currentPage === i + 1 ? 'bg-[#003624] text-white' : 'bg-white border border-gray-100 text-gray-500 hover:bg-gray-50'}`}>
                   {i + 1}
                 </button>
               ))}
-              <button 
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="w-10 h-10 rounded-xl flex items-center justify-center bg-white border border-gray-100 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
-              >
+              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="w-10 h-10 rounded-xl flex items-center justify-center bg-white border border-gray-100 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm">
                 <span className="material-symbols-outlined text-[20px]">chevron_right</span>
               </button>
             </div>
