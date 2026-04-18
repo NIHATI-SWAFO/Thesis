@@ -59,7 +59,8 @@ function App() {
 
         {/* Default Redirect */}
         <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

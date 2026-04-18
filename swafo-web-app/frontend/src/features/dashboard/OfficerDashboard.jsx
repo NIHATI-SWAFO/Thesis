@@ -1,8 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function OfficerDashboard() {
   const navigate = useNavigate();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('http://127.0.0.1:8000/api/analytics/officer-dashboard/')
+      .then(res => res.json())
+      .then(json => {
+        setData(json);
+        setLoading(false);
+      })
+      .catch(err => console.error("Error fetching dashboard:", err));
+  }, []);
+
+  if (loading || !data) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-[#003624] border-t-transparent rounded-full animate-spin"></div>
+          <p className="font-pjs font-bold text-[#003624]">Loading Dashboard Analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { stats, violations_by_type, status_distribution, recent_violations } = data;
 
   return (
     <div className="max-w-[1400px] mx-auto animate-fade-in-up pb-12">
@@ -22,7 +47,7 @@ export default function OfficerDashboard() {
              <span className="px-3 py-1 bg-[#ccefde] text-[#0f603c] text-[9px] font-extrabold rounded-full uppercase tracking-widest">Active Monitoring</span>
           </div>
           <div>
-            <h3 className="text-[36px] font-pjs font-black text-gray-900 leading-none mb-1">14</h3>
+            <h3 className="text-[36px] font-pjs font-black text-gray-900 leading-none mb-1">{stats.violations_today.toString().padStart(2, '0')}</h3>
             <p className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest">Violations Today</p>
           </div>
         </div>
@@ -35,7 +60,7 @@ export default function OfficerDashboard() {
              <span className="px-3 py-1 bg-[#ffeded] text-[#b91c1c] text-[9px] font-extrabold rounded-full uppercase tracking-widest">Requires Attention</span>
           </div>
           <div>
-            <h3 className="text-[36px] font-pjs font-black text-gray-900 leading-none mb-1">31</h3>
+            <h3 className="text-[36px] font-pjs font-black text-gray-900 leading-none mb-1">{stats.active_cases.toString().padStart(2, '0')}</h3>
             <p className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest">Active Cases</p>
           </div>
         </div>
@@ -48,7 +73,7 @@ export default function OfficerDashboard() {
              <span className="px-3 py-1 bg-[#ccefde] text-[#0f603c] text-[9px] font-extrabold rounded-full uppercase tracking-widest">On Duty</span>
           </div>
           <div>
-            <h3 className="text-[36px] font-pjs font-black text-gray-900 leading-none mb-1">04</h3>
+            <h3 className="text-[36px] font-pjs font-black text-gray-900 leading-none mb-1">{stats.active_patrols.toString().padStart(2, '0')}</h3>
             <p className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest">Active Patrols</p>
           </div>
         </div>
@@ -61,7 +86,7 @@ export default function OfficerDashboard() {
              <span className="px-3 py-1 bg-gray-100 text-gray-600 text-[9px] font-extrabold rounded-full uppercase tracking-widest">Flagged</span>
           </div>
           <div>
-            <h3 className="text-[36px] font-pjs font-black text-gray-900 leading-none mb-1">06</h3>
+            <h3 className="text-[36px] font-pjs font-black text-gray-900 leading-none mb-1">{stats.repeat_offenders.toString().padStart(2, '0')}</h3>
             <p className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest">Repeat Offenders</p>
           </div>
         </div>
@@ -102,40 +127,28 @@ export default function OfficerDashboard() {
            <div className="flex justify-between items-center mb-8">
               <h2 className="text-[18px] font-pjs font-bold text-gray-900">Violations by Type</h2>
               <div className="text-[11px] font-bold text-[#005e43] bg-emerald-50 px-3 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer transition-colors hover:bg-emerald-100">
-                 Last 30 Days <span className="material-symbols-outlined text-[14px]">expand_more</span>
+                 All Time <span className="material-symbols-outlined text-[14px]">expand_more</span>
               </div>
            </div>
 
            <div className="space-y-8 flex-1 flex flex-col justify-center">
-              <div>
-                <div className="flex justify-between items-end mb-2">
-                   <span className="text-[14px] font-pjs font-bold text-gray-700">Dress Code</span>
-                   <span className="text-[15px] font-bold text-gray-900">45</span>
-                </div>
-                <div className="h-3 w-full bg-[#f1f3f5] rounded-full overflow-hidden">
-                   <div className="h-full bg-[#005e43] rounded-full" style={{ width: '60%' }}></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between items-end mb-2">
-                   <span className="text-[14px] font-pjs font-bold text-gray-700">Unauthorized Area</span>
-                   <span className="text-[15px] font-bold text-gray-900">28</span>
-                </div>
-                <div className="h-3 w-full bg-[#f1f3f5] rounded-full overflow-hidden">
-                   <div className="h-full bg-[#20df7a] rounded-full" style={{ width: '35%' }}></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between items-end mb-2">
-                   <span className="text-[14px] font-pjs font-bold text-gray-700">Late Night Curfew</span>
-                   <span className="text-[15px] font-bold text-gray-900">12</span>
-                </div>
-                <div className="h-3 w-full bg-[#f1f3f5] rounded-full overflow-hidden">
-                   <div className="h-full bg-[#62b98f] rounded-full" style={{ width: '15%' }}></div>
-                </div>
-              </div>
+              {violations_by_type.map((v, i) => {
+                const maxCount = violations_by_type[0].count;
+                const percentage = (v.count / maxCount) * 100;
+                const colors = ['#005e43', '#20df7a', '#62b98f', '#aeeecb', '#e8f5ef'];
+                return (
+                  <div key={i}>
+                    <div className="flex justify-between items-end mb-2">
+                      <span className="text-[14px] font-pjs font-bold text-gray-700">{v.name}</span>
+                      <span className="text-[15px] font-bold text-gray-900">{v.count}</span>
+                    </div>
+                    <div className="h-3 w-full bg-[#f1f3f5] rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${percentage}%`, backgroundColor: colors[i % colors.length] }}></div>
+                    </div>
+                  </div>
+                );
+              })}
+              {violations_by_type.length === 0 && <p className="text-center text-gray-400 py-10">No violations recorded yet.</p>}
            </div>
         </div>
 
@@ -147,63 +160,61 @@ export default function OfficerDashboard() {
            <div className="relative w-[180px] h-[180px] mx-auto mb-8 flex items-center justify-center">
               {/* SVG Donut Chart */}
               <svg width="180" height="180" viewBox="0 0 180 180" className="transform -rotate-90">
-                 {/* Background circle */}
                  <circle cx="90" cy="90" r="70" fill="none" stroke="#b0d4c2" strokeWidth="28" opacity="0.3" />
                  
-                 {/* Resolved segment — 60% — dark green */}
-                 {/* circumference = 2 * π * 70 ≈ 439.82 */}
-                 {/* 60% of 439.82 = 263.89. gap = 175.93 */}
-                 <circle cx="90" cy="90" r="70" fill="none" stroke="#005e43" strokeWidth="28"
-                    strokeDasharray="263.89 439.82"
-                    strokeDashoffset="0"
-                    strokeLinecap="round"
-                 />
-                 
-                 {/* Under Review segment — 25% — blue */}
-                 {/* 25% of 439.82 = 109.96. offset = -263.89 (after green) */}
-                 <circle cx="90" cy="90" r="70" fill="none" stroke="#7db5f5" strokeWidth="28"
-                    strokeDasharray="109.96 439.82"
-                    strokeDashoffset="-263.89"
-                    strokeLinecap="round"
-                 />
-                 
-                 {/* Pending segment — 15% — pink */}
-                 {/* 15% of 439.82 = 65.97. offset = -(263.89 + 109.96) = -373.85 */}
-                 <circle cx="90" cy="90" r="70" fill="none" stroke="#f5c6c6" strokeWidth="28"
-                    strokeDasharray="65.97 439.82"
-                    strokeDashoffset="-373.85"
-                    strokeLinecap="round"
-                 />
+                 {(() => {
+                    let cumulativePercentage = 0;
+                    const circumference = 2 * Math.PI * 70;
+                    const colors = {
+                      'RESOLVED': '#005e43',
+                      'UNDER_REVIEW': '#7db5f5',
+                      'OPEN': '#f5c6c6',
+                      'APPEALED': '#f59e0b'
+                    };
+                    
+                    return status_distribution.breakdown.map((s, i) => {
+                      const percentage = (s.count / status_distribution.total) * 100;
+                      const strokeDasharray = `${(percentage / 100) * circumference} ${circumference}`;
+                      const strokeDashoffset = `-${(cumulativePercentage / 100) * circumference}`;
+                      cumulativePercentage += percentage;
+                      
+                      return (
+                        <circle key={i} cx="90" cy="90" r="70" fill="none" 
+                          stroke={colors[s.status] || '#ccc'} 
+                          strokeWidth="28"
+                          strokeDasharray={strokeDasharray}
+                          strokeDashoffset={strokeDashoffset}
+                          strokeLinecap="round"
+                          className="transition-all duration-1000"
+                        />
+                      );
+                    });
+                 })()}
               </svg>
 
               {/* Center white circle */}
               <div className="absolute inset-0 flex items-center justify-center">
                  <div className="w-[95px] h-[95px] bg-white rounded-full flex flex-col items-center justify-center shadow-md">
-                    <span className="text-[24px] font-pjs font-black text-[#005e43] leading-none">124</span>
+                    <span className="text-[24px] font-pjs font-black text-[#005e43] leading-none">{status_distribution.total}</span>
                     <span className="text-[7px] font-bold text-gray-500 tracking-[0.15em] uppercase mt-1">Total Cases</span>
                  </div>
               </div>
            </div>
 
            <div className="space-y-4 mt-auto">
-              <div className="flex justify-between text-[13px] font-pjs font-bold text-gray-900 items-center">
-                 <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-[#005e43]"></div> Resolved
-                 </div>
-                 <span>60%</span>
-              </div>
-              <div className="flex justify-between text-[13px] font-pjs font-bold text-gray-900 items-center">
-                 <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-[#7db5f5]"></div> Under Review
-                 </div>
-                 <span>25%</span>
-              </div>
-              <div className="flex justify-between text-[13px] font-pjs font-bold text-gray-900 items-center">
-                 <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-[#f5c6c6]"></div> Pending
-                 </div>
-                 <span>15%</span>
-              </div>
+               {status_distribution.breakdown.map((s, i) => {
+                 const colors = { 'RESOLVED': '#005e43', 'UNDER_REVIEW': '#7db5f5', 'OPEN': '#f5c6c6', 'APPEALED': '#f59e0b' };
+                 const labels = { 'RESOLVED': 'Resolved', 'UNDER_REVIEW': 'Under Review', 'OPEN': 'Pending', 'APPEALED': 'Appealed' };
+                 const percentage = Math.round((s.count / status_distribution.total) * 100);
+                 return (
+                   <div key={i} className="flex justify-between text-[13px] font-pjs font-bold text-gray-900 items-center">
+                     <div className="flex items-center gap-3">
+                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors[s.status] || '#cbd5e1' }}></div> {labels[s.status] || s.status}
+                     </div>
+                     <span>{percentage}%</span>
+                   </div>
+                 );
+               })}
            </div>
         </div>
       </div>
@@ -234,43 +245,35 @@ export default function OfficerDashboard() {
 
            {/* Table Rows with Card-style Separation */}
            <div className="space-y-4">
-              
-              <div className="grid grid-cols-5 items-center p-4 bg-white hover:bg-[#f8fbf9] rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all cursor-pointer">
-                 <div className="col-span-2 flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-[#e8f5ef] text-[#006f4f] font-bold text-[12px] flex items-center justify-center">JD</div>
-                    <span className="font-pjs font-bold text-[14px] text-gray-900">John Doe</span>
-                 </div>
-                 <div className="col-span-1 text-[13px] font-semibold text-gray-600">Dress Code Violation</div>
-                 <div className="col-span-1 text-[13px] font-medium text-gray-500">10:45 AM</div>
-                 <div className="col-span-1 text-right">
-                    <span className="inline-block px-4 py-1.5 bg-[#cdefda] text-[#0a5231] text-[10px] font-extrabold rounded-full uppercase tracking-wider">Resolved</span>
-                 </div>
-              </div>
-
-              <div className="grid grid-cols-5 items-center p-4 bg-white hover:bg-[#f4f7fb] rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all cursor-pointer">
-                 <div className="col-span-2 flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-[#edf2fa] text-[#2f6ce6] font-bold text-[12px] flex items-center justify-center">SM</div>
-                    <span className="font-pjs font-bold text-[14px] text-gray-900">Sarah Miller</span>
-                 </div>
-                 <div className="col-span-1 text-[13px] font-semibold text-gray-600">Unauthorized Area Access</div>
-                 <div className="col-span-1 text-[13px] font-medium text-gray-500">09:12 AM</div>
-                 <div className="col-span-1 text-right">
-                    <span className="inline-block px-4 py-1.5 bg-[#e2eafb] text-[#1e4eb8] text-[10px] font-extrabold rounded-full uppercase tracking-wider">Under Review</span>
-                 </div>
-              </div>
-
-              <div className="grid grid-cols-5 items-center p-4 bg-white hover:bg-[#fcf5f5] rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all cursor-pointer">
-                 <div className="col-span-2 flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-[#fbe7e7] text-[#dc2626] font-bold text-[12px] flex items-center justify-center">RK</div>
-                    <span className="font-pjs font-bold text-[14px] text-gray-900">Robert King</span>
-                 </div>
-                 <div className="col-span-1 text-[13px] font-semibold text-gray-600">Late Night Curfew Violation</div>
-                 <div className="col-span-1 text-[13px] font-medium text-gray-500">Yesterday, 11:30 PM</div>
-                 <div className="col-span-1 text-right">
-                    <span className="inline-block px-4 py-1.5 bg-[#fae3e3] text-[#b91c1c] text-[10px] font-extrabold rounded-full uppercase tracking-wider">Pending</span>
-                 </div>
-              </div>
-
+              {recent_violations.map((v) => {
+                const fullName = v.student_details?.user_details?.full_name || 'System Student';
+                const initials = fullName.split(' ').map(n => n[0]).join('').substring(0, 2);
+                const statusColors = {
+                  'RESOLVED': 'bg-[#cdefda] text-[#0a5231]',
+                  'UNDER_REVIEW': 'bg-[#e2eafb] text-[#1e4eb8]',
+                  'OPEN': 'bg-[#fae3e3] text-[#b91c1c]',
+                  'APPEALED': 'bg-amber-100 text-amber-700'
+                };
+                const statusLabels = { 'RESOLVED': 'Resolved', 'UNDER_REVIEW': 'Review', 'OPEN': 'Pending', 'APPEALED': 'Appealed' };
+                const time = new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                return (
+                  <div key={v.id} className="grid grid-cols-5 items-center p-4 bg-white hover:bg-[#f8fbf9] rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all cursor-pointer">
+                    <div className="col-span-2 flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-[#e8f5ef] text-[#006f4f] font-bold text-[12px] flex items-center justify-center uppercase">{initials}</div>
+                        <span className="font-pjs font-bold text-[14px] text-gray-900">{fullName}</span>
+                    </div>
+                    <div className="col-span-1 text-[13px] font-semibold text-gray-600 truncate pr-4">{v.rule_details?.category || 'General'}</div>
+                    <div className="col-span-1 text-[13px] font-medium text-gray-500">{time}</div>
+                    <div className="col-span-1 text-right">
+                        <span className={`inline-block px-4 py-1.5 text-[10px] font-extrabold rounded-full uppercase tracking-wider ${statusColors[v.status] || 'bg-gray-100 text-gray-500'}`}>
+                          {statusLabels[v.status] || v.status}
+                        </span>
+                    </div>
+                  </div>
+                );
+              })}
+              {recent_violations.length === 0 && <p className="text-center text-gray-400 py-10">No recent violations.</p>}
            </div>
         </div>
       </div>

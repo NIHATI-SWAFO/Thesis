@@ -23,4 +23,6 @@ urlpatterns = [
     path('api/violations/', include('apps.violations.urls')),
     path('api/handbook/', include('apps.handbook.urls')),
     path('api/ai/', include('apps.ai_assistant.urls')),
+    path('api/analytics/', include('apps.analytics.urls')),
+    path('api/patrols/', include('apps.patrols.urls')),
 ]

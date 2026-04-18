@@ -8,16 +8,20 @@ from .serializers import StudentProfileSerializer
 class StudentSearchView(APIView):
     permission_classes = [permissions.AllowAny]
     def get(self, request):
-        student_id = request.query_params.get('id', None)
-        if not student_id:
-            return Response({"error": "Student ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+        query = request.query_params.get('q', None)
+        if not query:
+            return Response({"error": "Search query is required"}, status=status.HTTP_400_BAD_REQUEST)
         
-        try:
-            student = StudentProfile.objects.get(student_number=student_id)
-            serializer = StudentProfileSerializer(student)
-            return Response(serializer.data)
-        except StudentProfile.DoesNotExist:
-            return Response({"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
+        # Check if it's an ID search or Name search
+        if query.isdigit() and len(query) >= 5:
+            # Likely a student ID
+            students = StudentProfile.objects.filter(student_number__icontains=query)
+        else:
+            # Likely a name search
+            students = StudentProfile.objects.filter(user__full_name__icontains=query)
+            
+        serializer = StudentProfileSerializer(students, many=True)
+        return Response(serializer.data)
 
 class ProfileByEmailView(APIView):
     permission_classes = [permissions.AllowAny]

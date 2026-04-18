@@ -11,9 +11,9 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (user?.email) {
-      fetch(`http://localhost:8000/api/violations/list/?email=${user.email}`)
+      fetch(`http://127.0.0.1:8000/api/violations/list/?email=${user.email}`)
         .then(res => res.json())
-        .then(data => setViolations(data.results || []))
+        .then(data => setViolations(Array.isArray(data) ? data : (data.results || [])))
         .catch(err => console.error("Error fetching violations:", err))
         .finally(() => setLoading(false));
     }
@@ -22,8 +22,8 @@ export default function StudentDashboard() {
   // Dynamic Stats
   const totalCount = violations.length;
   const pendingCount = violations.filter(v => v.status === 'OPEN').length;
-  const resolvedCount = violations.filter(v => v.status === 'CLOSED').length;
-  const underReviewCount = 0; // Future logic
+  const resolvedCount = violations.filter(v => v.status === 'RESOLVED').length;
+  const underReviewCount = violations.filter(v => v.status === 'UNDER_REVIEW').length;
 
   const isGoodStanding = totalCount === 0;
 
@@ -138,7 +138,7 @@ export default function StudentDashboard() {
             <ViolationEntry 
               key={v.id}
               title={v.rule_details?.rule_code || "General Violation"}
-              status={v.status === 'CLOSED' ? 'Resolved' : 'Pending'}
+              status={v.status === 'RESOLVED' ? 'Resolved' : v.status === 'UNDER_REVIEW' ? 'Review' : 'Pending'}
               location={v.location}
               date={new Date(v.timestamp).toLocaleDateString()}
               time={new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -152,9 +152,6 @@ export default function StudentDashboard() {
           )}
         </div>
       </div>
-    </div>
-  );
-}
     </div>
   );
 }
@@ -236,4 +233,3 @@ function ViolationEntry({ title, status, location, date, time, action }) {
     </div>
   );
 }
-

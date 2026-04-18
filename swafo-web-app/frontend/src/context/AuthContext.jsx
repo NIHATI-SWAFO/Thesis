@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
                 name: mockUser.name,
                 email: mockUser.email,
                 role: 'STUDENT',
-                isMock: True
+                isMock: true
             });
         } else if (accounts.length > 0) {
             setCurrentUser({

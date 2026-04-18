@@ -18,8 +18,9 @@
 - [x] Implement AI-powered Smart Search
 - [x] Implement Backend Violation Recording
 - [x] Implement Offense Scaling Logic
-- [ ] Secure session management with Django SimpleJWT token-based auth
-- [ ] Enforce role-based route protection (Student / Officer / Admin)
+- [x] Secure session management with Django SimpleJWT token-based auth
+- [x] Enforce role-based route protection (Student / Officer / Admin)
+- [x] **Mock Identity Bridge:** Implemented searchable Mock Login for 55 seeded students for thesis defense.
 
 ### Access Control Matrix (from `research.md` §7)
 | Feature | Student | Officer | Admin | Status |
@@ -56,19 +57,19 @@
 - [x] High-density card layout matching `dashboard_student.jpg`
 - [x] Academic standing summary card
 - [x] Recent violation preview entries
-- [ ] Connect to live backend API for real student data
+- [x] Connect to live backend API for real student data
 
 ### Academic Profile — *"View personal profile"*
 - [x] Student detail grid with avatar, ID, email, program info
 - [x] Pure white cell contrast against mint background
-- [ ] Connect to live backend API for real profile data
+- [x] Connect to live backend API for real profile data
 - [ ] "Export Profile" button logic
 
 ### Violation Records — *"View violation history with case summaries"*
 - [x] Stats cards and violation list UI
 - [x] Fixed contrast/blending issues with `#f2fcf8` background
-- [ ] Connect to backend to fetch actual per-student violation history
-- [ ] Display case summaries and corrective action per violation
+- [x] Connect to backend to fetch actual per-student violation history
+- [x] Display case summaries and corrective action per violation
 
 ### Campus Handbook — *"Download or access university handbook"*
 - [x] State-driven accordion system (expand/collapse)
@@ -213,6 +214,7 @@
 - [x] `Students` — initialized
 - [x] `Violations` — fully functional with escalation logic
 - [x] `HandbookEntries` — seeded with 82 rules
+- [x] **Database Seeding:** 55 students and 10 students with historical violation data.
 
 ### API Endpoints
 - [ ] Student profile CRUD

@@ -12,7 +12,8 @@ export default function StudentViolations() {
       fetch(`http://localhost:8000/api/violations/list/?email=${user.email}`)
         .then(res => res.json())
         .then(data => {
-          const transformed = (data.results || []).map(v => ({
+          const results = Array.isArray(data) ? data : (data.results || []);
+          const transformed = results.map(v => ({
             id: `VR-${new Date(v.timestamp).getFullYear()}-${v.id.toString().padStart(3, '0')}`,
             status: v.status === 'CLOSED' ? "RESOLVED" : "UNDER REVIEW",
             title: v.rule_details?.rule_code || "General Policy Violation",

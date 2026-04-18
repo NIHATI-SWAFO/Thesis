@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   History, 
   Map as MapIcon, 
@@ -14,65 +14,63 @@ import {
   ClipboardList
 } from 'lucide-react';
 
-const PATROL_HISTORY_DATA = [
-  {
-    id: 'P-1204',
-    location: 'ICTC Building',
-    officer: 'Officer Daniel Padilla',
-    duration: '45 mins',
-    date: 'Oct 24, 2023',
-    session: '08:00 AM Session',
-    photos: 6,
-    checkpointsCount: '12 / 12',
-    timeRange: '08:00 AM - 08:45 AM',
-    status: 'COMPLETED',
-    checkpoints: [
-      { id: 1, name: 'West Gate Entry', time: '08:05 AM', status: 'secure', note: 'Secure. No anomalies detected.' },
-      { id: 2, name: 'Server Room Corridor', time: '08:12 AM', status: 'secure', note: 'Temperature normal. HVAC functioning.' },
-      { id: 3, name: 'Administrative Hallway', time: '08:24 AM', status: 'secure', note: 'All offices locked. Cleaning crew present.' },
-      { id: 4, name: 'Rear Exit Fire Escape', time: '08:35 AM', status: 'secure', note: 'Clear and accessible. Lighting operational.' }
-    ]
-  },
-  {
-    id: 'P-1205',
-    location: 'Food Square',
-    officer: 'Officer Liza Soberano',
-    duration: '38 mins',
-    date: 'Oct 24, 2023',
-    session: '07:15 AM Session',
-    photos: 4,
-    checkpointsCount: '08 / 08',
-    timeRange: '07:15 AM - 07:53 AM',
-    status: 'COMPLETED',
-    checkpoints: [
-      { id: 1, name: 'Main Entrance', time: '07:18 AM', status: 'secure', note: 'Gates unlocked, area cleared.' },
-      { id: 2, name: 'Dining Hall A', time: '07:25 AM', status: 'secure', note: 'Stalls closed, electricity off.' },
-      { id: 3, name: 'Storage Area', time: '07:35 AM', status: 'secure', note: 'Locks checked and secured.' },
-      { id: 4, name: 'Waste Disposal Pit', time: '07:50 AM', status: 'secure', note: 'Area tidy, collection pending.' }
-    ]
-  },
-  {
-    id: 'P-1206',
-    location: 'GMH Building',
-    officer: 'Officer Kaila Estrada',
-    duration: '52 mins',
-    date: 'Oct 24, 2023',
-    session: '06:00 AM Session',
-    photos: 12,
-    checkpointsCount: '15 / 15',
-    timeRange: '06:00 AM - 06:52 AM',
-    status: 'COMPLETED',
-    checkpoints: [
-      { id: 1, name: 'Basement Parking', time: '06:05 AM', status: 'secure', note: 'Vehicles parked in slots.' },
-      { id: 2, name: 'Ground Lobby', time: '06:15 AM', status: 'secure', note: 'Front desk manned, lobby clear.' },
-      { id: 3, name: 'Library Entry', time: '06:30 AM', status: 'secure', note: 'Silent study area undisturbed.' },
-      { id: 4, name: 'Roof Deck Exit', time: '06:45 AM', status: 'secure', note: 'Accessibility limits verified.' }
-    ]
-  }
-];
-
 export default function PatrolHistory() {
-  const [selectedPatrol, setSelectedPatrol] = useState(PATROL_HISTORY_DATA[0]);
+  const [patrols, setPatrols] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPatrol, setSelectedPatrol] = useState(null);
+
+  useEffect(() => {
+    fetch('http://127.0.0.1:8000/api/patrols/list/')
+      .then(res => res.json())
+      .then(data => {
+        const results = Array.isArray(data) ? data : (data.results || []);
+        const transformed = results.map(p => ({
+          id: `P-${p.id.toString().padStart(4, '0')}`,
+          location: p.location,
+          officer: p.officer_name,
+          duration: p.end_time ? `${Math.round((new Date(p.end_time) - new Date(p.start_time)) / 60000)} mins` : 'In Progress',
+          date: new Date(p.start_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          session: `${new Date(p.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} Session`,
+          photos: p.photos_count,
+          checkpointsCount: `${p.checkpoints_data.length} / ${p.checkpoints_data.length}`,
+          timeRange: `${new Date(p.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${p.end_time ? new Date(p.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}`,
+          status: p.status,
+          checkpoints: p.checkpoints_data.map((cp, idx) => ({
+            id: idx,
+            name: cp.name,
+            time: cp.time,
+            status: cp.status,
+            note: cp.note
+          }))
+        }));
+        setPatrols(transformed);
+        if (transformed.length > 0) setSelectedPatrol(transformed[0]);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error fetching patrols:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-[#003624] border-t-transparent rounded-full animate-spin"></div>
+          <p className="font-pjs font-bold text-[#003624]">Loading Patrol Records...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (patrols.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <p className="font-pjs font-bold text-gray-400">No patrol records found.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[1400px] mx-auto pb-24 px-8 animate-fade-in font-manrope">
@@ -86,17 +84,17 @@ export default function PatrolHistory() {
           
           <span className="text-[12px] font-pjs font-bold text-white tracking-[0.05em] relative z-10 block mb-5 uppercase opacity-80">TOTAL PATROLS</span>
           <div className="flex flex-col relative z-10">
-            <span className="text-[48px] font-pjs font-bold text-white tracking-tighter leading-none mb-8">560</span>
+            <span className="text-[48px] font-pjs font-bold text-white tracking-tighter leading-none mb-8">{patrols.length}</span>
             <div className="flex items-center gap-2 text-[14px] font-bold text-white">
               <TrendingUp size={16} />
-              <span>+12% this month</span>
+              <span>Real-time data</span>
             </div>
           </div>
         </div>
 
-        <KPIBox label="PHOTOS CAPTURED" value="1,246" subValue="Avg 4.2 per patrol" icon={ImageIcon} />
-        <KPIBox label="AVG DURATION" value="56 min" subValue="Stable performance" icon={Clock} />
-        <KPIBox label="PATROL AREAS" value="18" subValue="Across 3 campuses" icon={MapPin} />
+        <KPIBox label="PHOTOS CAPTURED" value={patrols.reduce((acc, p) => acc + p.photos, 0)} subValue={`Avg ${(patrols.reduce((acc, p) => acc + p.photos, 0) / patrols.length).toFixed(1)} per patrol`} icon={ImageIcon} />
+        <KPIBox label="LAST ACTIVITY" value={patrols[0]?.date || 'N/A'} subValue="Latest recorded" icon={Clock} />
+        <KPIBox label="UNIQUE AREAS" value={new Set(patrols.map(p => p.location)).size} subValue="Active surveillance" icon={MapPin} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
@@ -116,7 +114,7 @@ export default function PatrolHistory() {
           </div>
 
           <div className="flex flex-col gap-6">
-            {PATROL_HISTORY_DATA.map((patrol) => (
+            {patrols.map((patrol) => (
               <div 
                 key={patrol.id}
                 onClick={() => setSelectedPatrol(patrol)}

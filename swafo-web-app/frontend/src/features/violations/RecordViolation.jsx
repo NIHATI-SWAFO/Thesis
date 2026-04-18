@@ -29,7 +29,7 @@ export default function RecordViolation() {
   useEffect(() => {
     const fetchRules = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/handbook/rules/');
+        const response = await fetch('http://127.0.0.1:8000/api/handbook/rules/');
         if (response.ok) {
           const data = await response.json();
           setHandbookRules(data);
@@ -42,17 +42,27 @@ export default function RecordViolation() {
   }, []);
 
   // ── Live API: Search Student ──
+  const [searchResults, setSearchResults] = useState([]);
+
+  // ── Live API: Search Student ──
   const handleSearch = async () => {
     if (!searchQuery) return;
     setIsSearching(true);
     setFoundStudent(null);
+    setSearchResults([]);
     setAssessment(null);
     
     try {
-      const response = await fetch(`http://localhost:8000/api/users/search/?id=${searchQuery}`);
+      const response = await fetch(`http://127.0.0.1:8000/api/users/search/?q=${searchQuery}`);
       if (response.ok) {
         const data = await response.json();
-        setFoundStudent(data);
+        if (Array.isArray(data) && data.length > 0) {
+          if (data.length === 1) {
+            setFoundStudent(data[0]);
+          } else {
+            setSearchResults(data);
+          }
+        }
       } else {
         console.error("Student not found");
       }
@@ -73,7 +83,7 @@ export default function RecordViolation() {
     setSmartSearchLoading(true);
     
     try {
-      const resp = await fetch(`http://localhost:8000/api/handbook/smart-search/?q=${encodeURIComponent(val)}`);
+      const resp = await fetch(`http://127.0.0.1:8000/api/handbook/smart-search/?q=${encodeURIComponent(val)}`);
       if (resp.ok) {
         const data = await resp.json();
         setSmartSearchResults(data);
@@ -92,7 +102,7 @@ export default function RecordViolation() {
     
     try {
       const response = await fetch(
-        `http://localhost:8000/api/violations/assess/?student_id=${foundStudent.student_number}&rule_code=${formData.violationType}`
+        `http://127.0.0.1:8000/api/violations/assess/?student_id=${foundStudent.student_number}&rule_code=${formData.violationType}`
       );
       if (response.ok) {
         const data = await response.json();
@@ -122,7 +132,7 @@ export default function RecordViolation() {
         status: 'OPEN'
       };
 
-      const response = await fetch('http://localhost:8000/api/violations/record/', {
+      const response = await fetch('http://127.0.0.1:8000/api/violations/record/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -169,33 +179,64 @@ export default function RecordViolation() {
   return (
     <div className="max-w-[1200px] animate-fade-in-up pb-16 mx-auto px-6">
       {/* ═══════════ SEARCH SECTION ═══════════ */}
-      <div className="bg-[#003624] rounded-[2.5rem] p-10 mb-10 text-white relative overflow-hidden shadow-2xl">
+      <div className="bg-[#003624] rounded-[2.5rem] p-10 mb-10 text-white relative shadow-2xl">
          <div className="absolute -right-20 -bottom-20 opacity-5 pointer-events-none">
             <span className="material-symbols-outlined text-[300px]">person_search</span>
          </div>
          <div className="relative z-10 flex flex-col md:flex-row gap-10 items-center">
             <div className="flex-1">
                <h2 className="text-[24px] font-pjs font-bold mb-2">Identify Student</h2>
-               <p className="text-[14px] text-emerald-100/60 font-medium mb-6">Enter the 9-digit student ID to retrieve digital identity.</p>
-               <div className="flex gap-4">
-                  <div className="flex-1 relative">
-                    <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-emerald-600">badge</span>
-                    <input 
-                      type="text" 
-                      placeholder="Enter 9-digit ID (e.g. 202330396)"
-                      className="w-full bg-white/10 border border-white/20 rounded-2xl h-[60px] pl-14 pr-5 text-[15px] font-bold text-white placeholder-white/30 outline-none focus:bg-white/20 focus:border-emerald-400 transition-all"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    />
-                  </div>
-                  <button onClick={handleSearch} disabled={isSearching} className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold h-[60px] px-8 rounded-2xl transition-all active:scale-95 flex items-center gap-3 shadow-lg shadow-emerald-500/20 disabled:opacity-50">
-                    {isSearching ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined">search</span>}
-                    {isSearching ? 'SEARCHING...' : 'SEARCH'}
-                  </button>
-               </div>
-            </div>
-            <div className="w-full md:w-[400px]">
+                <p className="text-[14px] text-emerald-100/60 font-medium mb-6">Enter the 9-digit student ID or Student Name to retrieve digital identity.</p>
+                <div className="flex gap-4 relative">
+                   <div className="flex-1 relative">
+                     <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-emerald-600">badge</span>
+                     <input 
+                       type="text" 
+                       placeholder="Enter ID or Student Name..."
+                       className="w-full bg-white/10 border border-white/20 rounded-2xl h-[60px] pl-14 pr-5 text-[15px] font-bold text-white placeholder-white/30 outline-none focus:bg-white/20 focus:border-emerald-400 transition-all"
+                       value={searchQuery}
+                       onChange={(e) => setSearchQuery(e.target.value)}
+                       onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                     />
+                   </div>
+                   <button onClick={handleSearch} disabled={isSearching} className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold h-[60px] px-8 rounded-2xl transition-all active:scale-95 flex items-center gap-3 shadow-lg shadow-emerald-500/20 disabled:opacity-50">
+                     {isSearching ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined">search</span>}
+                     {isSearching ? 'SEARCHING...' : 'SEARCH'}
+                   </button>
+
+                   {/* Student Search Results Dropdown */}
+                   {searchResults.length > 0 && (
+                     <div className="absolute top-[65px] left-0 right-0 bg-white rounded-2xl shadow-2xl z-50 overflow-hidden border border-emerald-100 animate-fade-in mt-2">
+                       <div className="p-3 bg-emerald-50/50 border-b border-emerald-100 flex justify-between items-center">
+                          <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest">Found {searchResults.length} matches</span>
+                          <button onClick={() => setSearchResults([])} className="text-[10px] font-bold text-emerald-600 hover:text-emerald-800">CLEAR</button>
+                       </div>
+                       <div className="max-h-[300px] overflow-y-auto">
+                         {searchResults.map((student) => (
+                           <button
+                             key={student.id}
+                             onClick={() => {
+                               setFoundStudent(student);
+                               setSearchResults([]);
+                               setSearchQuery(student.student_number);
+                             }}
+                             className="w-full flex items-center gap-4 p-4 hover:bg-emerald-50 transition-colors text-left border-b border-gray-50 last:border-0"
+                           >
+                             <div className="w-10 h-10 rounded-full bg-[#003624] text-white flex items-center justify-center font-bold text-[12px]">
+                               {student.user_details?.full_name?.charAt(0)}
+                             </div>
+                             <div>
+                               <p className="text-[14px] font-bold text-[#003624]">{student.user_details?.full_name}</p>
+                               <p className="text-[11px] font-medium text-gray-400">{student.student_number} • {student.course}</p>
+                             </div>
+                           </button>
+                         ))}
+                       </div>
+                     </div>
+                   )}
+                </div>
+             </div>
+             <div className="w-full md:w-[400px]">
                {foundStudent ? (
                   <div className="bg-white rounded-3xl p-6 text-[#003624] flex gap-5 items-center animate-scale-in">
                      <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center relative overflow-hidden shrink-0">

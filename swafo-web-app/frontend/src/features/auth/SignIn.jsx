@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { useMsal } from "@azure/msal-react";
 import { loginRequest } from "../../lib/authConfig";
 import { useNavigate } from 'react-router-dom';
@@ -248,9 +249,9 @@ function MockLoginSection() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/users/list/')
+    fetch('http://127.0.0.1:8000/api/users/list/')
       .then(res => res.json())
-      .then(data => setStudents(data.results || []))
+      .then(data => setStudents(Array.isArray(data) ? data : (data.results || [])))
       .catch(err => console.error("Error fetching students:", err));
   }, []);
 
@@ -302,4 +303,3 @@ function MockLoginSection() {
   )
 }
 
-import { useAuth } from '../../context/AuthContext';

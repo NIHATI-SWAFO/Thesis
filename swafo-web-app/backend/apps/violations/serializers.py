@@ -4,11 +4,14 @@ from apps.users.serializers import StudentProfileSerializer
 from apps.handbook.serializers import HandbookEntrySerializer
 
 class ViolationSerializer(serializers.ModelSerializer):
+    student_details = StudentProfileSerializer(source='student', read_only=True)
+    rule_details = HandbookEntrySerializer(source='rule', read_only=True)
+
     class Meta:
         model = Violation
         fields = [
-            'id', 'student', 'officer', 'rule', 'location', 
-            'description', 'evidence_url', 'status', 
+            'id', 'student', 'student_details', 'officer', 'rule', 'rule_details', 
+            'location', 'description', 'evidence_url', 'status', 
             'case_summary', 'corrective_action', 'timestamp'
         ]
         read_only_fields = ['id', 'officer', 'timestamp']
