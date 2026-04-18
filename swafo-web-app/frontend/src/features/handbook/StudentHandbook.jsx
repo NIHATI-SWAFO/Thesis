@@ -1,105 +1,51 @@
-import React, { useState, useMemo } from 'react';
-
-// Mock data strictly matching the requested sub-item structure
-const HANDBOOK_SECTIONS = [
-  {
-    id: "sec-1",
-    title: "Code of Conduct",
-    icon: "gavel", // Using gavel or balance
-    subItems: [
-      {
-        title: "Professionalism",
-        content: "Maintaining a high standard of decorum in all academic and social interactions within the campus."
-      },
-      {
-        title: "Accountability",
-        content: "Students are responsible for their actions and the resulting impact on the campus community."
-      },
-      {
-        title: "Conflict Resolution",
-        content: "Formal procedures for resolving disputes through mediation and peer review boards."
-      }
-    ]
-  },
-  {
-    id: "sec-2",
-    title: "Academic Integrity",
-    icon: "menu_book",
-    subItems: [
-      {
-        title: "Plagiarism",
-        content: "Submitting another person's work, ideas, or words as your own without proper attribution is strictly forbidden."
-      },
-      {
-        title: "Cheating",
-        content: "Unauthorized use of materials, information, or study aids in any academic exercise."
-      }
-    ]
-  },
-  {
-    id: "sec-3",
-    title: "Student Dress Code",
-    icon: "checkroom",
-    subItems: [
-      {
-        title: "Campus Attire",
-        content: "Students are required to wear appropriate and modest attire while on campus grounds."
-      },
-      {
-        title: "Laboratory Uniforms",
-        content: "Specific departments require designated safety uniforms which must be strictly followed."
-      }
-    ]
-  },
-  {
-    id: "sec-4",
-    title: "Campus Safety",
-    icon: "security",
-    subItems: [
-      {
-        title: "Emergency Procedures",
-        content: "Guidelines for evacuation, lockdowns, and reporting hazards to campus security."
-      }
-    ]
-  },
-  {
-    id: "sec-5",
-    title: "Restricted Areas",
-    icon: "block",
-    subItems: [
-      {
-        title: "Unauthorized Access",
-        content: "Entering designated faculty-only zones, server rooms, or maintenance areas without clearance is a severe violation."
-      }
-    ]
-  },
-  {
-    id: "sec-6",
-    title: "Substance Policy",
-    icon: "warning",
-    subItems: [
-      {
-        title: "Zero Tolerance",
-        content: "The possession, use, or distribution of illicit substances on campus grounds will result in immediate suspension."
-      }
-    ]
-  },
-  {
-    id: "sec-7",
-    title: "Curfew and Dormitory Rules",
-    icon: "bed",
-    subItems: [
-      {
-        title: "Visiting Hours",
-        content: "Non-resident guests are only permitted in lounge areas until 10:00 PM."
-      }
-    ]
-  }
-];
+import React, { useState, useMemo, useEffect } from 'react';
 
 export default function StudentHandbook() {
+  const [sections, setSections] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedSections, setExpandedSections] = useState(new Set(['sec-1']));
+  const [expandedSections, setExpandedSections] = useState(new Set());
+
+  useEffect(() => {
+    fetch('http://localhost:8000/api/handbook/')
+      .then(res => res.json())
+      .then(data => {
+        // Transform the flat list into grouped sections for the UI
+        const grouped = data.reduce((acc, rule) => {
+          const category = rule.category || "General Policies";
+          if (!acc[category]) {
+            acc[category] = {
+              id: `cat-${category.replace(/\s+/g, '-').toLowerCase()}`,
+              title: category,
+              icon: getIconForCategory(category),
+              subItems: []
+            };
+          }
+          acc[category].subItems.push({
+            title: rule.rule_code,
+            content: rule.description
+          });
+          return acc;
+        }, {});
+        
+        const sectionList = Object.values(grouped);
+        setSections(sectionList);
+        if (sectionList.length > 0) setExpandedSections(new Set([sectionList[0].id]));
+      })
+      .catch(err => console.error("Handbook fetch error:", err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const getIconForCategory = (cat) => {
+    const map = {
+      'Dress Code': 'checkroom',
+      'Campus Safety': 'security',
+      'Academic Integrity': 'menu_book',
+      'Conduct': 'gavel',
+      'Uniform': 'checkroom'
+    };
+    return map[cat] || 'policy';
+  };
 
   const toggleSection = (id) => {
     const newExpanded = new Set(expandedSections);
@@ -112,20 +58,18 @@ export default function StudentHandbook() {
   };
 
   const filteredSections = useMemo(() => {
-    if (!searchQuery.trim()) return HANDBOOK_SECTIONS;
+    if (!searchQuery.trim()) return sections;
     
     const lowerQuery = searchQuery.toLowerCase();
     
-    return HANDBOOK_SECTIONS.filter(sec => {
-      // Check title
+    return sections.filter(sec => {
       if (sec.title.toLowerCase().includes(lowerQuery)) return true;
-      // Check sub items
       return sec.subItems.some(sub => 
         sub.title.toLowerCase().includes(lowerQuery) || 
         sub.content.toLowerCase().includes(lowerQuery)
       );
     });
-  }, [searchQuery]);
+  }, [searchQuery, sections]);
 
   return (
     <div className="max-w-[1100px] mx-auto space-y-6 animate-fade-in-up pb-12">

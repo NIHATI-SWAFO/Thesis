@@ -12,6 +12,7 @@ const navItems = [
 ];
 
 export default function OfficerLayout() {
+  const { instance } = useMsal();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -63,7 +64,7 @@ export default function OfficerLayout() {
           </button>
           
           <button 
-            onClick={() => navigate('/login')}
+            onClick={() => instance.logoutRedirect()}
             className="flex items-center gap-4 px-6 py-3 rounded-full text-red-500 hover:bg-red-50 transition-all w-full text-left"
           >
              <span className="material-symbols-outlined text-[20px]">logout</span>

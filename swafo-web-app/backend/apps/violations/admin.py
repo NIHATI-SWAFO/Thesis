@@ -1,3 +1,8 @@
 from django.contrib import admin
+from .models import Violation
 
-# Register your models here.
+@admin.register(Violation)
+class ViolationAdmin(admin.ModelAdmin):
+    list_display = ('student', 'rule', 'status', 'timestamp')
+    list_filter = ('status', 'rule__category')
+    search_fields = ('student__student_number', 'rule__rule_code')

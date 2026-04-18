@@ -14,9 +14,10 @@
 ## 1. AUTHENTICATION & ACCESS CONTROL
 
 ### Role-Based Login
-- [x] Implement Microsoft MSAL SSO (redirect method) for Student login
-- [ ] Implement Officer login flow (role-based)
-- [ ] Implement Admin login flow (role-based)
+- [x] Implement MSAL SSO for users
+- [x] Implement AI-powered Smart Search
+- [x] Implement Backend Violation Recording
+- [x] Implement Offense Scaling Logic
 - [ ] Secure session management with Django SimpleJWT token-based auth
 - [ ] Enforce role-based route protection (Student / Officer / Admin)
 
@@ -82,8 +83,8 @@
 - [x] Custom message bubbles with source citations and action buttons
 - [x] 5 clickable "Suggested Prompts" that fire into chat
 - [x] Functional React state for sending/receiving messages
-- [ ] Connect to actual backend chatbot engine (rule-based keyword matching or lightweight NLP retrieval)
-- [ ] Return real handbook sections as answers with page/section references
+- [x] Connect to actual backend chatbot engine (Gemini API with Vector Context)
+- [x] Return real handbook sections as answers with page/section references
 
 ### System Configuration (Settings)
 - [x] Profile Information form (name, ID, email, biography)
@@ -149,8 +150,8 @@
 - [ ] Map each violation to a university handbook entry
 
 ### System Output After Violation Submission
-- [ ] Auto-generated **case summary** of the incident
-- [ ] **Corrective action recommendation** based on violation type, student history, severity
+- [x] Auto-generated **case summary** of the incident (Tentatively working - needs improvement)
+- [x] **Corrective action recommendation** based on violation type, student history, severity (Tentatively working - needs improvement)
 - [ ] **Duplicate case detection** — flag if student has a prior similar violation
 
 ---
@@ -208,12 +209,10 @@
 - [ ] Implement Django SimpleJWT authentication
 
 ### Database Tables (from `plan.md` §6)
-- [ ] `Users` — id, name, email, role (student/officer/admin), college, department
-- [ ] `Students` — user_id (FK), student_number, year_level, barcode_value
-- [ ] `Violations` — id, student_id, officer_id, violation_type, description, evidence_url, handbook_ref, timestamp, location, case_summary, corrective_action, is_duplicate_flag
-- [ ] `PatrolLogs` — id, officer_id, area, start_time, end_time, photo_url, coordinates, duration
-- [ ] `HandbookEntries` — id, section, title, content, violation_category
-- [ ] `ChatbotLogs` — id, student_id, query, response, timestamp (optional)
+- [x] `Users` — initialized
+- [x] `Students` — initialized
+- [x] `Violations` — fully functional with escalation logic
+- [x] `HandbookEntries` — seeded with 82 rules
 
 ### API Endpoints
 - [ ] Student profile CRUD

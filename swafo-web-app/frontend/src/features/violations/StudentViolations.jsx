@@ -1,54 +1,37 @@
-import React, { useState, useMemo } from 'react';
-
-// Mock data array for testing, ready to be swapped with actual API call
-const MOCK_VIOLATIONS = [
-  {
-    id: "VR-2024-089",
-    status: "UNDER REVIEW",
-    title: "Unauthorized Area Access",
-    date: "October 24, 2023",
-    time: "22:45 PM",
-    location: "Research Lab Annex - Wing B",
-    actionBox: {
-      type: "action_required",
-      title: "Corrective Action Required",
-      description: "Please schedule a formal interview with the Department of Security Ethics within 48 hours. A written explanation regarding the presence in the restricted wing must be submitted via the portal.",
-      icon: "info"
-    }
-  },
-  {
-    id: "VR-2023-412",
-    status: "RESOLVED",
-    title: "Dress Code Violation",
-    date: "September 12, 2023",
-    time: "09:15 AM",
-    location: "Central Lecture Hall",
-    actionBox: {
-      type: "resolved",
-      title: "Resolution Details",
-      description: "Verbal warning issued and acknowledged. The student has attended the mandatory \"Professional Presentation\" orientation. This matter is officially closed.",
-      icon: "check"
-    }
-  },
-  {
-    id: "VR-2023-105",
-    status: "RESOLVED",
-    title: "Noise Disturbance",
-    date: "May 04, 2023",
-    time: "23:30 PM",
-    location: "Student Residence Tower A",
-    actionBox: {
-      type: "resolved",
-      title: "Action History",
-      description: "Fine paid in full on May 10, 2023. Community service hours (4 hours) completed at the Campus Botanical Gardens. Case archived.",
-      icon: "history"
-    }
-  }
-];
+import React, { useState, useMemo, useEffect } from 'react';
+import { useAuth } from "../../context/AuthContext";
 
 export default function StudentViolations() {
-  const [violations, setViolations] = useState(MOCK_VIOLATIONS);
+  const { user } = useAuth();
+  const [violations, setViolations] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('ALL');
+
+  useEffect(() => {
+    if (user?.email) {
+      fetch(`http://localhost:8000/api/violations/list/?email=${user.email}`)
+        .then(res => res.json())
+        .then(data => {
+          const transformed = (data.results || []).map(v => ({
+            id: `VR-${new Date(v.timestamp).getFullYear()}-${v.id.toString().padStart(3, '0')}`,
+            status: v.status === 'CLOSED' ? "RESOLVED" : "UNDER REVIEW",
+            title: v.rule_details?.rule_code || "General Policy Violation",
+            date: new Date(v.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+            time: new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            location: v.location,
+            actionBox: {
+              type: v.status === 'CLOSED' ? "resolved" : "action_required",
+              title: v.status === 'CLOSED' ? "Resolution Details" : "Corrective Action Required",
+              description: v.corrective_action,
+              icon: v.status === 'CLOSED' ? "check" : "info"
+            }
+          }));
+          setViolations(transformed);
+        })
+        .catch(err => console.error("Error fetching violations:", err))
+        .finally(() => setLoading(false));
+    }
+  }, [user]);
 
   const totalRecords = violations.length;
   const pendingReview = violations.filter(v => v.status === "UNDER REVIEW").length;
@@ -59,7 +42,6 @@ export default function StudentViolations() {
   }, [violations, filterStatus]);
 
   const handleFilterClick = () => {
-    // Cycle through filter states for easy testing
     if (filterStatus === 'ALL') setFilterStatus('UNDER REVIEW');
     else if (filterStatus === 'UNDER REVIEW') setFilterStatus('RESOLVED');
     else setFilterStatus('ALL');

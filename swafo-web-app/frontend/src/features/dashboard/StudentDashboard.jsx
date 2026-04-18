@@ -1,8 +1,31 @@
-import { useMsal } from "@azure/msal-react";
+import { useAuth } from "../../context/AuthContext";
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 
 export default function StudentDashboard() {
-  const { accounts } = useMsal();
-  const firstName = accounts.length > 0 ? accounts[0].name.split(' ')[0] : 'Student';
+  const { user } = useAuth();
+  const [violations, setViolations] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const firstName = user?.name ? user.name.split(' ')[0] : 'Student';
+
+  useEffect(() => {
+    if (user?.email) {
+      fetch(`http://localhost:8000/api/violations/list/?email=${user.email}`)
+        .then(res => res.json())
+        .then(data => setViolations(data.results || []))
+        .catch(err => console.error("Error fetching violations:", err))
+        .finally(() => setLoading(false));
+    }
+  }, [user]);
+
+  // Dynamic Stats
+  const totalCount = violations.length;
+  const pendingCount = violations.filter(v => v.status === 'OPEN').length;
+  const resolvedCount = violations.filter(v => v.status === 'CLOSED').length;
+  const underReviewCount = 0; // Future logic
+
+  const isGoodStanding = totalCount === 0;
 
   return (
     <div className="max-w-[1580px] mx-auto space-y-6 animate-fade-in-up">
@@ -17,18 +40,26 @@ export default function StudentDashboard() {
             Explore your academic standing and campus activities.
           </p>
         </div>
-        <div className="flex items-center gap-2.5 bg-[#d1fadf] text-[#006b5d] px-5 py-2.5 rounded-2xl shadow-sm border border-emerald-200/50">
-          <span className="material-symbols-outlined text-[18px] fill-1">verified</span>
-          <span className="font-pjs font-bold text-[13px] tracking-wide uppercase">Good Standing</span>
+        <div className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl shadow-sm border ${
+          isGoodStanding 
+            ? 'bg-[#d1fadf] text-[#006b5d] border-emerald-200/50' 
+            : 'bg-amber-50 text-amber-700 border-amber-200/50'
+        }`}>
+          <span className="material-symbols-outlined text-[18px] fill-1">
+            {isGoodStanding ? 'verified' : 'info'}
+          </span>
+          <span className="font-pjs font-bold text-[13px] tracking-wide uppercase">
+            {isGoodStanding ? 'Good Standing' : 'History on Record'}
+          </span>
         </div>
       </section>
 
       {/* ═══════════════════════ STATS ROW ═══════════════════════ */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-1">
-        <StatCard icon="history" label="Total Violations" value="02" iconBg="bg-amber-100" iconColor="text-amber-700" delay="1" />
-        <StatCard icon="pending" label="Pending" value="01" iconBg="bg-[#fee4e2]" iconColor="text-[#d92d20]" delay="2" />
-        <StatCard icon="visibility" label="Under Review" value="0" iconBg="bg-slate-100" iconColor="text-slate-600" delay="3" />
-        <StatCard icon="check_circle" label="Resolved" value="01" iconBg="bg-[#d1fadf]" iconColor="text-[#006b5d]" delay="4" />
+        <StatCard icon="history" label="Total Violations" value={totalCount.toString().padStart(2, '0')} iconBg="bg-amber-100" iconColor="text-amber-700" delay="1" />
+        <StatCard icon="pending" label="Pending" value={pendingCount.toString().padStart(2, '0')} iconBg="bg-[#fee4e2]" iconColor="text-[#d92d20]" delay="2" />
+        <StatCard icon="visibility" label="Under Review" value={underReviewCount.toString().padStart(2, '0')} iconBg="bg-slate-100" iconColor="text-slate-600" delay="3" />
+        <StatCard icon="check_circle" label="Resolved" value={resolvedCount.toString().padStart(2, '0')} iconBg="bg-[#d1fadf]" iconColor="text-[#006b5d]" delay="4" />
       </section>
 
       {/* ═══════════════════════ MAIN CONTENT GRID ═══════════════════════ */}
@@ -36,7 +67,7 @@ export default function StudentDashboard() {
         
         {/* Left Column: Primary Cards */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="relative overflow-hidden bg-[#0A3D2E] p-8 rounded-[2rem] text-white min-h-[220px] flex flex-col justify-between shadow-xl shadow-emerald-900/5 group cursor-pointer transition-all duration-500 border border-white/5">
+          <Link to="/student/profile" className="block relative overflow-hidden bg-[#0A3D2E] p-8 rounded-[2rem] text-white min-h-[220px] flex flex-col justify-between shadow-xl shadow-emerald-900/5 group cursor-pointer transition-all duration-500 border border-white/5">
             <div className="relative z-10 max-w-lg">
               <h3 className="text-2xl font-pjs font-bold leading-tight mb-2 tracking-tight">
                 Complete Academic Profile
@@ -49,7 +80,6 @@ export default function StudentDashboard() {
               </button>
             </div>
             
-            {/* Ultra-Elegant Right-side Graphic (Curved blade-like shapes from Target UI) */}
             <div className="absolute top-0 right-[-10%] w-[60%] h-full pointer-events-none select-none">
               <div className="absolute inset-0 bg-gradient-to-l from-black/60 to-transparent z-0" />
               <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 400 400" fill="none">
@@ -57,22 +87,20 @@ export default function StudentDashboard() {
                 <path d="M450 0C370 100 330 250 450 400" stroke="white" strokeWidth="30" strokeOpacity="0.2" />
                 <path d="M500 0C420 100 380 250 500 400" stroke="white" strokeWidth="20" strokeOpacity="0.1" />
               </svg>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-emerald-500/10 rounded-full blur-[120px]" />
             </div>
-          </div>
+          </Link>
 
-          {/* Handbook and Violation History */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <LinkCard icon="menu_book" title="Campus Handbook" linkText="PDF Download" linkIcon="picture_as_pdf" />
-            <LinkCard icon="gavel" title="Violation History" description="Review previous incident logs and corrective actions." />
+            <Link to="/student/handbook"><LinkCard icon="menu_book" title="Campus Handbook" linkText="PDF Download" linkIcon="picture_as_pdf" /></Link>
+            <Link to="/student/violations"><LinkCard icon="gavel" title="Violation History" description="Review previous incident logs and corrective actions." /></Link>
           </div>
         </div>
 
         {/* Right Column: AI Curator */}
         <div className="lg:col-span-1">
-          <div className="bg-portal-primary-container p-8 rounded-[2rem] text-white shadow-xl flex flex-col h-full min-h-[402px] relative overflow-hidden">
+          <Link to="/student/chatbot" className="bg-portal-primary-container p-8 rounded-[2rem] text-white shadow-xl flex flex-col h-full min-h-[402px] relative overflow-hidden group">
             <div className="mb-6 relative z-10">
-              <div className="w-12 h-12 rounded-xl bg-portal-primary flex items-center justify-center mb-5 shadow-lg">
+              <div className="w-12 h-12 rounded-xl bg-portal-primary flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform">
                 <span className="material-symbols-outlined text-white text-2xl">auto_awesome</span>
               </div>
               <h3 className="text-xl font-pjs font-bold mb-2 uppercase tracking-tight">AI Curator</h3>
@@ -84,17 +112,15 @@ export default function StudentDashboard() {
                 "What are the rules regarding laboratory access after 7 PM?"
               </div>
               <div className="mt-4 bg-portal-surface rounded-2xl p-2 flex items-center shadow-inner">
-                <input 
-                  type="text" 
-                  placeholder="Ask away..." 
-                  className="flex-grow bg-transparent border-none focus:ring-0 text-portal-text px-4 py-2 font-manrope font-medium placeholder:text-portal-text-muted/30"
-                />
-                <button className="w-10 h-10 bg-portal-primary-container text-white rounded-xl flex items-center justify-center shadow-lg hover:bg-portal-primary active:scale-90 transition-all">
+                <div 
+                  className="flex-grow bg-transparent border-none text-portal-text-muted/40 px-4 py-2 font-manrope font-medium"
+                >Ask away...</div>
+                <button className="w-10 h-10 bg-portal-primary-container text-white rounded-xl flex items-center justify-center shadow-lg">
                   <span className="material-symbols-outlined">send</span>
                 </button>
               </div>
             </div>
-          </div>
+          </Link>
         </div>
       </div>
 
@@ -102,22 +128,33 @@ export default function StudentDashboard() {
       <div className="bg-portal-surface p-8 rounded-[2.5rem] shadow-[0_8px_40px_rgba(0,0,0,0.02)] border border-emerald-100/30">
         <div className="flex items-center justify-between mb-8">
           <h3 className="text-2xl font-pjs font-bold text-[#003624] tracking-tight">Recent Violations</h3>
-          <button className="text-[13px] font-pjs font-bold text-[#003624]/40 hover:text-[#003624] tracking-widest uppercase transition-colors">
+          <Link to="/student/violations" className="text-[13px] font-pjs font-bold text-[#003624]/40 hover:text-[#003624] tracking-widest uppercase transition-colors">
             View All Records
-          </button>
+          </Link>
         </div>
         
         <div className="space-y-6">
-          <ViolationEntry 
-            title="Unauthorized Area Access"
-            status="Pending"
-            location="ICTC Building"
-            date="Oct 24, 2023"
-            time="10:45 AM"
-            action="Student must attend a disciplinary briefing and complete 4 hours of community service at the ICTC office within 10 days."
-          />
+          {violations.length > 0 ? violations.slice(0, 3).map(v => (
+            <ViolationEntry 
+              key={v.id}
+              title={v.rule_details?.rule_code || "General Violation"}
+              status={v.status === 'CLOSED' ? 'Resolved' : 'Pending'}
+              location={v.location}
+              date={new Date(v.timestamp).toLocaleDateString()}
+              time={new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              action={v.corrective_action}
+            />
+          )) : (
+            <div className="py-12 text-center bg-white/50 rounded-3xl border border-dashed border-emerald-100">
+               <span className="material-symbols-outlined text-4xl text-emerald-100 mb-2">check_circle</span>
+               <p className="text-portal-text-muted font-manrope font-semibold">No violations on record. Keep it up!</p>
+            </div>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
     </div>
   );
 }

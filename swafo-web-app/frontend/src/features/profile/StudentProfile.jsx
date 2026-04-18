@@ -1,9 +1,39 @@
-import { useMsal } from "@azure/msal-react";
+import { useAuth } from "../../context/AuthContext";
+import { useState, useEffect } from "react";
 
 export default function StudentProfile() {
-  const { accounts } = useMsal();
-  const fullName = accounts.length > 0 ? accounts[0].name : "Student Name";
-  const studentId = "202304826"; // Mock ID as per design
+  const { user } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const email = user?.email;
+
+  useEffect(() => {
+    if (email) {
+      fetch(`http://localhost:8000/api/users/profile-by-email/?email=${email}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.error) {
+            setProfile(data);
+          }
+        })
+        .catch(err => console.error("Profile fetch error:", err))
+        .finally(() => setLoading(false));
+    }
+  }, [email]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#003624]"></div>
+      </div>
+    );
+  }
+
+  const fullName = profile?.user_details?.full_name || accounts[0]?.name || "Student Name";
+  const studentId = profile?.student_number || "---";
+  const course = profile?.course || "---";
+  const yearLevel = profile?.year_level || "-";
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-5 animate-fade-in-up">
@@ -29,10 +59,10 @@ export default function StudentProfile() {
           <div className="flex flex-wrap items-center gap-3 text-portal-text-muted font-manrope font-semibold text-lg">
             <span className="flex items-center gap-1.5">
               <span className="material-symbols-outlined text-portal-primary/60 text-[20px]">school</span>
-              Senior
+              Year {yearLevel}
             </span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-200" />
-            <span>BS Computer Science</span>
+            <span>{course}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-200" />
             <span className="text-portal-primary/70 font-bold">ID: {studentId}</span>
           </div>

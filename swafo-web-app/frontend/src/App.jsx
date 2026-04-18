@@ -19,10 +19,13 @@ import PatrolHistory from './features/patrols/PatrolHistory';
 
 
 
+import { AuthProvider } from './context/AuthContext';
+
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <AuthProvider>
+        <Routes>
         {/* Auth Route */}
         <Route path="/login" element={<SignIn />} />
 

@@ -2,4 +2,5 @@ from django.apps import AppConfig
 
 
 class ViolationsConfig(AppConfig):
-    name = 'violations'
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'apps.violations'

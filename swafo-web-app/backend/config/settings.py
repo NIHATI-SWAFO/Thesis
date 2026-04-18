@@ -10,17 +10,27 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import environ
 from pathlib import Path
+
+# Initialize environ
+env = environ.Env(
+    # set casting, default value
+    DEBUG=(bool, False)
+)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Read .env file
+environ.Env.read_env(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-0d6t)a*2k(4rpo230^@d1j0vkrv6n^&(j(1ygqdqht+(w7$pic'
+SECRET_KEY = env('DJANGO_SECRET_KEY', default='django-insecure-default-key-for-dev')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -37,9 +47,23 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    # External Apps
+    'rest_framework',
+    'corsheaders',
+    'rest_framework_simplejwt',
+
+    # Internal Apps (Modular structure)
+    'apps.users',
+    'apps.violations',
+    'apps.handbook',
+    'apps.patrols',
+    'apps.analytics',
+    'apps.ai_assistant',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware', # MUST BE AT THE TOP
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -50,6 +74,35 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'config.urls'
+
+# Custom User Model
+AUTH_USER_MODEL = 'users.User'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+
+# SimpleJWT Settings
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+# CORS Settings
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:5176",
+]
+CORS_ALLOW_CREDENTIALS = True
 
 TEMPLATES = [
     {
@@ -115,3 +168,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# AI Assistant Settings
+GEMINI_API_KEY = env('GEMINI_API_KEY')
+HANDBOOK_PATH = BASE_DIR.parent.parent / 'additional context' / 'handbook_reference.md'

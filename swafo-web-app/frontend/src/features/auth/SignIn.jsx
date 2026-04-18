@@ -210,6 +210,16 @@ export default function SignIn() {
                     </div>
                     Continue with Microsoft
                   </button>
+
+                  <div className="relative pt-6">
+                    <div className="absolute inset-0 flex items-center h-px bg-gray-100" />
+                    <span className="relative z-10 bg-white px-4 text-[11px] font-bold uppercase tracking-widest text-gray-400">
+                      OR DEVELOPER ACCESS
+                    </span>
+                  </div>
+
+                  <MockLoginSection />
+
                   <div className="rounded-xl bg-blue-50/60 p-5 border border-blue-100/80">
                     <p className="text-[13px] font-semibold text-blue-800 leading-relaxed">
                       Students are required to use their official DLSU-D Microsoft 365 organization account to access the SWAFO portal.
@@ -229,3 +239,67 @@ export default function SignIn() {
     </div>
   );
 }
+
+function MockLoginSection() {
+  const [students, setStudents] = useState([]);
+  const [search, setSearch] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const { loginAsMock } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch('http://localhost:8000/api/users/list/')
+      .then(res => res.json())
+      .then(data => setStudents(data.results || []))
+      .catch(err => console.error("Error fetching students:", err));
+  }, []);
+
+  const filtered = students.filter(s => 
+    s.user_details.full_name.toLowerCase().includes(search.toLowerCase()) ||
+    s.student_number.includes(search)
+  ).slice(0, 5);
+
+  return (
+    <div className="relative text-left">
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-1 py-1 flex items-center mb-[2px]">
+            <div className="w-8 h-8 rounded-lg bg-[#0f3422]/5 flex items-center justify-center p-4">
+                <span className="material-symbols-outlined text-[#0f3422] text-[16px] font-bold">person_add</span>
+            </div>
+        </div>
+        <input 
+          type="text"
+          placeholder="Select Mock Student (Demo Mode)..."
+          value={search}
+          onFocus={() => setIsOpen(true)}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-black/5 rounded-xl text-[14px] font-manrope font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f3422]/10 transition-all"
+        />
+      </div>
+
+      {isOpen && search.length > 0 && (
+        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-2xl max-h-[300px] overflow-y-auto overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          {filtered.length > 0 ? filtered.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => {
+                loginAsMock(s);
+                navigate('/student/dashboard');
+              }}
+              className="w-full text-left px-5 py-4 border-b border-gray-50 hover:bg-emerald-50 transition-colors group"
+            >
+              <p className="text-[14px] font-pjs font-bold text-gray-900 leading-none mb-1">{s.user_details.full_name}</p>
+              <p className="text-[11px] font-manrope font-semibold text-gray-400">
+                {s.course} • <span className="text-[#0f3422]/60">{s.student_number}</span>
+              </p>
+            </button>
+          )) : (
+            <div className="p-4 text-center text-[12px] font-manrope text-gray-400">No students found matching your search</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+import { useAuth } from '../../context/AuthContext';

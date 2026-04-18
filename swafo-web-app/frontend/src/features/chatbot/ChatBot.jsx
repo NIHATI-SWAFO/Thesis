@@ -1,22 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 export default function ChatBot() {
   const [input, setInput] = useState('');
   
-  // Initialize with the exact conversation shown in the mockup image
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      type: 'user',
-      text: "Can you explain the current policy regarding dormitory visiting hours for external guests?"
-    },
-    {
-      id: 2,
-      type: 'bot',
-      originalQuery: "Can you explain the current policy regarding dormitory visiting hours for external guests?"
-    }
-  ]);
+  // Initialize empty
+  const [messages, setMessages] = useState([]);
   
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -29,7 +20,7 @@ export default function ChatBot() {
 
   const handleSend = (e) => {
     e?.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isTyping) return;
     
     const textToSend = input;
     setInput('');
@@ -37,26 +28,50 @@ export default function ChatBot() {
   };
 
   const handleSuggestedClick = (text) => {
+    if (isTyping) return;
     processUserMessage(text);
   };
 
-  const processUserMessage = (text) => {
+  const processUserMessage = async (text) => {
     const userMsg = {
       id: Date.now(),
       type: 'user',
       text: text,
     };
     setMessages(prev => [...prev, userMsg]);
+    setIsTyping(true);
 
-    // Mock processing delay for realism
-    setTimeout(() => {
-      const botMsg = {
-        id: Date.now() + 1,
+    try {
+      const response = await fetch('http://localhost:8000/api/ai/chat/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const botMsg = {
+          id: Date.now() + 1,
+          type: 'bot',
+          response: data.response,
+          source: data.source,
+          originalQuery: text
+        };
+        setMessages(prev => [...prev, botMsg]);
+      } else {
+        throw new Error("Failed to get AI response");
+      }
+    } catch (error) {
+      const errorMsg = {
+        id: Date.now() + 2,
         type: 'bot',
-        originalQuery: text
+        response: "I'm having trouble connecting to the handbook database. Please check your internet or try again later.",
+        error: true
       };
-      setMessages(prev => [...prev, botMsg]);
-    }, 800);
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const suggestedQuestions = [
@@ -125,34 +140,41 @@ export default function ChatBot() {
                         </div>
 
                         {/* Bot Content */}
-                        <div className="space-y-4 text-[14px] lg:text-[15px] font-manrope text-[#404943] leading-relaxed mb-6">
-                          {/* Only show the intro line if it's a new custom query */}
-                          {msg.originalQuery !== "Can you explain the current policy regarding dormitory visiting hours for external guests?" && (
-                            <p className="mb-4">
-                              <span className="text-[#059669] font-bold">Inquiry Processed:</span> "{msg.originalQuery}"
-                            </p>
+                        <div className="text-[14px] lg:text-[15px] font-manrope text-[#404943] leading-relaxed mb-6 prose-sm prose-emerald">
+                          {msg.response ? (
+                            <ReactMarkdown
+                              components={{
+                                p: ({node, ...props}) => <p className="mb-4 last:mb-0" {...props} />,
+                                ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4 space-y-2" {...props} />,
+                                li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                                strong: ({node, ...props}) => <strong className="font-bold text-[#1c2b26]" {...props} />,
+                              }}
+                            >
+                              {msg.response}
+                            </ReactMarkdown>
+                          ) : (
+                            <div className="flex items-center gap-3 py-3 px-4 bg-emerald-50/50 rounded-xl border border-emerald-100/50 animate-pulse">
+                               <div className="flex gap-1.5">
+                                 <div className="w-1.5 h-1.5 rounded-full bg-[#059669] animate-bounce" style={{ animationDelay: '0ms' }} />
+                                 <div className="w-1.5 h-1.5 rounded-full bg-[#059669] animate-bounce" style={{ animationDelay: '150ms' }} />
+                                 <div className="w-1.5 h-1.5 rounded-full bg-[#059669] animate-bounce" style={{ animationDelay: '300ms' }} />
+                               </div>
+                               <span className="text-[11px] font-pjs font-bold text-[#059669] uppercase tracking-wider">
+                                 Analyzing Handbook Context...
+                               </span>
+                            </div>
                           )}
-                          <p>
-                            According to the <strong className="text-[#1c2b26]">2025 University Handbook (Section IV, Part C)</strong>, the visiting hours for external guests in campus dormitories are as follows:
-                          </p>
-                          <p>
-                            <strong className="text-[#1c2b26]">Monday – Thursday:</strong> 10:00 AM to 10:00 PM
-                          </p>
-                          <p>
-                            <strong className="text-[#1c2b26]">Friday – Sunday:</strong> 10:00 AM to 12:00 AM (Midnight)
-                          </p>
-                          <p>
-                            <strong className="text-[#1c2b26]">Overnight Guests:</strong> Must be registered at least 24 hours in advance via the Housing Portal and are limited to 3 nights per semester.
-                          </p>
                         </div>
 
                         {/* Source Box */}
-                        <div className="bg-[#f8fbf9] rounded-xl p-4 flex items-center gap-3 mb-6 border border-black/5">
-                          <span className="material-symbols-outlined text-[#059669] text-[20px]">menu_book</span>
-                          <p className="text-[13px] font-manrope font-medium text-portal-text-muted/70">
-                            Source: Handbook_Section_IV_Final.pdf • Page 42
-                          </p>
-                        </div>
+                        {msg.source && (
+                          <div className="bg-[#f8fbf9] rounded-xl p-4 flex items-center gap-3 mb-6 border border-black/5">
+                            <span className="material-symbols-outlined text-[#059669] text-[20px]">menu_book</span>
+                            <p className="text-[13px] font-manrope font-medium text-portal-text-muted/70">
+                              Source: {msg.source}
+                            </p>
+                          </div>
+                        )}
 
                         {/* Action Buttons */}
                         <div className="flex items-center gap-6 pt-2">
@@ -173,6 +195,35 @@ export default function ChatBot() {
               </div>
             ))}
             <div ref={messagesEndRef} className="h-4" />
+            
+            {/* Thinking Indicator (while isTyping is true) */}
+            {isTyping && (
+              <div className="flex justify-start animate-fade-in-up mt-8">
+                <div className="bg-white rounded-[1.25rem] border border-black/5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden max-w-[95%] relative flex">
+                  <div className="w-2 bg-[#059669] shrink-0" />
+                  <div className="p-6 lg:p-8 flex-1">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-8 h-8 rounded-lg bg-[#e6fbf1] flex items-center justify-center text-[#059669]">
+                        <span className="material-symbols-outlined text-[18px]">smart_toy</span>
+                      </div>
+                      <span className="text-[11px] font-pjs font-bold text-[#0b4d3c] uppercase tracking-widest">
+                        Chatbot • Analyzing
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 py-3 px-4 bg-emerald-50/50 rounded-xl border border-emerald-100/50 animate-pulse">
+                      <div className="flex gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#059669] animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#059669] animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#059669] animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                      <span className="text-[11px] font-pjs font-bold text-[#059669] uppercase tracking-wider">
+                        Analyzing Handbook Context...
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

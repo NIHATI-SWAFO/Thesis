@@ -1,5 +1,6 @@
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMsal } from "@azure/msal-react";
+import { useAuth } from '../context/AuthContext';
 
 const navItems = [
   { name: 'Dashboard', path: '/student/dashboard', icon: 'dashboard' },
@@ -12,8 +13,17 @@ const navItems = [
 
 export default function StudentLayout() {
   const location = useLocation();
-  const { accounts } = useMsal();
-  const fullName = accounts.length > 0 ? accounts[0].name : 'Student';
+  const { user, logout } = useAuth();
+  const { instance } = useMsal();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    instance.logoutRedirect();
+    navigate('/login');
+  };
+
+  const fullName = user?.name || 'Student';
 
   return (
     <div className="flex h-screen bg-portal-bg font-manrope selection:bg-portal-primary selection:text-white">
@@ -71,9 +81,17 @@ export default function StudentLayout() {
         </nav>
 
         {/* Action Button */}
-        <div className="px-6 mt-auto">
+        <div className="px-6 mt-auto space-y-3">
+          <button 
+            onClick={handleLogout}
+            className="w-full py-4 border-2 border-slate-200 text-slate-500 rounded-2xl font-pjs font-bold text-[14px] flex items-center justify-center gap-3 hover:bg-slate-50 transition-all active:scale-95 group"
+          >
+            Logout
+            <span className="material-symbols-outlined text-[18px]">logout</span>
+          </button>
+
           <button className="w-full py-4 bg-[#006b5d] text-white rounded-2xl font-pjs font-bold text-[14px] flex items-center justify-center gap-3 hover:bg-[#004d33] transition-all shadow-lg shadow-emerald-900/10 active:scale-95 group">
-            Contact Registrar
+            Contact SWAFO
             <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
           </button>
         </div>
