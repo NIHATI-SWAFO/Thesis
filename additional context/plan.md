@@ -94,10 +94,10 @@ Future integration: Module 1 detection output → feeds into Module 2 violation 
 
 ### 5.2 Duplicate Case Detection
 - **Goal:** Flag if a newly submitted violation is similar to an existing case for the same student
-- **Approach:** [ TBD — rule-based matching, string similarity (e.g., Levenshtein), or embedding-based similarity ]
+- **Approach:** [ See algorithm_specification.md for Implementation Details ]
 - **Input:** New violation details + student's existing violation history
 - **Output:** Warning or flag if duplicate or near-duplicate found
-- **Status:** ⚠️ Not finalized
+- **Status:** ✅ **Implemented**
 
 ### 5.3 Corrective Action Recommendation
 - **Goal:** Suggest an appropriate corrective action based on violation type and student's history
@@ -184,7 +184,7 @@ ChatbotLogs (optional)
 | State management library | ⚠️ Zustand vs Context API |
 | UI component library | ⚠️ shadcn/ui vs MUI |
 | Patrol route algorithm | ⚠️ TBD |
-| Duplicate detection approach | ⚠️ TBD |
+| Duplicate detection approach | ✅ Implemented (See algorithm_spec) |
 | Handbook chatbot approach | ⚠️ TBD |
 | Heatmap / analytics approach | ⚠️ TBD |
 | Module 1 + Module 2 integration method | ⚠️ TBD |

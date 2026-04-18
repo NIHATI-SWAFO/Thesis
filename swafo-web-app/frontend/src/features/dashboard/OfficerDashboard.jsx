@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_ENDPOINTS } from '../../api/config';
 
 export default function OfficerDashboard() {
   const navigate = useNavigate();
@@ -7,7 +8,7 @@ export default function OfficerDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/analytics/officer-dashboard/')
+    fetch(API_ENDPOINTS.OFFICER_DASHBOARD)
       .then(res => res.json())
       .then(json => {
         setData(json);
@@ -37,57 +38,57 @@ export default function OfficerDashboard() {
         <p className="text-[14px] text-gray-500 font-medium">Welcome back! Here's your overview for today.</p>
       </div>
 
-      {/* Stat Cards - Pure white on #f2fcf8 surface */}
+      {/* Stat Cards - High-Fidelity Sync */}
       <div className="grid grid-cols-4 gap-6 mb-10">
-        <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,54,36,0.04)] border border-gray-100/50 flex flex-col justify-between">
-          <div className="flex items-start justify-between mb-4">
-             <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-[#009b69]">
-                <span className="material-symbols-outlined text-[20px]">gavel</span>
+        <div className="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.02)] border border-[#f1f5f9] flex flex-col justify-between hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-500 group">
+          <div className="flex items-start justify-between mb-8">
+             <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 shadow-sm group-hover:scale-110 transition-transform duration-500">
+                <span className="material-symbols-outlined text-[24px]">gavel</span>
              </div>
-             <span className="px-3 py-1 bg-[#ccefde] text-[#0f603c] text-[9px] font-extrabold rounded-full uppercase tracking-widest">Active Monitoring</span>
+             <span className="px-3 py-1 bg-red-50 text-red-700 text-[10px] font-black rounded-full uppercase tracking-widest border border-red-100">Live Today</span>
           </div>
           <div>
-            <h3 className="text-[36px] font-pjs font-black text-gray-900 leading-none mb-1">{stats.violations_today.toString().padStart(2, '0')}</h3>
-            <p className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest">Violations Today</p>
+            <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none mb-3">{stats.violations_today.toString().padStart(2, '0')}</h3>
+            <p className="text-[12px] text-slate-600 font-bold uppercase tracking-[0.1em]">Violations Recorded</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,54,36,0.04)] border border-gray-100/50 flex flex-col justify-between">
-          <div className="flex items-start justify-between mb-4">
-             <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500">
-                <span className="material-symbols-outlined text-[20px]">folder</span>
+        <div className="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.02)] border border-[#f1f5f9] flex flex-col justify-between hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-500 group">
+          <div className="flex items-start justify-between mb-8">
+             <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shadow-sm group-hover:scale-110 transition-transform duration-500">
+                <span className="material-symbols-outlined text-[24px]">folder</span>
              </div>
-             <span className="px-3 py-1 bg-[#ffeded] text-[#b91c1c] text-[9px] font-extrabold rounded-full uppercase tracking-widest">Requires Attention</span>
+             <span className="px-3 py-1 bg-amber-50 text-amber-700 text-[10px] font-black rounded-full uppercase tracking-widest border border-amber-100">Pending</span>
           </div>
           <div>
-            <h3 className="text-[36px] font-pjs font-black text-gray-900 leading-none mb-1">{stats.active_cases.toString().padStart(2, '0')}</h3>
-            <p className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest">Active Cases</p>
+            <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none mb-3">{stats.active_cases.toString().padStart(2, '0')}</h3>
+            <p className="text-[12px] text-slate-600 font-bold uppercase tracking-[0.1em]">Pending Cases</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,54,36,0.04)] border border-gray-100/50 flex flex-col justify-between">
-          <div className="flex items-start justify-between mb-4">
-             <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-[#009b69]">
-                <span className="material-symbols-outlined text-[20px]">shield</span>
+        <div className="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.02)] border border-[#f1f5f9] flex flex-col justify-between hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-500 group">
+          <div className="flex items-start justify-between mb-8">
+             <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm group-hover:scale-110 transition-transform duration-500">
+                <span className="material-symbols-outlined text-[24px]">shield</span>
              </div>
-             <span className="px-3 py-1 bg-[#ccefde] text-[#0f603c] text-[9px] font-extrabold rounded-full uppercase tracking-widest">On Duty</span>
+             <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black rounded-full uppercase tracking-widest border border-emerald-100">On Patrol</span>
           </div>
           <div>
-            <h3 className="text-[36px] font-pjs font-black text-gray-900 leading-none mb-1">{stats.active_patrols.toString().padStart(2, '0')}</h3>
-            <p className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest">Active Patrols</p>
+            <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none mb-3">{stats.active_patrols.toString().padStart(2, '0')}</h3>
+            <p className="text-[12px] text-slate-600 font-bold uppercase tracking-[0.1em]">Active Patrols</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,54,36,0.04)] border border-gray-100/50 flex flex-col justify-between">
-          <div className="flex items-start justify-between mb-4">
-             <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500">
-                <span className="material-symbols-outlined text-[20px]">person_alert</span>
+        <div className="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.02)] border border-[#f1f5f9] flex flex-col justify-between hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-500 group">
+          <div className="flex items-start justify-between mb-8">
+             <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-600 shadow-sm group-hover:scale-110 transition-transform duration-500">
+                <span className="material-symbols-outlined text-[24px]">person_alert</span>
              </div>
-             <span className="px-3 py-1 bg-gray-100 text-gray-600 text-[9px] font-extrabold rounded-full uppercase tracking-widest">Flagged</span>
+             <span className="px-3 py-1 bg-slate-50 text-slate-700 text-[10px] font-black rounded-full uppercase tracking-widest border border-slate-100">Flagged</span>
           </div>
           <div>
-            <h3 className="text-[36px] font-pjs font-black text-gray-900 leading-none mb-1">{stats.repeat_offenders.toString().padStart(2, '0')}</h3>
-            <p className="text-[10px] text-gray-500 font-extrabold uppercase tracking-widest">Repeat Offenders</p>
+            <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none mb-3">{stats.repeat_offenders.toString().padStart(2, '0')}</h3>
+            <p className="text-[12px] text-slate-600 font-bold uppercase tracking-[0.1em]">Repeat Offenders</p>
           </div>
         </div>
       </div>
@@ -166,10 +167,8 @@ export default function OfficerDashboard() {
                     let cumulativePercentage = 0;
                     const circumference = 2 * Math.PI * 70;
                     const colors = {
-                      'RESOLVED': '#005e43',
-                      'UNDER_REVIEW': '#7db5f5',
-                      'OPEN': '#f5c6c6',
-                      'APPEALED': '#f59e0b'
+                      'CLOSED': '#005e43',
+                      'PENDING': '#10b981'
                     };
                     
                     return status_distribution.breakdown.map((s, i) => {
@@ -203,8 +202,8 @@ export default function OfficerDashboard() {
 
            <div className="space-y-4 mt-auto">
                {status_distribution.breakdown.map((s, i) => {
-                 const colors = { 'RESOLVED': '#005e43', 'UNDER_REVIEW': '#7db5f5', 'OPEN': '#f5c6c6', 'APPEALED': '#f59e0b' };
-                 const labels = { 'RESOLVED': 'Resolved', 'UNDER_REVIEW': 'Under Review', 'OPEN': 'Pending', 'APPEALED': 'Appealed' };
+                 const colors = { 'CLOSED': '#005e43', 'PENDING': '#10b981' };
+                 const labels = { 'CLOSED': 'Closed', 'PENDING': 'Pending' };
                  const percentage = Math.round((s.count / status_distribution.total) * 100);
                  return (
                    <div key={i} className="flex justify-between text-[13px] font-pjs font-bold text-gray-900 items-center">
@@ -249,12 +248,17 @@ export default function OfficerDashboard() {
                 const fullName = v.student_details?.user_details?.full_name || 'System Student';
                 const initials = fullName.split(' ').map(n => n[0]).join('').substring(0, 2);
                 const statusColors = {
-                  'RESOLVED': 'bg-[#cdefda] text-[#0a5231]',
-                  'UNDER_REVIEW': 'bg-[#e2eafb] text-[#1e4eb8]',
+                  'CLOSED': 'bg-[#cdefda] text-[#0a5231]',
                   'OPEN': 'bg-[#fae3e3] text-[#b91c1c]',
-                  'APPEALED': 'bg-amber-100 text-amber-700'
+                  'UNDER_REVIEW': 'bg-[#fae3e3] text-[#b91c1c]',
+                  'APPEALED': 'bg-[#fae3e3] text-[#b91c1c]'
                 };
-                const statusLabels = { 'RESOLVED': 'Resolved', 'UNDER_REVIEW': 'Review', 'OPEN': 'Pending', 'APPEALED': 'Appealed' };
+                const statusLabels = { 
+                  'CLOSED': 'Closed', 
+                  'OPEN': 'Pending',
+                  'UNDER_REVIEW': 'Pending',
+                  'APPEALED': 'Pending'
+                };
                 const time = new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 
                 return (

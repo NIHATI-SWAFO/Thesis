@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { API_ENDPOINTS } from '../../api/config';
 
 export default function RecordViolation() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,7 +30,7 @@ export default function RecordViolation() {
   useEffect(() => {
     const fetchRules = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/handbook/rules/');
+        const response = await fetch(API_ENDPOINTS.HANDBOOK_RULES);
         if (response.ok) {
           const data = await response.json();
           setHandbookRules(data);
@@ -53,7 +54,7 @@ export default function RecordViolation() {
     setAssessment(null);
     
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/users/search/?q=${searchQuery}`);
+      const response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${searchQuery}`);
       if (response.ok) {
         const data = await response.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -83,7 +84,7 @@ export default function RecordViolation() {
     setSmartSearchLoading(true);
     
     try {
-      const resp = await fetch(`http://127.0.0.1:8000/api/handbook/smart-search/?q=${encodeURIComponent(val)}`);
+      const resp = await fetch(`${API_ENDPOINTS.SMART_SEARCH}?q=${encodeURIComponent(val)}`);
       if (resp.ok) {
         const data = await resp.json();
         setSmartSearchResults(data);
@@ -102,7 +103,7 @@ export default function RecordViolation() {
     
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/api/violations/assess/?student_id=${foundStudent.student_number}&rule_code=${formData.violationType}`
+        `${API_ENDPOINTS.VIOLATIONS_ASSESS}?student_id=${foundStudent.student_number}&rule_code=${formData.violationType}`
       );
       if (response.ok) {
         const data = await response.json();
@@ -114,6 +115,14 @@ export default function RecordViolation() {
       setIsGenerating(false);
     }
   };
+
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+
+  useEffect(() => {
+    if (assessment?.is_duplicate) {
+      setShowDuplicateWarning(true);
+    }
+  }, [assessment]);
 
   // ── Live API: Submit Case (Record Violation) ──
   const handleSubmit = async () => {
@@ -132,7 +141,7 @@ export default function RecordViolation() {
         status: 'OPEN'
       };
 
-      const response = await fetch('http://127.0.0.1:8000/api/violations/record/', {
+      const response = await fetch(API_ENDPOINTS.VIOLATIONS_CREATE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -549,6 +558,8 @@ export default function RecordViolation() {
         </div>
       </div>
 
+
+
       {!assessment && foundStudent && formData.violationType && (
         <div className="mt-16 flex flex-col items-center">
           <button onClick={handleGenerateRecommendation} disabled={isGenerating} className={`w-full max-w-[800px] h-[72px] rounded-3xl flex items-center justify-center gap-4 font-pjs font-bold text-[18px] tracking-tight transition-all shadow-2xl bg-[#003624] text-white hover:bg-[#004d35] hover:translate-y-[-2px] active:scale-[0.98] shadow-emerald-950/20 disabled:opacity-50`}>
@@ -556,6 +567,81 @@ export default function RecordViolation() {
           </button>
         </div>
       )}
+
+      <DuplicateWarningModal 
+        isOpen={showDuplicateWarning}
+        onCancel={() => {
+          setShowDuplicateWarning(false);
+          setAssessment(null);
+        }}
+        onContinue={() => setShowDuplicateWarning(false)}
+        previousIncident={assessment?.previous_incident}
+        ruleCode={assessment?.rule_code}
+        studentName={assessment?.student_name}
+      />
+    </div>
+  );
+}
+
+function DuplicateWarningModal({ isOpen, onCancel, onContinue, previousIncident, ruleCode, studentName }) {
+  if (!isOpen) return null;
+
+  const time = new Date(previousIncident?.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const date = new Date(previousIncident?.timestamp).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-emerald-950/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white rounded-[2.5rem] w-full max-w-[550px] overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.3)] border border-white/20 animate-in zoom-in-95 duration-300">
+        <div className="bg-amber-500 p-8 text-white flex items-center gap-6">
+          <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[36px]">warning</span>
+          </div>
+          <div>
+            <h3 className="text-[20px] font-pjs font-bold leading-tight">Potential Duplicate Detected</h3>
+            <p className="text-[12px] text-white/70 font-medium uppercase tracking-widest mt-1">Rule Code: {ruleCode}</p>
+          </div>
+        </div>
+
+        <div className="p-8">
+          <p className="text-[15px] text-gray-600 font-manrope leading-relaxed mb-8">
+            Our intelligent scanner found an existing violation for <span className="font-bold text-[#003624]">{studentName}</span> with the same rule code recorded earlier today.
+          </p>
+
+          <div className="bg-amber-50 rounded-2xl p-6 border border-amber-100 mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-[11px] font-black text-amber-800 uppercase tracking-widest">Previous Record Details</span>
+              <span className="text-[10px] font-bold text-amber-600">ID: #{previousIncident?.id}</span>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-gray-700">
+                <span className="material-symbols-outlined text-[18px] text-amber-500">calendar_today</span>
+                <span className="text-[13px] font-bold">{date} at {time}</span>
+              </div>
+              <div className="flex items-center gap-3 text-gray-700">
+                <span className="material-symbols-outlined text-[18px] text-amber-500">pin_drop</span>
+                <span className="text-[13px] font-bold">{previousIncident?.location}</span>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-[13px] font-bold text-gray-400 mb-8 text-center italic">Do you still wish to proceed with recording this duplicate instance?</p>
+
+          <div className="grid grid-cols-2 gap-4">
+            <button 
+              onClick={onCancel}
+              className="h-[60px] rounded-2xl border-2 border-gray-100 text-gray-500 font-pjs font-bold text-[14px] hover:bg-gray-50 transition-all active:scale-95"
+            >
+              DISCARD ENTRY
+            </button>
+            <button 
+              onClick={onContinue}
+              className="h-[60px] rounded-2xl bg-amber-500 text-white font-pjs font-bold text-[14px] hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/20 active:scale-95"
+            >
+              PROCEED ANYWAY
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

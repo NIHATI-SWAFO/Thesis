@@ -3,7 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useMsal } from "@azure/msal-react";
 import { loginRequest } from "../../lib/authConfig";
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, User, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import { API_ENDPOINTS } from "../../api/config";
+import { ShieldCheck, User, Lock, Eye, EyeOff, ArrowRight, Loader2, ChevronDown } from 'lucide-react';
 import swafoLogo from '../../assets/swafo_logo.jpg';
 import signinBg from '../../assets/signin_image.png';
 
@@ -192,6 +193,15 @@ export default function SignIn() {
                     <ArrowRight className="absolute right-6 h-5 w-5 text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
                   </button>
 
+                  <div className="relative pt-2">
+                    <div className="absolute inset-0 flex items-center h-px bg-gray-100" />
+                    <span className="relative z-10 bg-white px-4 text-[11px] font-bold uppercase tracking-widest text-gray-400">
+                      QUICK ACCESS (DEMO)
+                    </span>
+                  </div>
+
+                  <OfficerQuickLogin />
+
                   <p className="text-center text-[13px] font-medium text-gray-500 pt-4">
                     Facing issues? <a href="#" className="font-bold text-[#111827] hover:text-[#113a26] underline decoration-gray-300 underline-offset-4 transition-colors">Contact IT Support</a>
                   </p>
@@ -249,7 +259,7 @@ function MockLoginSection() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/users/list/')
+    fetch(API_ENDPOINTS.USERS_LIST)
       .then(res => res.json())
       .then(data => setStudents(Array.isArray(data) ? data : (data.results || [])))
       .catch(err => console.error("Error fetching students:", err));
@@ -302,4 +312,52 @@ function MockLoginSection() {
     </div>
   )
 }
+function OfficerQuickLogin() {
+  const [isOpen, setIsOpen] = useState(false);
+  const { loginAsOfficer } = useAuth();
+  const navigate = useNavigate();
 
+  const officers = [
+    { name: "Officer Timothy De Guzman", email: "officer1@dlsud.edu.ph" },
+    { name: "Officer Maria Santos", email: "officer2@dlsud.edu.ph" },
+    { name: "Officer Ricardo Reyes", email: "officer3@dlsud.edu.ph" },
+    { name: "Officer Elena Garcia", email: "officer4@dlsud.edu.ph" },
+    { name: "Officer Julian Cruz", email: "officer5@dlsud.edu.ph" },
+    { name: "Officer Sofia Villanueva", email: "officer6@dlsud.edu.ph" },
+    { name: "Officer Mateo Ramos", email: "officer7@dlsud.edu.ph" },
+    { name: "Officer Isabella Luna", email: "officer8@dlsud.edu.ph" },
+    { name: "Officer Gabriel Castro", email: "officer9@dlsud.edu.ph" },
+    { name: "Officer Beatrice Mendoza", email: "officer10@dlsud.edu.ph" }
+  ];
+
+  return (
+    <div className="relative text-left">
+      <button 
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-5 py-4 bg-emerald-50 border border-emerald-100/50 rounded-xl text-[14px] font-pjs font-bold text-[#0f3422] flex items-center justify-between hover:bg-emerald-100 transition-all"
+      >
+        <span>Select Officer Account...</span>
+        <ChevronDown size={18} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-2xl max-h-[240px] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+          {officers.map((off, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                loginAsOfficer(off.name, off.email);
+                navigate('/officer/dashboard');
+              }}
+              className="w-full text-left px-5 py-4 border-b border-gray-50 hover:bg-emerald-50 transition-colors"
+            >
+              <p className="text-[14px] font-pjs font-bold text-gray-900 leading-none mb-1">{off.name}</p>
+              <p className="text-[11px] font-manrope font-semibold text-gray-400">{off.email}</p>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

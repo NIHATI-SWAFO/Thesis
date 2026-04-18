@@ -1,5 +1,6 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMsal } from "@azure/msal-react";
+import { useAuth } from '../context/AuthContext';
 
 const navItems = [
   { name: 'Dashboard', path: '/officer/dashboard', icon: 'dashboard' },
@@ -13,8 +14,14 @@ const navItems = [
 
 export default function OfficerLayout() {
   const { instance } = useMsal();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    instance.logoutRedirect();
+  };
 
   return (
     <div className="flex h-screen bg-portal-bg font-manrope selection:bg-portal-primary selection:text-white">
@@ -64,7 +71,7 @@ export default function OfficerLayout() {
           </button>
           
           <button 
-            onClick={() => instance.logoutRedirect()}
+            onClick={handleLogout}
             className="flex items-center gap-4 px-6 py-3 rounded-full text-red-500 hover:bg-red-50 transition-all w-full text-left"
           >
              <span className="material-symbols-outlined text-[20px]">logout</span>
@@ -99,7 +106,7 @@ export default function OfficerLayout() {
             
             <div className="flex items-center gap-3 ml-4 pl-6 border-l border-emerald-100">
               <div className="flex flex-col items-end">
-                <span className="text-[13px] font-pjs font-bold text-gray-800 leading-none mb-1">Officer Timothy</span>
+                <span className="text-[13px] font-pjs font-bold text-gray-800 leading-none mb-1">{user?.name || 'Officer Timothy'}</span>
                 <span className="text-[10px] font-manrope text-gray-500 uppercase tracking-widest leading-none">SWAFO Officer</span>
               </div>
               <div className="w-10 h-10 rounded-full bg-[#003624] flex items-center justify-center shadow-sm overflow-hidden text-white border-2 border-white">

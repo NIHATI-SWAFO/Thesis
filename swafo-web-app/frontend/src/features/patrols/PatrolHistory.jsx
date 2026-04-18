@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { 
   History, 
   Map as MapIcon, 
@@ -13,18 +14,24 @@ import {
   MapPin,
   ClipboardList
 } from 'lucide-react';
+import { API_ENDPOINTS } from '../../api/config';
 
 export default function PatrolHistory() {
+  const { user } = useAuth();
   const [patrols, setPatrols] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPatrol, setSelectedPatrol] = useState(null);
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/patrols/list/')
+    fetch(API_ENDPOINTS.PATROLS_LIST)
       .then(res => res.json())
       .then(data => {
         const results = Array.isArray(data) ? data : (data.results || []);
-        const transformed = results.map(p => ({
+        
+        // Filter by currently logged-in officer
+        const filteredResults = results.filter(p => p.officer_email === user?.email);
+
+        const transformed = filteredResults.map(p => ({
           id: `P-${p.id.toString().padStart(4, '0')}`,
           location: p.location,
           officer: p.officer_name,

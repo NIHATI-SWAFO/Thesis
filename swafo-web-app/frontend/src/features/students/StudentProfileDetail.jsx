@@ -1,51 +1,75 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-
-const MOCK_HISTORY = [
-  {
-    id: 1,
-    title: 'Unauthorized Area Access',
-    date: 'April 08, 2026',
-    time: '09:45 AM',
-    status: ['UNDER REVIEW', 'REPEAT'],
-    description: 'Student was apprehended by security while attempting to access the restricted faculty server room in the Main Building. No valid authorization or escort was present.',
-    rule: 'Section 5.1: Restricted Premises',
-    action: "Subject to Dean's disciplinary hearing; temporary suspension of facility access cards.",
-    officer: 'Chief S. Lumaban',
-    active: true
-  },
-  {
-    id: 2,
-    title: 'Dress Code Violation',
-    date: 'April 05, 2026',
-    time: '08:15 AM',
-    status: ['RESOLVED'],
-    description: 'Student failed to wear the prescribed department uniform on a Monday. Claimed uniform was not dry due to weather conditions.',
-    rule: 'Section 3.2: Uniform Policy',
-    action: 'Written warning issued; Student rendered 2 hours of community service at the campus library.',
-    officer: 'Officer C. Dalisay',
-    active: false
-  }
-];
 
 export default function StudentProfileDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [studentData, setStudentData] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // 1. Fetch Student Profile
+        const profileResp = await fetch(`http://127.0.0.1:8000/api/users/search/?q=${id}`);
+        const profiles = await profileResp.json();
+        const profile = profiles.length > 0 ? profiles[0] : null;
+
+        // 2. Fetch Violation History
+        const historyResp = await fetch(`http://127.0.0.1:8000/api/violations/list/?student_id=${id}`);
+        const historyData = await historyResp.json();
+
+        setStudentData(profile);
+        setHistory(historyData);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error syncing student detail:", err);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#f8fafc]">
+        <div className="flex flex-col items-center gap-6">
+          <div className="w-20 h-20 border-t-4 border-b-4 border-[#004d33] rounded-full animate-spin"></div>
+          <p className="text-[18px] font-pjs font-extrabold text-[#004d33] animate-pulse">Syncing Academic Record...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!studentData) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-[#f8fafc]">
+        <span className="material-symbols-outlined text-[64px] text-red-200 mb-4">person_off</span>
+        <h2 className="text-[24px] font-pjs font-extrabold text-slate-800 mb-6">Student Profile Not Found</h2>
+        <button onClick={() => navigate(-1)} className="px-8 py-3 bg-[#004d33] text-white rounded-2xl font-bold shadow-lg hover:bg-[#003624] transition-all">
+          Go Back to Records
+        </button>
+      </div>
+    );
+  }
 
   const student = {
-    name: 'Nica Estelle R. Desacola',
-    id: id || '202330445',
+    name: studentData.user_details?.full_name || 'N/A',
+    id: studentData.student_number || id,
     status: 'ENROLLED',
-    college: 'Engineering',
-    year: '3rd Year',
-    email: 'dnr3947@dlsud.edu.ph',
-    dept: 'Computer Engineering',
-    initials: 'ND',
+    college: studentData.course || 'N/A',
+    year: `${studentData.year_level} Year`,
+    email: studentData.user_details?.email || 'N/A',
+    dept: studentData.course || 'N/A',
+    initials: (studentData.user_details?.full_name || 'S').split(' ').map(n => n[0]).join('').toUpperCase(),
     stats: {
-      total: 2,
-      pending: 0,
-      resolved: 1
-    }
+      total: studentData.violation_count || 0,
+      pending: history.filter(h => h.status !== 'RESOLVED').length,
+      resolved: history.filter(h => h.status === 'RESOLVED').length
+    },
+    isRepeatOffender: studentData.is_repeat_offender
   };
 
   return (
@@ -133,60 +157,78 @@ export default function StudentProfileDetail() {
           </div>
 
           <div className="relative pl-14 border-l-[3px] border-slate-100 ml-6 flex flex-col gap-14">
-            {MOCK_HISTORY.map((item) => (
-              <div key={item.id} className="relative">
-                {/* Timeline Indicator */}
-                <div className={`absolute -left-[71px] top-10 w-10 h-10 rounded-full border-[8px] border-white shadow-xl transition-all z-10 ${item.active ? 'bg-[#10b981]' : 'bg-slate-200'}`}>
-                   {item.active && <div className="absolute inset-0 rounded-full bg-[#10b981] animate-ping opacity-20"></div>}
-                </div>
+            {history.length > 0 ? (
+              history.map((item) => {
+                const date = new Date(item.timestamp);
+                const formattedDate = date.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+                const formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                const isResolved = item.status === 'RESOLVED';
                 
-                {/* Case Card (RESTORED TO SOLID WHITE) */}
-                <div className="bg-white rounded-[3rem] p-12 border border-[#f1f5f9] shadow-[0_10px_40px_rgba(0,0,0,0.01)] hover:shadow-[0_20px_60px_rgba(0,0,0,0.03)] transition-all duration-500 group relative overflow-hidden">
-                  <div className={`absolute top-0 left-0 w-2 h-full ${item.active ? 'bg-[#10b981]' : 'bg-slate-200'}`}></div>
-                  
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-8">
-                    <div>
-                      <h4 className="text-[30px] font-pjs font-black text-[#003624] tracking-tight mb-3 transition-colors">{item.title}</h4>
-                      <div className="flex items-center gap-4 text-[14px] font-bold text-slate-400">
-                        <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[18px]">calendar_today</span>{item.date}</span>
-                        <span className="w-1 h-1 rounded-full bg-slate-200"></span>
-                        <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[18px]">schedule</span>{item.time}</span>
+                return (
+                  <div key={item.id} className="relative">
+                    {/* Timeline Indicator */}
+                    <div className={`absolute -left-[71px] top-10 w-10 h-10 rounded-full border-[8px] border-white shadow-xl transition-all z-10 ${!isResolved ? 'bg-[#10b981]' : 'bg-slate-200'}`}>
+                       {!isResolved && <div className="absolute inset-0 rounded-full bg-[#10b981] animate-ping opacity-20"></div>}
+                    </div>
+                    
+                    {/* Case Card */}
+                    <div className="bg-white rounded-[3rem] p-12 border border-[#f1f5f9] shadow-[0_10px_40px_rgba(0,0,0,0.01)] hover:shadow-[0_20px_60px_rgba(0,0,0,0.03)] transition-all duration-500 group relative overflow-hidden">
+                      <div className={`absolute top-0 left-0 w-2 h-full ${!isResolved ? 'bg-[#10b981]' : 'bg-slate-200'}`}></div>
+                      
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-8">
+                        <div>
+                          <h4 className="text-[30px] font-pjs font-black text-[#003624] tracking-tight mb-3 transition-colors">
+                            {item.rule_details?.category || 'Infraction'}
+                          </h4>
+                          <div className="flex items-center gap-4 text-[14px] font-bold text-slate-400">
+                            <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[18px]">calendar_today</span>{formattedDate}</span>
+                            <span className="w-1 h-1 rounded-full bg-slate-200"></span>
+                            <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[18px]">schedule</span>{formattedTime}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2.5">
+                          <span className={`px-5 py-2.5 rounded-2xl text-[10px] font-black tracking-widest shadow-sm uppercase ${
+                            isResolved ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-[#ef6c00]'
+                          }`}>
+                            {item.status}
+                          </span>
+                          {item.corrective_action?.includes('Probation') && (
+                            <span className="px-5 py-2.5 rounded-2xl text-[10px] font-black tracking-widest shadow-sm uppercase bg-red-50 text-[#c62828]">
+                              REPEAT
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50/50 rounded-[2rem] p-10 mb-12 border border-slate-50 relative">
+                        <span className="absolute -top-4 -left-2 text-[60px] font-serif text-slate-100 leading-none pointer-events-none opacity-40">“</span>
+                        <p className="text-[17px] font-medium text-[#475569] leading-[1.8] relative z-10 pl-4 py-2">
+                           {item.description}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-12">
+                        <HistoryColumn label="HANDBOOK RULE" value={`${item.rule_details?.rule_code}: ${item.rule_details?.description}`} />
+                        <HistoryColumn label="CORRECTIVE ACTION" value={item.corrective_action || 'Pending assessment'} />
+                        <HistoryColumn label="REPORTING OFFICER" value={item.officer_details?.full_name || 'N/A'} />
+                      </div>
+
+                      <div className="pt-10 border-t border-slate-50 flex justify-end">
+                        <button className="flex items-center gap-4 text-[13px] font-pjs font-black text-[#004d33] hover:text-[#10b981] transition-all uppercase tracking-[0.2em] group">
+                          View Case Overview
+                          <span className="material-symbols-outlined text-[24px] group-hover:translate-x-2 transition-transform duration-300">arrow_forward</span>
+                        </button>
                       </div>
                     </div>
-                    <div className="flex gap-2.5">
-                      {item.status.map(s => (
-                        <span key={s} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black tracking-widest shadow-sm uppercase ${
-                          s === 'RESOLVED' ? 'bg-emerald-50 text-emerald-600' : 
-                          s === 'REPEAT' ? 'bg-red-50 text-[#c62828]' : 'bg-orange-50 text-[#ef6c00]'
-                        }`}>
-                          {s}
-                        </span>
-                      ))}
-                    </div>
                   </div>
-
-                  <div className="bg-slate-50/50 rounded-[2rem] p-10 mb-12 border border-slate-50 relative">
-                    <span className="absolute -top-4 -left-2 text-[60px] font-serif text-slate-100 leading-none pointer-events-none opacity-40">“</span>
-                    <p className="text-[17px] font-medium text-[#475569] leading-[1.8] relative z-10 pl-4 py-2">
-                       {item.description}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-12">
-                    <HistoryColumn label="HANDBOOK RULE" value={item.rule} />
-                    <HistoryColumn label="CORRECTIVE ACTION" value={item.action} />
-                    <HistoryColumn label="REPORTING OFFICER" value={item.officer} />
-                  </div>
-
-                  <div className="pt-10 border-t border-slate-50 flex justify-end">
-                    <button className="flex items-center gap-4 text-[13px] font-pjs font-black text-[#004d33] hover:text-[#10b981] transition-all uppercase tracking-[0.2em] group">
-                      View Case Overview
-                      <span className="material-symbols-outlined text-[24px] group-hover:translate-x-2 transition-transform duration-300">arrow_forward</span>
-                    </button>
-                  </div>
-                </div>
+                );
+              })
+            ) : (
+              <div className="py-20 text-center bg-white rounded-[3rem] border border-dashed border-slate-200">
+                <span className="material-symbols-outlined text-[48px] text-slate-200 mb-4">history</span>
+                <p className="text-[18px] font-pjs font-bold text-slate-400">No violation history found for this student.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 

@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
             setCurrentUser({
                 name: mockUser.name,
                 email: mockUser.email,
-                role: 'STUDENT',
+                role: mockUser.role || 'STUDENT',
                 isMock: true
             });
         } else if (accounts.length > 0) {
@@ -38,7 +38,21 @@ export const AuthProvider = ({ children }) => {
     }, [accounts, mockUser]);
 
     const loginAsMock = (student) => {
-        const user = { name: student.user_details.full_name, email: student.user_details.email };
+        const user = { 
+            name: student.user_details.full_name, 
+            email: student.user_details.email,
+            role: 'STUDENT'
+        };
+        localStorage.setItem('swafo_mock_user', JSON.stringify(user));
+        setMockUser(user);
+    };
+
+    const loginAsOfficer = (officerName, email) => {
+        const user = { 
+            name: officerName, 
+            email: email,
+            role: 'OFFICER'
+        };
         localStorage.setItem('swafo_mock_user', JSON.stringify(user));
         setMockUser(user);
     };
@@ -46,11 +60,10 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         localStorage.removeItem('swafo_mock_user');
         setMockUser(null);
-        // MSAL logout handles the rest
     };
 
     return (
-        <AuthContext.Provider value={{ user: currentUser, loginAsMock, logout }}>
+        <AuthContext.Provider value={{ user: currentUser, loginAsMock, loginAsOfficer, logout }}>
             {children}
         </AuthContext.Provider>
     );

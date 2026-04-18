@@ -1,6 +1,7 @@
 import { useAuth } from "../../context/AuthContext";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { API_ENDPOINTS } from "../../api/config";
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -11,7 +12,7 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (user?.email) {
-      fetch(`http://127.0.0.1:8000/api/violations/list/?email=${user.email}`)
+      fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?email=${user.email}`)
         .then(res => res.json())
         .then(data => setViolations(Array.isArray(data) ? data : (data.results || [])))
         .catch(err => console.error("Error fetching violations:", err))
@@ -19,13 +20,12 @@ export default function StudentDashboard() {
     }
   }, [user]);
 
-  // Dynamic Stats
+  // Simplified Stats (CLOSED vs PENDING)
   const totalCount = violations.length;
-  const pendingCount = violations.filter(v => v.status === 'OPEN').length;
-  const resolvedCount = violations.filter(v => v.status === 'RESOLVED').length;
-  const underReviewCount = violations.filter(v => v.status === 'UNDER_REVIEW').length;
+  const closedCount = violations.filter(v => v.status === 'CLOSED').length;
+  const pendingCount = totalCount - closedCount;
 
-  const isGoodStanding = totalCount === 0;
+  const isGoodStanding = totalCount === 0 || pendingCount === 0;
 
   return (
     <div className="max-w-[1580px] mx-auto space-y-6 animate-fade-in-up">
@@ -49,17 +49,16 @@ export default function StudentDashboard() {
             {isGoodStanding ? 'verified' : 'info'}
           </span>
           <span className="font-pjs font-bold text-[13px] tracking-wide uppercase">
-            {isGoodStanding ? 'Good Standing' : 'History on Record'}
+            {isGoodStanding ? 'Good Standing' : 'Outstanding Obligation'}
           </span>
         </div>
       </section>
 
       {/* ═══════════════════════ STATS ROW ═══════════════════════ */}
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-1">
-        <StatCard icon="history" label="Total Violations" value={totalCount.toString().padStart(2, '0')} iconBg="bg-amber-100" iconColor="text-amber-700" delay="1" />
-        <StatCard icon="pending" label="Pending" value={pendingCount.toString().padStart(2, '0')} iconBg="bg-[#fee4e2]" iconColor="text-[#d92d20]" delay="2" />
-        <StatCard icon="visibility" label="Under Review" value={underReviewCount.toString().padStart(2, '0')} iconBg="bg-slate-100" iconColor="text-slate-600" delay="3" />
-        <StatCard icon="check_circle" label="Resolved" value={resolvedCount.toString().padStart(2, '0')} iconBg="bg-[#d1fadf]" iconColor="text-[#006b5d]" delay="4" />
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 px-1">
+        <StatCard icon="history" label="Violation History" value={totalCount.toString().padStart(2, '0')} iconBg="bg-slate-100" iconColor="text-slate-600" delay="1" />
+        <StatCard icon="pending" label="Pending Actions" value={pendingCount.toString().padStart(2, '0')} iconBg="bg-[#fee4e2]" iconColor="text-[#d92d20]" delay="2" />
+        <StatCard icon="check_circle" label="Closed Records" value={closedCount.toString().padStart(2, '0')} iconBg="bg-[#d1fadf]" iconColor="text-[#006b5d]" delay="3" />
       </section>
 
       {/* ═══════════════════════ MAIN CONTENT GRID ═══════════════════════ */}
@@ -138,7 +137,7 @@ export default function StudentDashboard() {
             <ViolationEntry 
               key={v.id}
               title={v.rule_details?.rule_code || "General Violation"}
-              status={v.status === 'RESOLVED' ? 'Resolved' : v.status === 'UNDER_REVIEW' ? 'Review' : 'Pending'}
+              status={v.status === 'CLOSED' ? 'Closed' : 'Pending'}
               location={v.location}
               date={new Date(v.timestamp).toLocaleDateString()}
               time={new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

@@ -59,6 +59,26 @@ The \"Academic Curator\" Chatbot uses a **Context-Injection NLP** pattern.
 
 ---
 
+## 4. Duplicate Case Detection Algorithm
+To maintain data integrity and prevent redundant case logging, the system implements a **Rule-Based Exact Match & Temporal Similarity** algorithm.
+
+### 4.1 Lookup Logic
+When an officer initiates a violation assessment, the algorithm executes a look-behind scan:
+1.  **Filter**: Searches the database for violations where `student_id` = $S$ AND `rule_code` = $R$.
+2.  **Temporal Thresholding**: The algorithm applies a 24-hour window ($T \leq 24h$) to the query.
+3.  **Validation**: If a match exists within this window ($V_{match} \neq \emptyset$), the system triggers the "Duplicate Alert" state. 
+    - *Note: Matches outside this window are treated as independent "Repeat Offenses" for escalation logic.*
+
+### 4.2 Interactive Override Mechanism
+Unlike deterministic escalation, the duplicate detection logic utilizes an **Interactive Interrupt** pattern:
+- **System Action**: Retrieves metadata from the previous incident (Time, Date, Location, ID).
+- **Human-in-the-loop**: Presents the officer with an amber "Caution" modal.
+- **Branching**:
+    -   **Action: Discard** $\rightarrow$ Nullifies current draft, preventing database inflation.
+    -   **Action: Proceed** $\rightarrow$ Overrides the warning, allowing for cases where a student commits the same violation twice in a short period (e.g., repeated uniform breaches in separate time blocks).
+
+---
+
 ## Summary of Technical Stack
 - **AI Core**: Google Gemini 1.5 (Pro/Flash)
 - **Embedding Engine**: Gemini Embedding 001

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const MOCK_STUDENTS = [
@@ -16,24 +16,45 @@ const MOCK_STUDENTS = [
 
 export default function StudentRecords() {
   const navigate = useNavigate();
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const filteredStudents = useMemo(() => {
-    return MOCK_STUDENTS.filter(student => 
-      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.id.includes(searchQuery) ||
-      student.college.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [searchQuery]);
+  useEffect(() => {
+    fetch('http://127.0.0.1:8000/api/users/list/')
+      .then(res => res.json())
+      .then(data => {
+        setStudents(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error fetching students:", err);
+        setLoading(false);
+      });
+  }, []);
 
-  const stats = {
-    total: MOCK_STUDENTS.length,
-    withViolations: MOCK_STUDENTS.filter(s => s.violations > 0).length,
-    repeatOffenders: MOCK_STUDENTS.filter(s => s.status === 'Repeat').length,
-    cleanRecord: MOCK_STUDENTS.filter(s => s.status === 'Clean').length
-  };
+  const filteredStudents = useMemo(() => {
+    return students.filter(student => {
+      const name = student.user_details?.full_name || '';
+      const id = student.student_number || '';
+      const college = student.course || '';
+      
+      return name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+             id.includes(searchQuery) ||
+             college.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+  }, [searchQuery, students]);
+
+  const stats = useMemo(() => {
+    return {
+      total: students.length,
+      withViolations: students.filter(s => s.violation_count > 0).length,
+      repeatOffenders: students.filter(s => s.is_repeat_offender).length,
+      cleanRecord: students.filter(s => s.violation_count === 0).length
+    };
+  }, [students]);
 
   const currentData = filteredStudents.slice(
     (currentPage - 1) * itemsPerPage,
@@ -44,18 +65,29 @@ export default function StudentRecords() {
 
   const handleExportPDF = () => {
     const csvContent = "data:text/csv;charset=utf-8," 
-      + ["Student ID,Name,College,Department,Violations,Status"].concat(
-        MOCK_STUDENTS.map(s => `${s.id},${s.name},${s.college},${s.dept},${s.violations},${s.status}`)
+      + ["Student ID,Name,Course,Violations,Repeat Offender"].concat(
+        students.map(s => `${s.student_number},${s.user_details?.full_name},${s.course},${s.violation_count},${s.is_repeat_offender}`)
       ).join("\n");
     
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "SWAFO_Student_Records_Export.pdf");
+    link.setAttribute("download", `SWAFO_Student_Records_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-[#003624] border-t-transparent rounded-full animate-spin"></div>
+          <p className="font-pjs font-bold text-[#003624]">Fetching Compliance Data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[1440px] mx-auto animate-fade-in-up pb-12">
@@ -115,57 +147,63 @@ export default function StudentRecords() {
                 </tr>
               </thead>
               <tbody>
-                {currentData.length > 0 ? (
-                  currentData.map((student) => (
-                    <tr key={student.id} className="group hover:bg-[#f8fcf9] transition-all cursor-pointer">
-                      <td className="py-5 px-6 bg-white border-y border-l border-gray-50 rounded-l-2xl shadow-sm group-hover:border-emerald-100">
-                        <span className="text-[13px] font-manrope font-bold text-gray-500">{student.id}</span>
-                      </td>
-                      <td className="py-5 px-6 bg-white border-y border-gray-50 shadow-sm group-hover:border-emerald-100">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-black shadow-inner ${
-                            student.status === 'Repeat' ? 'bg-red-50 text-red-600' : 
-                            student.status === 'Active' ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'
-                          }`}>
-                            {student.name.split(' ').map(n => n[0]).join('')}
-                          </div>
-                          <span className="text-[15px] font-pjs font-bold text-[#003624]">{student.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-5 px-6 bg-white border-y border-gray-50 shadow-sm group-hover:border-emerald-100">
-                        <div className="flex flex-col">
-                          <span className="text-[13px] font-manrope font-bold text-gray-700">{student.college}</span>
-                          <span className="text-[11px] font-manrope font-medium text-gray-400">{student.dept} • {student.year} Year</span>
-                        </div>
-                      </td>
-                      <td className="py-5 px-6 bg-white border-y border-gray-50 shadow-sm group-hover:border-emerald-100">
-                        <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-[13px] font-black ${
-                          student.violations >= 3 ? 'bg-red-50 text-red-600' :
-                          student.violations > 0 ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'
-                        }`}>
-                          {student.violations}
-                        </div>
-                      </td>
-                      <td className="py-5 px-6 bg-white border-y border-gray-50 shadow-sm group-hover:border-emerald-100">
-                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                          student.status === 'Repeat' ? 'bg-red-50 text-red-600 shadow-sm' :
-                          student.status === 'Active' ? 'bg-orange-50 text-orange-600 shadow-sm' :
-                          'bg-emerald-50 text-[#0f603c] shadow-sm'
-                        }`}>
-                          {student.status === 'Repeat' ? 'NON-COMPLIANT' : student.status === 'Active' ? 'UNDER REVIEW' : 'COMPLIANT'}
-                        </span>
-                      </td>
-                      <td className="py-5 px-6 bg-white border-y border-r border-gray-50 rounded-r-2xl shadow-sm text-right group-hover:border-emerald-100">
-                        <button 
-                          onClick={() => navigate(`/officer/students/${student.id.replace(/\s+/g, '')}`)}
-                          className="text-[12px] font-pjs font-black text-[#005e43] px-5 py-2 hover:bg-emerald-50 rounded-xl transition-all"
-                        >
-                          VIEW PROFILE
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
+                  {currentData.length > 0 ? (
+                    currentData.map((student) => {
+                      const name = student.user_details?.full_name || 'N/A';
+                      const id = student.student_number;
+                      const status = student.is_repeat_offender ? 'Repeat' : student.violation_count > 0 ? 'Active' : 'Clean';
+                      
+                      return (
+                        <tr key={student.id} className="group hover:bg-[#f8fcf9] transition-all cursor-pointer">
+                          <td className="py-5 px-6 bg-white border-y border-l border-gray-50 rounded-l-2xl shadow-sm group-hover:border-emerald-100">
+                            <span className="text-[13px] font-manrope font-bold text-gray-500">{id}</span>
+                          </td>
+                          <td className="py-5 px-6 bg-white border-y border-gray-50 shadow-sm group-hover:border-emerald-100">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-black shadow-inner ${
+                                status === 'Repeat' ? 'bg-red-50 text-red-600' : 
+                                status === 'Active' ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'
+                              }`}>
+                                {name.split(' ').map(n => n[0]).join('')}
+                              </div>
+                              <span className="text-[15px] font-pjs font-bold text-[#003624]">{name}</span>
+                            </div>
+                          </td>
+                          <td className="py-5 px-6 bg-white border-y border-gray-50 shadow-sm group-hover:border-emerald-100">
+                            <div className="flex flex-col">
+                              <span className="text-[13px] font-manrope font-bold text-gray-700">{student.course}</span>
+                              <span className="text-[11px] font-manrope font-medium text-gray-400">{student.year_level} Year</span>
+                            </div>
+                          </td>
+                          <td className="py-5 px-6 bg-white border-y border-gray-50 shadow-sm group-hover:border-emerald-100">
+                            <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-[13px] font-black ${
+                              student.violation_count >= 3 ? 'bg-red-50 text-red-600' :
+                              student.violation_count > 0 ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'
+                            }`}>
+                              {student.violation_count}
+                            </div>
+                          </td>
+                          <td className="py-5 px-6 bg-white border-y border-gray-50 shadow-sm group-hover:border-emerald-100">
+                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              status === 'Repeat' ? 'bg-red-50 text-red-600 shadow-sm' :
+                              status === 'Active' ? 'bg-orange-50 text-orange-600 shadow-sm' :
+                              'bg-emerald-50 text-[#0f603c] shadow-sm'
+                            }`}>
+                              {status === 'Repeat' ? 'NON-COMPLIANT' : status === 'Active' ? 'UNDER REVIEW' : 'COMPLIANT'}
+                            </span>
+                          </td>
+                          <td className="py-5 px-6 bg-white border-y border-r border-gray-50 rounded-r-2xl shadow-sm text-right group-hover:border-emerald-100">
+                            <button 
+                              onClick={() => navigate(`/officer/students/${id}`)}
+                              className="text-[12px] font-pjs font-black text-[#005e43] px-5 py-2 hover:bg-emerald-50 rounded-xl transition-all"
+                            >
+                              VIEW PROFILE
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
                   <tr>
                     <td colSpan="6" className="py-20 text-center">
                       <span className="material-symbols-outlined text-[48px] text-gray-200 mb-2">search_off</span>

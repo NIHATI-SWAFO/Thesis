@@ -10,34 +10,38 @@ django.setup()
 from apps.patrols.models import PatrolSession
 from apps.users.models import User
 
-def seed_patrols():
-    officer = User.objects.filter(role='OFFICER').first()
-    if not officer:
-        print("No officer found to assign patrols to.")
+def seed_patrols(n=1500):
+    officers = list(User.objects.filter(role='OFFICER'))
+    if not officers:
+        print("No officers found. Run seed_officers.py first.")
         return
 
-    locations = ['ICTC Building', 'Food Square', 'GMH Building', 'JFH Building', 'West Gate', 'Library']
+    print(f"Clearing existing patrols and seeding {n} sessions across {len(officers)} officers...")
+    PatrolSession.objects.all().delete()
     
-    for i in range(15):
+    locations = ['ICTC Building', 'Food Square', 'GMH Building', 'JFH Building', 'West Gate', 'Library', 'CBAA Lobby', 'Oval']
+    
+    patrols = []
+    for i in range(n):
+        officer = random.choice(officers)
         loc = random.choice(locations)
-        days_ago = random.randint(0, 30)
+        days_ago = random.randint(0, 120)
         start = timezone.now() - timedelta(days=days_ago, hours=random.randint(1, 23))
-        end = start + timedelta(minutes=random.randint(30, 90))
+        duration_mins = random.randint(25, 65)
+        end = start + timedelta(minutes=duration_mins)
         
-        PatrolSession.objects.create(
+        patrols.append(PatrolSession(
             officer=officer,
             location=loc,
             start_time=start,
             end_time=end,
             status='COMPLETED',
-            photos_count=random.randint(2, 12),
-            checkpoints_data=[
-                {"name": "Entrance", "time": (start + timedelta(minutes=5)).strftime("%H:%M"), "status": "secure", "note": "All clear"},
-                {"name": "Hallway", "time": (start + timedelta(minutes=15)).strftime("%H:%M"), "status": "secure", "note": "Lights on"},
-                {"name": "Exit", "time": (start + timedelta(minutes=25)).strftime("%H:%M"), "status": "secure", "note": "Locked"}
-            ]
-        )
-    print(f"Seeded 15 patrol sessions for {officer.full_name}")
+            photos_count=random.randint(4, 15),
+            checkpoints_data=[]
+        ))
+    
+    PatrolSession.objects.bulk_create(patrols)
+    print(f"Successfully seeded {n} patrol sessions.")
 
 if __name__ == '__main__':
     seed_patrols()

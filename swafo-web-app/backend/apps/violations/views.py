@@ -77,6 +77,28 @@ class ViolationAssessmentView(APIView):
                 if different_majors_count > 0:
                     details.append("Note: Student has prior major offenses of a DIFFERENT nature. Final sanction per Section 27.3.5 is at the discretion of the SWAFO Director.")
 
+            # --- 3. Duplicate Detection Logic (24-Hour Temporal Window) ---
+            from django.utils import timezone
+            from datetime import timedelta
+            
+            day_threshold = timezone.now() - timedelta(hours=24)
+            last_identical = Violation.objects.filter(
+                student=student, 
+                rule=rule,
+                timestamp__gte=day_threshold
+            ).order_by('-timestamp').first()
+            
+            is_duplicate = last_identical is not None
+            
+            duplicate_info = None
+            if is_duplicate:
+                duplicate_info = {
+                    "timestamp": last_identical.timestamp,
+                    "location": last_identical.location,
+                    "description": last_identical.description,
+                    "id": last_identical.id
+                }
+
             return Response({
                 "student_name": student.user.full_name,
                 "rule_code": rule.rule_code,
@@ -85,6 +107,8 @@ class ViolationAssessmentView(APIView):
                 "total_minor_count": total_minors,
                 "recommendation": recommendation,
                 "is_repeat_offender": rule_specific_count > 0,
+                "is_duplicate": is_duplicate,
+                "previous_incident": duplicate_info,
                 "is_escalated": is_escalated,
                 "policy_notes": details
             })
@@ -108,6 +132,13 @@ class ViolationListView(generics.ListAPIView):
 
     def get_queryset(self):
         email = self.request.query_params.get('email')
+        student_id = self.request.query_params.get('student_id')
+        
+        queryset = Violation.objects.all()
+        
         if email:
-            return Violation.objects.filter(student__user__email=email).order_by('-timestamp')
-        return Violation.objects.all().order_by('-timestamp')
+            queryset = queryset.filter(student__user__email=email)
+        if student_id:
+            queryset = queryset.filter(student__student_number=student_id)
+            
+        return queryset.order_by('-timestamp')

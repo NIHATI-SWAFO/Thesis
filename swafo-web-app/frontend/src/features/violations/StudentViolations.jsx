@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from "../../context/AuthContext";
+import { API_ENDPOINTS } from "../../api/config";
 
 export default function StudentViolations() {
   const { user } = useAuth();
@@ -9,13 +10,13 @@ export default function StudentViolations() {
 
   useEffect(() => {
     if (user?.email) {
-      fetch(`http://localhost:8000/api/violations/list/?email=${user.email}`)
+      fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?email=${user.email}`)
         .then(res => res.json())
         .then(data => {
           const results = Array.isArray(data) ? data : (data.results || []);
           const transformed = results.map(v => ({
             id: `VR-${new Date(v.timestamp).getFullYear()}-${v.id.toString().padStart(3, '0')}`,
-            status: v.status === 'CLOSED' ? "RESOLVED" : "UNDER REVIEW",
+            status: v.status === 'CLOSED' ? "CLOSED" : "PENDING",
             title: v.rule_details?.rule_code || "General Policy Violation",
             date: new Date(v.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
             time: new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -35,7 +36,7 @@ export default function StudentViolations() {
   }, [user]);
 
   const totalRecords = violations.length;
-  const pendingReview = violations.filter(v => v.status === "UNDER REVIEW").length;
+  const pendingCount = violations.filter(v => v.status === "PENDING").length;
 
   const filteredViolations = useMemo(() => {
     if (filterStatus === 'ALL') return violations;
@@ -43,8 +44,8 @@ export default function StudentViolations() {
   }, [violations, filterStatus]);
 
   const handleFilterClick = () => {
-    if (filterStatus === 'ALL') setFilterStatus('UNDER REVIEW');
-    else if (filterStatus === 'UNDER REVIEW') setFilterStatus('RESOLVED');
+    if (filterStatus === 'ALL') setFilterStatus('PENDING');
+    else if (filterStatus === 'PENDING') setFilterStatus('CLOSED');
     else setFilterStatus('ALL');
   };
 
@@ -85,31 +86,27 @@ export default function StudentViolations() {
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* Total Records */}
+        {/* Pending Actions */}
         <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 flex flex-col justify-between">
           <div>
-            <p className="text-xs font-pjs font-bold text-portal-text-muted/60 uppercase tracking-widest mb-2">Total Records</p>
-            <h2 className="text-[3rem] font-pjs font-bold text-[#006b5d] leading-none tracking-tighter">
-              {totalRecords.toString().padStart(2, '0')}
-            </h2>
-          </div>
-          <div className="flex items-center gap-2 mt-6 text-[#006b5d] text-sm font-manrope font-semibold">
-            <span className="material-symbols-outlined text-[18px]">trending_up</span>
-            All documented instances
-          </div>
-        </div>
-
-        {/* Pending Review */}
-        <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 flex flex-col justify-between">
-          <div>
-            <p className="text-xs font-pjs font-bold text-portal-text-muted/60 uppercase tracking-widest mb-2">Pending Review</p>
-            <h2 className="text-[3rem] font-pjs font-bold text-[#1a1a1a] leading-none tracking-tighter">
-              {pendingReview.toString().padStart(2, '0')}
-            </h2>
+            <p className="text-[12px] font-pjs font-bold text-[#003624]/40 uppercase tracking-widest leading-none mb-1">Pending Actions</p>
+            <h3 className="text-3xl font-bold font-pjs text-[#003624] leading-none">{pendingCount.toString().padStart(2, '0')}</h3>
           </div>
           <div className="flex items-center gap-2 mt-6 text-portal-text-muted/70 text-sm font-manrope font-medium">
             <span className="material-symbols-outlined text-[18px]">hourglass_bottom</span>
-            Currently under administrative assessment
+            Action Required
+          </div>
+        </div>
+
+        {/* Closed History */}
+        <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 flex flex-col justify-between">
+          <div>
+            <p className="text-[12px] font-pjs font-bold text-[#003624]/40 uppercase tracking-widest leading-none mb-1">Closed History</p>
+            <h3 className="text-3xl font-bold font-pjs text-[#003624] leading-none">{closedCount.toString().padStart(2, '0')}</h3>
+          </div>
+          <div className="flex items-center gap-2 mt-6 text-portal-text-muted/70 text-sm font-manrope font-medium">
+            <span className="material-symbols-outlined text-[18px]">verified</span>
+            Resolved
           </div>
         </div>
 
