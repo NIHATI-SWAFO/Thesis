@@ -15,7 +15,25 @@ class ViolationSerializer(serializers.ModelSerializer):
         if not obj.rule:
             return "Pending Review"
             
-        # 1. MINOR OFFENSE LOGIC
+        # --- 1. TRAFFIC OFFENSE LOGIC (Section 27.4) ---
+        if obj.rule.category.strip().startswith("Traffic"):
+            traffic_history = Violation.objects.filter(
+                student=obj.student, 
+                rule__category=obj.rule.category,
+                timestamp__lte=obj.timestamp
+            )
+            traffic_instance = traffic_history.count()
+            
+            if "Minor" in obj.rule.category:
+                if traffic_instance == 1: return "Warning"
+                if traffic_instance == 2: return "Minor Offense + Php 1,000 fine (Escalate to Section 27.1 record)"
+                if traffic_instance == 3: return "Commission of 2nd minor offense + Php 2,000 fine"
+                return "Cancellation of vehicle pass + Commission of 3rd minor offense (Major Risk)"
+            else: # Major Traffic
+                if traffic_instance == 1: return "Major administrative sanction + Php 2,000 fine"
+                return "Major offense + Cancellation of vehicle sticker for 1 Academic Year (Director Case)"
+
+        # --- 2. MINOR OFFENSE LOGIC (Section 27.1) ---
         if obj.rule.category.strip().startswith("Minor"):
             # Protocol: Rule 27.3.1.39 (Habitual Minor - Same Rule Code)
             same_rule_count = Violation.objects.filter(

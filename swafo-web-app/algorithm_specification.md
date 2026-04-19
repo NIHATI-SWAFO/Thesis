@@ -79,6 +79,22 @@ Unlike deterministic escalation, the duplicate detection logic utilizes an **Int
 
 ---
 
+## 5. Traffic Offense Escalation Algorithm
+Traffic violations (Section 27.4) utilize a **Siloed Frequency Aggregation** model that operates independently of the general behavior tables.
+
+### 5.1 Stacking & Silo Logic
+Unlike general behavior rules which stack by specific `rule_code`, traffic violations stack by **Category Grouping**:
+1.  **Group A**: `Traffic — Minor`
+2.  **Group B**: `Traffic — Major`
+
+### 5.2 Hybrid Record Handover
+The algorithm implements a **Cross-Table Handover** mechanism:
+-   **Trigger**: When a student's `Traffic — Minor` count ($T_{minor}$) reaches $2$.
+-   **Action**: The system auto-recommends a **Minor Offense** on the general disciplinary record (Section 27.1).
+-   **Financial Penalty**: The algorithm automatically injects institutional fines based on frequency ($Php 1,000$ or $Php 2,000$).
+
+---
+
 ## Summary of Technical Stack
 - **AI Core**: Google Gemini 1.5 (Pro/Flash)
 - **Embedding Engine**: Gemini Embedding 001

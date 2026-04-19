@@ -32,8 +32,24 @@ class ViolationAssessmentView(APIView):
             recommendation = ""
             is_escalated = False
 
-            # --- 1. MINOR OFFENSE LOGIC ---
-            if rule.category.strip().startswith("Minor"):
+            # --- 1. TRAFFIC OFFENSE LOGIC (Section 27.4) ---
+            if rule.category.strip().startswith("Traffic"):
+                # Traffic violations stack by TYPE (Minor or Major), not just same rule code
+                traffic_history = Violation.objects.filter(student=student, rule__category=rule.category)
+                traffic_instance = traffic_history.count() + 1
+                instance_number = traffic_instance # Update for UI
+                
+                if "Minor" in rule.category:
+                    if traffic_instance == 1: recommendation = "Warning"
+                    elif traffic_instance == 2: recommendation = "Minor Offense + Php 1,000 fine (Escalate to Section 27.1 record)"
+                    elif traffic_instance == 3: recommendation = "Commission of 2nd minor offense + Php 2,000 fine"
+                    else: recommendation = "Cancellation of vehicle pass + Commission of 3rd minor offense (Major Risk)"
+                else: # Major Traffic
+                    if traffic_instance == 1: recommendation = "Major administrative sanction + Php 2,000 fine"
+                    else: recommendation = "Major offense + Cancellation of vehicle sticker for 1 Academic Year (Director Case)"
+
+            # --- 2. MINOR OFFENSE LOGIC (Standard Section 27.1) ---
+            elif rule.category.strip().startswith("Minor"):
                 same_rule_count = Violation.objects.filter(student=student, rule=rule).count()
                 if same_rule_count >= 2: # This would be the 3rd+ instance
                     recommendation = "MAJOR ESCALATION: 27.3.1.39 (Habitual Minor Offense)"
@@ -49,7 +65,10 @@ class ViolationAssessmentView(APIView):
                         elif current_minor_count == 2: recommendation = rule.penalty_2nd or "First Minor Offense"
                         else: recommendation = rule.penalty_3rd or "Second Minor Offense"
 
-            # --- 2. MAJOR OFFENSE LOGIC ---
+                # Instance number for the UI (SAME RULE ONLY)
+                instance_number = same_rule_count + 1
+
+            # --- 3. MAJOR OFFENSE LOGIC (Standard Section 27.3) ---
             else:
                 prev_majors = Violation.objects.filter(student=student, rule__category__startswith="Major")
                 
@@ -70,16 +89,15 @@ class ViolationAssessmentView(APIView):
                         elif count == 3: recommendation = rule.penalty_3rd
                         elif count == 4: recommendation = rule.penalty_4th
                         else: recommendation = rule.penalty_5th or rule.penalty_4th or "Sanction 4: Non-readmission"
+                
+                # Instance number for the UI (SAME RULE ONLY)
+                instance_number = prev_majors.filter(rule=rule).count() + 1
 
-            # --- 3. Duplicate Detection Logic ---
+            # --- 4. Duplicate Detection Logic ---
             from django.utils import timezone
             from datetime import timedelta
             day_threshold = timezone.now() - timedelta(hours=24)
             last_identical = Violation.objects.filter(student=student, rule=rule, timestamp__gte=day_threshold).order_by('-timestamp').first()
-            
-            # Instance number for the UI (SAME RULE ONLY)
-            same_rule_count = Violation.objects.filter(student=student, rule=rule).count()
-            instance_number = same_rule_count + 1
 
             return Response({
                 "student_name": student.user.full_name,
