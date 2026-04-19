@@ -15,41 +15,68 @@ class ViolationSerializer(serializers.ModelSerializer):
         if not obj.rule:
             return "Pending Review"
             
-        # 1. MINOR OFFENSE ESCALATION LOGIC (Category starts with 'Minor')
+        # 1. MINOR OFFENSE LOGIC
         if obj.rule.category.strip().startswith("Minor"):
-            # We count all violations in the SAME CATEGORY for minor offenses
-            count = Violation.objects.filter(
+            # Protocol: Rule 27.3.1.39 (Habitual Minor - Same Rule Code)
+            same_rule_count = Violation.objects.filter(
                 student=obj.student,
-                rule__category=obj.rule.category,
+                rule=obj.rule,
                 timestamp__lte=obj.timestamp
             ).count()
             
-            if count == 1: return "Written Warning (Institutional Advice issued)"
-            if count == 2: return "First Minor Offense (Official Case Indexing + Formal Warning)"
-            if count == 3: return "Second Minor Offense (Parental/Guardian Notification required)"
-            
-            # 4th Minor and beyond = Major Escalation
-            escalation_level = count - 3
-            if escalation_level == 1: return "MAJOR ESCALATION: Sanction 1 (Probation - 1 Year)"
-            if escalation_level == 2: return "MAJOR ESCALATION: Sanction 2 (Suspension - 3-5 school days)"
-            if escalation_level == 3: return "MAJOR ESCALATION: Sanction 3 (Suspension - 6-12 school days)"
-            return "CRITICAL ESCALATION: Sanction 4 (Non-readmission recommended)"
-            
-        # 2. MAJOR OFFENSE LOGIC (Global Major Category Frequency)
-        # We use the TOTAL MAJOR COUNT as an index to select the CORRECT COLUMN for this specific rule.
-        total_major_count = Violation.objects.filter(
-            student=obj.student,
-            rule__category__startswith="Major",
-            timestamp__lte=obj.timestamp
-        ).count()
+            if same_rule_count >= 3:
+                return "MAJOR ESCALATION: 27.3.1.39 (Habitual Minor Offense)"
 
-        if total_major_count == 1: return obj.rule.penalty_1st or "Sanction 1: Probation (1 year)"
-        if total_major_count == 2: return obj.rule.penalty_2nd or "Sanction 2: Suspension (3–5 school days)"
-        if total_major_count == 3: return obj.rule.penalty_3rd or "Sanction 3: Suspension (6–12 school days)"
-        if total_major_count == 4: return obj.rule.penalty_4th or "Sanction 4: Non-readmission"
-        
-        # 5th and beyond
-        return obj.rule.penalty_5th or obj.rule.penalty_4th or "Sanction 4: Non-readmission"
+            # Protocol: Rule 27.3.1.43 (Third Minor - Any Minor Rule)
+            total_minor_count = Violation.objects.filter(
+                student=obj.student,
+                rule__category__startswith="Minor",
+                timestamp__lte=obj.timestamp
+            ).count()
+
+            if total_minor_count >= 3:
+                return "MAJOR ESCALATION: 27.3.1.43 (Third Minor Offense - Sanction 1)"
+
+            if total_minor_count == 1: return obj.rule.penalty_1st or "Written Warning"
+            if total_minor_count == 2: return obj.rule.penalty_2nd or "First Minor Offense"
+            return obj.rule.penalty_3rd or "Second Minor Offense"
+
+        # 2. MAJOR OFFENSE LOGIC
+        if obj.rule.category.strip().startswith("Major"):
+            # Get all previous Major violations BEFORE this one
+            prev_majors = Violation.objects.filter(
+                student=obj.student,
+                rule__category__startswith="Major",
+                timestamp__lt=obj.timestamp
+            )
+            
+            if not prev_majors.exists():
+                # 1st Major ever - use rule-specific starting sanction
+                return obj.rule.penalty_1st or "Sanction 1: Probation (1 year)"
+            
+            # Protocol 27.3.5: Check for "Different Nature" (Different Rule Codes)
+            # If any previous major violation has a different rule code than this one
+            different_nature_exists = prev_majors.exclude(rule=obj.rule).exists()
+            
+            if different_nature_exists:
+                # Institutional Handoff: Section 27.3.5 requires Director Decision
+                return "FOR SWAFO DIRECTOR DECISION (Section 27.3.5 - Different Nature)"
+            
+            # If we are here, it's the SAME major rule repeating (e.g., Smoking #2)
+            # Use total major count as the index into the rule's penalty table
+            total_major_count = Violation.objects.filter(
+                student=obj.student,
+                rule__category__startswith="Major",
+                timestamp__lte=obj.timestamp
+            ).count()
+
+            if total_major_count == 1: return obj.rule.penalty_1st
+            if total_major_count == 2: return obj.rule.penalty_2nd
+            if total_major_count == 3: return obj.rule.penalty_3rd
+            if total_major_count == 4: return obj.rule.penalty_4th
+            return obj.rule.penalty_5th or obj.rule.penalty_4th or "Sanction 4: Non-readmission"
+
+        return "Standard Advisory Issued"
 
     def get_officer_name(self, obj):
         if obj.officer:
