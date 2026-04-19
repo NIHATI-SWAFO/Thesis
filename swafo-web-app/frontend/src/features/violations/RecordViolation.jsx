@@ -28,8 +28,21 @@ export default function RecordViolation() {
   const [smartSearchLoading, setSmartSearchLoading] = useState(false);
   const [smartSearchResults, setSmartSearchResults] = useState([]);
   const [searchMode, setSearchMode] = useState('smart'); // 'smart' or 'manual'
+  const [locationSearchQuery, setLocationSearchQuery] = useState('');
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const locationRef = useRef(null);
   const fileInputRef = useRef(null);
   const resultRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (locationRef.current && !locationRef.current.contains(event.target)) {
+        setShowLocationDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const fetchRules = async () => {
@@ -203,6 +216,48 @@ export default function RecordViolation() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const CAMPUS_LOCATIONS = {
+    "EAST CAMPUS": [
+      "Rotunda (St. La Salle Marker)", "Magdalo Gate", "Magtagumpay Gate", "Magpuri Gate", 
+      "La Porteria De San Benildo", "Lumina Bridge", "ICTC Building", "Mariano Alvarez Hall", 
+      "Purificacion Borromeo Hall", "Paulo Campos Hall (PCH)", "Julian Felipe Hall (JFH)", 
+      "Fe Del Mundo Hall", "Ayuntamiento De Gonzalez", "Doña Marcela Agoncillo Hall", 
+      "Centennial Hall", "Severino De Las Alas Hall (Alumni Building)", "Study Shed", 
+      "Aklatang Emilio Aguinaldo (Annex Building)", "Aklatang Emilio Aguinaldo (Old Building)", 
+      "Residencia La Salle", "Ladies Dormitory Complex", "Men's Dormitory Complex", 
+      "Residencia Garage", "Guest House", "Antonio & Victoria Cojuangco Memorial Chapel", 
+      "Museo De La Salle", "Museo Pavilion", "Mila's Diner", "University Food Square", 
+      "Campus Gourmet", "Botanical Garden Park", "Batibot Student Lounge", "Hotel Rafael", 
+      "CTHM Food Laboratory Building", "Transportation Building"
+    ],
+    "WEST CAMPUS": [
+      "Gregoria Montoya Hall", "CTH Building", "FCH Building", "LDH Building", 
+      "Vito Belarmino Hall", "MTH Building - 1", "MTH Building - 2", "Gregoria De Jesus Hall", 
+      "SAH Building", "Kasipagan Hall", "Maria Salome Llanera Hall", 
+      "Reception Hall / National Bookstore (HS)", "High School Building 1", 
+      "High School Building 2", "High School Covered Court", "MTH Covered Court", 
+      "Oval", "Grandstand", "Olympic Size Swimming Pool", "Shower and Dressing Room Building", 
+      "Cafeteria (Main)", "Cafeteria (HS Area)", "POLCA Office", "Campus Sustainability Office", 
+      "Sewage Treatment Plant", "Ecology Center", "Ugnayang La Salle", "KABALIKAT ng DLSU-D", 
+      "Bahay Pag-asa", "Retreat & Conference Center", "Magdalo (Gate 1)", "Magpuri (Gate 2)", 
+      "Magdiwang (Gate 3)", "Magtagumpay (Gate 4)"
+    ]
+  };
+
+  const filteredLocations = () => {
+    const query = locationSearchQuery.toLowerCase();
+    if (!query) return CAMPUS_LOCATIONS;
+    
+    const filtered = {};
+    Object.keys(CAMPUS_LOCATIONS).forEach(campus => {
+      const matches = CAMPUS_LOCATIONS[campus].filter(loc => 
+        loc.toLowerCase().includes(query)
+      );
+      if (matches.length > 0) filtered[campus] = matches;
+    });
+    return filtered;
   };
 
   return (
@@ -403,11 +458,61 @@ export default function RecordViolation() {
                   </div>
                 </div>
 
-                <div>
+                <div className="relative" ref={locationRef}>
                   <label className="block text-[11px] font-black text-[#003624]/40 uppercase tracking-[0.2em] mb-3">Precise Location</label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-[20px]">share_location</span>
-                    <input type="text" name="location" placeholder="e.g. JFH 4th Floor Corridor" value={formData.location} onChange={handleInputChange} className="w-full bg-slate-50 border-none rounded-2xl h-[64px] pl-12 pr-4 text-[14px] font-bold text-slate-700 outline-none focus:bg-white focus:ring-4 ring-emerald-50 transition-all" />
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors">share_location</span>
+                    <input 
+                      type="text" 
+                      name="location" 
+                      placeholder="Search campus building or gate..." 
+                      value={locationSearchQuery || formData.location} 
+                      onFocus={() => setShowLocationDropdown(true)}
+                      onChange={(e) => {
+                        setLocationSearchQuery(e.target.value);
+                        setFormData(prev => ({ ...prev, location: e.target.value }));
+                        setShowLocationDropdown(true);
+                      }} 
+                      className="w-full bg-slate-50 border-2 border-transparent rounded-2xl h-[64px] pl-14 pr-4 text-[14px] font-bold text-slate-700 outline-none focus:bg-white focus:border-emerald-100 focus:shadow-lg focus:shadow-emerald-950/5 transition-all" 
+                    />
+                    {showLocationDropdown && (
+                      <div className="absolute top-[75px] left-0 right-0 z-[120] bg-white rounded-3xl shadow-[0_30px_100px_rgba(0,0,0,0.15)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
+                        <div className="max-h-[350px] overflow-y-auto custom-scrollbar-emerald">
+                          {Object.keys(filteredLocations()).length > 0 ? (
+                            Object.entries(filteredLocations()).map(([campus, items]) => (
+                              <div key={campus}>
+                                <div className="bg-slate-50/50 px-6 py-2 border-y border-slate-100">
+                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{campus}</p>
+                                </div>
+                                {items.map(loc => (
+                                  <button 
+                                    key={loc}
+                                    onClick={() => {
+                                      setFormData(prev => ({ ...prev, location: loc }));
+                                      setLocationSearchQuery(loc);
+                                      setShowLocationDropdown(false);
+                                    }}
+                                    className="w-full px-6 py-4 hover:bg-emerald-50 text-left text-[14px] font-bold text-slate-600 transition-all border-b border-slate-50 last:border-0"
+                                  >
+                                    {loc}
+                                  </button>
+                                ))}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-8 text-center">
+                               <p className="text-[13px] font-bold text-slate-400 italic mb-2">Location not in directory</p>
+                               <button 
+                                 onClick={() => setShowLocationDropdown(false)}
+                                 className="text-[11px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-4 py-2 rounded-lg"
+                               >
+                                 Use Manual Entry: "{locationSearchQuery}"
+                               </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
