@@ -35,18 +35,18 @@ class ViolationSerializer(serializers.ModelSerializer):
             if escalation_level == 3: return "MAJOR ESCALATION: Sanction 3 (Suspension - 6-12 school days)"
             return "CRITICAL ESCALATION: Sanction 4 (Non-readmission recommended)"
             
-        # 2. MAJOR OFFENSE LOGIC (Specific Rule Frequency)
-        # Major offenses NEVER have written warnings. They start at Sanction 1 or 2.
-        specific_count = Violation.objects.filter(
+        # 2. MAJOR OFFENSE LOGIC (Cumulative Category Frequency)
+        # Major offenses stack regardless of the specific rule (e.g., 1st Major = S1, 2nd Major = S2)
+        count = Violation.objects.filter(
             student=obj.student,
-            rule=obj.rule,
+            rule__category=obj.rule.category,
             timestamp__lte=obj.timestamp
         ).count()
 
-        if specific_count == 1: return obj.rule.penalty_1st or "Sanction 1: Probation (1 year)"
-        if specific_count == 2: return obj.rule.penalty_2nd or "Sanction 2: Suspension (3–5 school days)"
-        if specific_count == 3: return obj.rule.penalty_3rd or "Sanction 3: Suspension (6–12 school days)"
-        if specific_count == 4: return obj.rule.penalty_4th or "Sanction 4: Non-readmission"
+        if count == 1: return obj.rule.penalty_1st or "Sanction 1: Probation (1 year)"
+        if count == 2: return obj.rule.penalty_2nd or "Sanction 2: Suspension (3–5 school days)"
+        if count == 3: return obj.rule.penalty_3rd or "Sanction 3: Suspension (6–12 school days)"
+        if count == 4: return obj.rule.penalty_4th or "Sanction 4: Non-readmission"
         return obj.rule.penalty_5th or "Sanction 5: Exclusion"
 
     def get_officer_name(self, obj):
