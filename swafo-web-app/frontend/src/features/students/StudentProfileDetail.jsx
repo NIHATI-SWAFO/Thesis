@@ -209,7 +209,7 @@ export default function StudentProfileDetail() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-12">
                         <HistoryColumn label="HANDBOOK RULE" value={`${item.rule_details?.rule_code}: ${item.rule_details?.description}`} />
-                        <HistoryColumn label="CORRECTIVE ACTION" value={item.corrective_action || 'Pending assessment'} />
+                        <HistoryColumn label="CORRECTIVE ACTION" value={item.prescribed_sanction || item.corrective_action || 'Institutional Review'} />
                         <HistoryColumn label="REPORTING OFFICER" value={item.officer_name || 'Institutional Authority'} />
                       </div>
                     </div>
