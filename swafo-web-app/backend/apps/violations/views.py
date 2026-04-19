@@ -45,14 +45,14 @@ class ViolationAssessmentView(APIView):
                     elif traffic_instance == 3: recommendation = "Commission of 2nd minor offense + Php 2,000 fine"
                     else: recommendation = "Cancellation of vehicle pass + Commission of 3rd minor offense (Major Risk)"
                 else: # Major Traffic
-                    # 1st instance or more: ALWAYS check if they have OTHER major offenses on record
-                    std_majors_count = Violation.objects.filter(student=student, rule__category__startswith="Major").count()
-                    
-                    if std_majors_count > 0:
-                        recommendation = "REFER TO SWAFO DIRECTOR (Section 27.3.5 - Different Nature: Major Traffic + Existing Disciplinary Major)"
+                    if traffic_instance == 1:
+                        recommendation = "Major administrative sanction + Php 2,000 fine"
                     else:
-                        if traffic_instance == 1:
-                            recommendation = "Major administrative sanction + Php 2,000 fine"
+                        # 2nd Major Traffic formally becomes a 'Major Offense' on the student's record
+                        # CROSS-CHECK: Does the student have OTHER existing major offenses?
+                        std_majors_count = Violation.objects.filter(student=student, rule__category__startswith="Major").count()
+                        if std_majors_count > 0:
+                            recommendation = "REFER TO SWAFO DIRECTOR (Section 27.3.5 - Different Nature: Traffic Major + Existing Disciplinary Major)"
                         else:
                             recommendation = "Major offense + Cancellation of vehicle sticker for 1 Academic Year"
 
