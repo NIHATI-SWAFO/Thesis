@@ -521,6 +521,49 @@ export default function RecordViolation() {
                   <textarea name="description" rows="4" placeholder="Objectively describe the observed behavior and situational factors..." value={formData.description} onChange={handleInputChange} className="w-full bg-slate-50 border-none rounded-[2rem] p-6 text-[15px] font-medium text-slate-600 outline-none focus:bg-white focus:ring-4 ring-emerald-50 transition-all resize-none leading-relaxed" />
                 </div>
 
+                {/* Evidence & Media Upload */}
+                <div>
+                  <label className="block text-[11px] font-black text-[#003624]/40 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px]">attachment</span>
+                    Incident Evidence & Media
+                  </label>
+                  <div className="space-y-4">
+                    <input 
+                      type="file" 
+                      multiple 
+                      className="hidden" 
+                      ref={fileInputRef}
+                      onChange={(e) => setEvidenceFiles(prev => [...prev, ...Array.from(e.target.files)])}
+                    />
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-[120px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center justify-center gap-2 hover:border-emerald-400 hover:bg-emerald-50/30 transition-all group"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-400 group-hover:text-emerald-500 transition-colors">
+                        <span className="material-symbols-outlined">add_a_photo</span>
+                      </div>
+                      <span className="text-[12px] font-bold text-slate-400 group-hover:text-emerald-600">Attach Evidence Files (Photos, Docs)</span>
+                    </button>
+
+                    {evidenceFiles.length > 0 && (
+                      <div className="flex flex-wrap gap-3">
+                        {evidenceFiles.map((file, idx) => (
+                          <div key={idx} className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2 flex items-center gap-3 animate-in zoom-in-95">
+                            <span className="material-symbols-outlined text-[18px] text-emerald-600">image</span>
+                            <span className="text-[11px] font-black text-emerald-800 truncate max-w-[150px] uppercase tracking-tight">{file.name}</span>
+                            <button 
+                              onClick={() => setEvidenceFiles(prev => prev.filter((_, i) => i !== idx))}
+                              className="w-5 h-5 rounded-full bg-emerald-200 text-emerald-800 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">close</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {!assessment && (
                   <button onClick={handleGenerateRecommendation} disabled={isGenerating || !foundStudent || !formData.violationType} className="w-full h-[72px] bg-[#003624] text-white rounded-[2rem] font-black text-[15px] hover:bg-[#004d35] transition-all flex items-center justify-center gap-4 shadow-[0_20px_60px_rgba(0,54,36,0.2)] active:scale-[0.98] disabled:opacity-30 tracking-[0.1em]">
                     {isGenerating ? <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" /> : <><span className="material-symbols-outlined text-[24px] text-emerald-400">psychology</span> RUN ASSESSMENT ENGINE</>}
