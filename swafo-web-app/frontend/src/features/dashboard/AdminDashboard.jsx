@@ -44,8 +44,9 @@ export default function AdminDashboard() {
             { name: "Elias Velez", reports: 25, id: "OFF-ELI", status: "Active" }
           ],
           temporal: [
-            { day: 'MON', value: 12 }, { day: 'TUE', value: 18 }, { day: 'WED', value: 24 },
-            { day: 'THU', value: 15 }, { day: 'FRI', value: 21 }, { day: 'SAT', value: 8 }, { day: 'SUN', value: 4 }
+            { day: 'TUE', value: 18 }, { day: 'WED', value: 24 }, { day: 'THU', value: 15 }, 
+            { day: 'FRI', value: 21 }, { day: 'SAT', value: 8 }, { day: 'SUN', value: 4 }, 
+            { day: 'MON', value: 12 }
           ],
           byCollege: [
             { name: "Engineering", count: 45 },

@@ -28,12 +28,23 @@ class AdminDashboardAPIView(APIView):
                 count=Count('id')
             ).order_by('-count')[:5]
 
-            # 3. Temporal Trends (Last 7 Days)
+            # 3. Temporal Trends (Rolling Last 7 Days)
             temporal_data = []
-            days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
-            for i in range(7):
-                day_count = Violation.objects.filter(timestamp__week_day=(i+2)%7 or 7).count()
-                temporal_data.append({"day": days[i], "value": day_count})
+            day_names = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+            
+            # Django week_day is 1 (Sun) to 7 (Sat)
+            # Standard index for day_names is 0 (Mon) to 6 (Sun)
+            today_idx = timezone.localtime(timezone.now()).weekday() # 0 is Mon
+            
+            for i in range(6, -1, -1): # From 6 days ago to today
+                target_date = timezone.localtime(timezone.now()).date() - timezone.timedelta(days=i)
+                day_label = day_names[target_date.weekday()]
+                
+                day_count = Violation.objects.filter(
+                    timestamp__date=target_date
+                ).count()
+                
+                temporal_data.append({"day": day_label, "value": day_count})
 
             # 4. Violations by College
             by_college = Violation.objects.values('student__course').annotate(
@@ -108,13 +119,19 @@ class OfficerDashboardAPIView(APIView):
                 v_count=Count('violations')
             ).filter(v_count__gt=1).count()
 
-            # 2. Violations Over Time (Last 7 Days)
-            # Grouping by Day of Week
+            # 2. Violations Over Time (Rolling Last 7 Days)
             temporal_data = []
-            days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
-            for i in range(7):
-                day_count = Violation.objects.filter(timestamp__week_day=(i+2)%7 or 7).count() # Django week_day is 1 (Sun) to 7 (Sat)
-                temporal_data.append({"day": days[i], "value": day_count})
+            day_names = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+            
+            for i in range(6, -1, -1): # From 6 days ago to today
+                target_date = local_now.date() - timezone.timedelta(days=i)
+                day_label = day_names[target_date.weekday()]
+                
+                day_count = Violation.objects.filter(
+                    timestamp__date=target_date
+                ).count()
+                
+                temporal_data.append({"day": day_label, "value": day_count})
 
             # 3. Violations by Type (Top 4)
             violations_by_type = Violation.objects.values('rule__category').annotate(
