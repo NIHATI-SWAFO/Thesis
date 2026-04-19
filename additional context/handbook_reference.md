@@ -593,6 +593,20 @@ TRAFFIC OFFENSE
 | Any major offense | Mandatory enrollment in Formation Program |
 | Sanction served | Certificate of Good Moral Character after Formation Program |
 
+
+New major violation encoded
+         ↓
+Is this the SAME rule code as a previous violation?
+         ├── YES → Count frequency → follow that rule's sanction table
+         │         Auto-recommend next sanction level
+         │
+         └── NO → Different rule code (even same category)
+                  → Flag: "Refer to SWAFO Director per Section 27.3.5"
+                  → System cannot auto-recommend
+                  → Display all existing violations for Director's reference
+
+
+
 ---
 
 ### Duplicate Case Detection Rules
@@ -627,6 +641,163 @@ TRAFFIC OFFENSE
 | Committee on Decorum and Investigation | CODI | Handles gender-based harassment and sexual offense cases (CHED CMO 3 s.2022) |
 | General Services Office | GSO | Implements and monitors traffic rules; coordinates with SWAFO |
 | Office of the University Registrar | OUR | Issues new IDs; receives clearance forms |
+
+
+
+---
+ 
+# Section 27.4 — Traffic-Related Offenses
+> Source: DLSU-D Student Handbook SY 2023–2027, Pages 73–74
+> For use in: SWAFO Violation Management Web App — Violation Encoding Module
+ 
+---
+ 
+## Overview
+ 
+Traffic-related offenses are a **separate classification** from minor and major offenses. They are monitored and implemented by the **General Services Office (GSO)** and coordinated with SWAFO for decision and resolution, and with the Accounting Office for payment of fines.
+ 
+Traffic violations have their **own escalation tables** independent of the general minor/major offense frequency tables in Section 27.1 and 27.3.
+ 
+---
+ 
+## 27.4.2 — Minor Traffic Violations
+ 
+### Sanction Escalation Table
+ 
+| Offense Count | Sanction |
+|---|---|
+| First | Warning |
+| Second | Minor Offense + Php 1,000 fine |
+| Third | Commission of 2nd minor offense + Php 2,000 fine |
+| Fourth | Cancellation of vehicle pass + Commission of 3rd minor offense |
+ 
+> Important: "Minor Offense" here refers to a minor offense entry on the student's discipline record — it feeds into the general minor offense counter (Section 27.1 escalation rules apply).
+ 
+### List of Minor Traffic Violations
+ 
+| Code | Violation |
+|---|---|
+| 27.4.2.2.1 | Inappropriate blowing of horns |
+| 27.4.2.2.2 | Illegal parking |
+| 27.4.2.2.3 | Driving without seatbelt |
+| 27.4.2.2.4 | With disturbing vehicle alarm |
+| 27.4.2.2.5 | Overloading / pick-up and drop-off beyond designated areas |
+| 27.4.2.2.6 | Heavily tinted vehicle |
+ 
+---
+ 
+## 27.4.3 — Major Traffic Violations
+ 
+### Sanction Escalation Table
+ 
+| Offense Count | Sanction | Formal Discipline Record? |
+|---|---|---|
+| First | **Major administrative sanction** + Php 2,000 fine | ❌ No — traffic record only |
+| Second | **Major offense** + Cancellation of vehicle sticker for one Academic Year | ✅ Yes — formal discipline record |
+ 
+> **Critical distinction — the handbook uses two different terms deliberately:**
+>
+> - **1st offense = "Major administrative sanction"** — This is an internal administrative action handled by GSO and SWAFO. It is recorded as a traffic violation but does NOT formally appear as a major offense on the student's discipline record. It does NOT trigger the Section 26 discipline procedure, does NOT trigger Section 27.3.5, and does NOT require the Formation Program.
+>
+> - **2nd offense = "Major offense"** — This formally enters the student's discipline record as a major offense. It NOW triggers Section 27.3.5 if the student has other existing major offenses on record, NOW requires the Formation Program, and NOW subjects the student to the full Section 26 discipline procedure.
+ 
+### List of Major Traffic Violations
+ 
+| Code | Violation |
+|---|---|
+| 27.4.3.2.1 | Driving without license |
+| 27.4.3.2.2 | Reckless driving |
+| 27.4.3.2.3 | Driving under the influence of liquor or drugs |
+| 27.4.3.2.4 | Vehicle with movable transferred/fake (movable) DLSU-D-issued car sticker |
+| 27.4.3.2.5 | Vehicle with obscene car sticker/s |
+| 27.4.3.2.6 | Vehicle without registered plate number except those with conduction sticker |
+| 27.4.3.2.7 | Driving motorcycles with no plate number and no official receipt |
+| 27.4.3.2.8 | Vehicle loud muffler |
+| 27.4.3.2.9 | Smoke belching |
+| 27.4.3.2.10 | Over speeding |
+| 27.4.3.2.11 | Idling (more than 3 minutes) |
+| 27.4.3.2.12 | Disregarding road signs |
+| 27.4.3.2.13 | Obstruction of traffic which includes but not limited to, lowered cars and parking along the roadside |
+ 
+---
+ 
+## System Logic Notes for Development
+ 
+### Stacking Rules — How Traffic Violations Are Counted
+ 
+| Traffic Type | Stacks across different codes? | Counter type |
+|---|---|---|
+| Minor traffic | ✅ Yes — combined counter across all minor traffic codes | Single running total |
+| Major traffic | ✅ Yes — combined counter across all major traffic codes | Single running total |
+ 
+> Rationale: The handbook tables say "First, Second, Third, Fourth" offense — not "First of this specific code." Traffic violations use a unified counter per tier, not per violation code.
+ 
+---
+ 
+### Corrective Action Engine — Traffic Violations
+ 
+```
+New traffic violation encoded
+         ↓
+Is it Minor or Major traffic?
+         │
+         ├── MINOR TRAFFIC
+         │     ↓
+         │   Count ALL prior minor traffic violations (any code)
+         │     ├── 0 prior → Warning
+         │     │             ❌ Does NOT go on formal discipline record
+         │     │
+         │     ├── 1 prior → Minor Offense on record + Php 1,000 fine
+         │     │             ✅ Feeds into general minor offense counter (27.1)
+         │     │
+         │     ├── 2 prior → 2nd minor offense on record + Php 2,000 fine
+         │     │             ✅ Feeds into general minor offense counter (27.1)
+         │     │
+         │     └── 3 prior → Cancel vehicle pass + 3rd minor offense on record
+         │                   ✅ Feeds into general minor offense counter (27.1)
+         │                   ⚠️ Check if this triggers 27.3.1.43 (3rd minor = major)
+         │
+         └── MAJOR TRAFFIC
+               ↓
+             Count ALL prior major traffic violations (any code)
+               │
+               ├── 0 prior → Major administrative sanction + Php 2,000 fine
+               │             ❌ Does NOT go on formal discipline record
+               │             ❌ Does NOT trigger Section 27.3.5
+               │             ❌ Does NOT require Formation Program
+               │             ✅ Record on traffic log only
+               │
+               └── 1 prior → Major offense on record + Cancel vehicle sticker (1 AY)
+                             ✅ NOW goes on formal discipline record
+                             ✅ NOW requires Formation Program
+                             ⚠️ Cross-check student's full discipline record
+                                If other major offenses exist on record
+                                → Flag: Refer to SWAFO Director per Section 27.3.5
+```
+ 
+---
+ 
+### Key Flags to Implement
+ 
+| Condition | System Action | Formal Record? |
+|---|---|---|
+| Minor traffic 1st offense | Warning only | ❌ No |
+| Minor traffic 2nd offense | Minor offense on record + Php 1,000 fine — notify Accounting | ✅ Yes |
+| Minor traffic 3rd offense | 2nd minor offense on record + Php 2,000 fine — notify Accounting | ✅ Yes |
+| Minor traffic 4th offense | Cancel vehicle pass + 3rd minor offense on record — check 27.3.1.43 trigger | ✅ Yes |
+| Major traffic 1st offense | Major admin sanction + Php 2,000 fine — notify Accounting + GSO + SWAFO | ❌ Traffic log only |
+| Major traffic 2nd offense | Major offense on record + Cancel vehicle sticker 1 AY — notify all offices | ✅ Yes |
+| Major traffic 2nd offense + existing major offenses on record | Flag: SWAFO Director decides per Section 27.3.5 | ✅ Yes |
+ 
+---
+ 
+### Offices Involved in Traffic Violations
+ 
+| Office | Role |
+|---|---|
+| GSO (General Services Office) | Implements and monitors traffic rules; primary enforcer on all traffic violations |
+| SWAFO | Decision and resolution on discipline side; formally handles 2nd major traffic offense |
+| Accounting Office | Processes fine payment for all traffic violations with monetary sanctions |
 
 ---
 
