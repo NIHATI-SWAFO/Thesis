@@ -77,9 +77,9 @@ class ViolationAssessmentView(APIView):
             day_threshold = timezone.now() - timedelta(hours=24)
             last_identical = Violation.objects.filter(student=student, rule=rule, timestamp__gte=day_threshold).order_by('-timestamp').first()
             
-            # Instance number for the UI (Total Major Count + 1)
-            total_major_count = Violation.objects.filter(student=student, rule__category__startswith="Major").count()
-            instance_number = total_major_count + 1
+            # Instance number for the UI (SAME RULE ONLY)
+            same_rule_count = Violation.objects.filter(student=student, rule=rule).count()
+            instance_number = same_rule_count + 1
 
             return Response({
                 "student_name": student.user.full_name,
