@@ -29,6 +29,7 @@ export default function RecordViolation() {
   const [smartSearchResults, setSmartSearchResults] = useState([]);
   const [searchMode, setSearchMode] = useState('smart'); // 'smart' or 'manual'
   const fileInputRef = useRef(null);
+  const resultRef = useRef(null);
 
   useEffect(() => {
     const fetchRules = async () => {
@@ -123,6 +124,9 @@ export default function RecordViolation() {
       if (response.ok) {
         const data = await response.json();
         setAssessment(data);
+        setTimeout(() => {
+          resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
       }
     } catch (error) {
       console.error("Assessment failed:", error);
@@ -505,7 +509,7 @@ export default function RecordViolation() {
 
       {/* ASSESSMENT RESULT - PREMIUM OVERLAY */}
       {assessment && (
-        <div className="bg-[#003624] rounded-[4rem] p-12 text-white shadow-[0_50px_120px_rgba(0,0,0,0.4)] animate-in slide-in-from-bottom-12 duration-700 border-4 border-white/5 relative overflow-hidden mb-12">
+        <div ref={resultRef} className="bg-[#003624] rounded-[4rem] p-12 text-white shadow-[0_50px_120px_rgba(0,0,0,0.4)] animate-in slide-in-from-bottom-12 duration-700 border-4 border-white/5 relative overflow-hidden mb-12">
           <div className="absolute top-0 right-0 p-12 opacity-5 scale-[2] pointer-events-none">
              <span className="material-symbols-outlined text-[150px]">gavel</span>
           </div>
