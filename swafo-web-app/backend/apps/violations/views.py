@@ -55,7 +55,11 @@ class ViolationAssessmentView(APIView):
                     recommendation = "MAJOR ESCALATION: 27.3.1.39 (Habitual Minor Offense)"
                     is_escalated = True
                 else:
-                    total_minors = Violation.objects.filter(student=student, rule__category__startswith="Minor").count()
+                    # TALLY: Standard Minors + Escalated Traffic Minors (Instance 2+)
+                    std_minors = Violation.objects.filter(student=student, rule__category__startswith="Minor").count()
+                    escalated_traffic = Violation.objects.filter(student=student, rule__category="Traffic — Minor").count()
+                    total_minors = std_minors + max(0, escalated_traffic - 1)
+                    
                     if total_minors >= 2: # This would be the 3rd+ total minor
                         recommendation = "MAJOR ESCALATION: 27.3.1.43 (Third Minor Offense - Sanction 1)"
                         is_escalated = True
@@ -70,20 +74,26 @@ class ViolationAssessmentView(APIView):
 
             # --- 3. MAJOR OFFENSE LOGIC (Standard Section 27.3) ---
             else:
-                prev_majors = Violation.objects.filter(student=student, rule__category__startswith="Major")
+                # TALLY: Standard Majors + Escalated Traffic Majors (Instance 2+)
+                std_majors = Violation.objects.filter(student=student, rule__category__startswith="Major")
+                escalated_traffic_majors_count = max(0, Violation.objects.filter(student=student, rule__category="Traffic — Major").count() - 1)
                 
-                if not prev_majors.exists():
+                # Check for "Different Nature" (Section 27.3.5)
+                # If they have ANY escalated traffic major OR any other standard major, it's different nature
+                has_history = std_majors.exists() or escalated_traffic_majors_count > 0
+                
+                if not has_history:
                     # 1st Major ever
                     recommendation = rule.penalty_1st or "Sanction 1: Probation (1 year)"
                 else:
-                    # Check for "Different Nature" (Section 27.3.5)
-                    different_nature_exists = prev_majors.exclude(rule=rule).exists()
+                    # Check if the ONLY history is the exact same rule
+                    only_same_rule = std_majors.filter(rule=rule).count() == std_majors.count() and escalated_traffic_majors_count == 0
                     
-                    if different_nature_exists:
+                    if not only_same_rule:
                         recommendation = "REFER TO SWAFO DIRECTOR (Section 27.3.5 - Different Nature)"
                     else:
                         # Same rule repeating
-                        count = prev_majors.count() + 1
+                        count = std_majors.count() + 1
                         if count == 1: recommendation = rule.penalty_1st
                         elif count == 2: recommendation = rule.penalty_2nd
                         elif count == 3: recommendation = rule.penalty_3rd
@@ -91,7 +101,7 @@ class ViolationAssessmentView(APIView):
                         else: recommendation = rule.penalty_5th or rule.penalty_4th or "Sanction 4: Non-readmission"
                 
                 # Instance number for the UI (SAME RULE ONLY)
-                instance_number = prev_majors.filter(rule=rule).count() + 1
+                instance_number = std_majors.filter(rule=rule).count() + 1
 
             # --- 4. Duplicate Detection Logic ---
             from django.utils import timezone

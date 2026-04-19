@@ -45,12 +45,20 @@ class ViolationSerializer(serializers.ModelSerializer):
             if same_rule_count >= 3:
                 return "MAJOR ESCALATION: 27.3.1.39 (Habitual Minor Offense)"
 
-            # Protocol: Rule 27.3.1.43 (Third Minor - Any Minor Rule)
-            total_minor_count = Violation.objects.filter(
+            # TALLY: Standard Minors + Escalated Traffic Minors (Instance 2+)
+            std_minor_count = Violation.objects.filter(
                 student=obj.student,
                 rule__category__startswith="Minor",
                 timestamp__lte=obj.timestamp
             ).count()
+            
+            escalated_traffic_count = Violation.objects.filter(
+                student=obj.student,
+                rule__category="Traffic — Minor",
+                timestamp__lte=obj.timestamp
+            ).count()
+            
+            total_minor_count = std_minor_count + max(0, escalated_traffic_count - 1)
 
             if total_minor_count >= 3:
                 return "MAJOR ESCALATION: 27.3.1.43 (Third Minor Offense - Sanction 1)"
@@ -59,38 +67,41 @@ class ViolationSerializer(serializers.ModelSerializer):
             if total_minor_count == 2: return obj.rule.penalty_2nd or "First Minor Offense"
             return obj.rule.penalty_3rd or "Second Minor Offense"
 
-        # 2. MAJOR OFFENSE LOGIC
+        # --- 3. MAJOR OFFENSE LOGIC (Section 27.3) ---
         if obj.rule.category.strip().startswith("Major"):
-            # Check for violations with the EXACT SAME rule code
-            same_rule_violations = Violation.objects.filter(
-                student=obj.student,
-                rule=obj.rule,
-                timestamp__lt=obj.timestamp
-            ).order_by('timestamp')
-            
-            if same_rule_violations.exists():
-                # YES path: Same rule code exists -> Follow that rule's sanction table
-                count = same_rule_violations.count() + 1
-                if count == 1: return obj.rule.penalty_1st
-                if count == 2: return obj.rule.penalty_2nd
-                if count == 3: return obj.rule.penalty_3rd
-                if count == 4: return obj.rule.penalty_4th
-                return obj.rule.penalty_5th or obj.rule.penalty_4th or "Sanction 4: Non-readmission"
-
-            # NO path: No previous violation with this rule code exists.
-            # But does the student have ANY OTHER major offenses?
-            other_majors = Violation.objects.filter(
+            # TALLY: Standard Majors + Escalated Traffic Majors (Instance 2+)
+            std_majors = Violation.objects.filter(
                 student=obj.student,
                 rule__category__startswith="Major",
                 timestamp__lt=obj.timestamp
-            ).exclude(rule=obj.rule)
+            ).order_by('timestamp')
+            
+            escalated_traffic_majors_count = max(0, Violation.objects.filter(
+                student=obj.student,
+                rule__category="Traffic — Major",
+                timestamp__lt=obj.timestamp
+            ).count() - 1)
 
-            if other_majors.exists():
-                # Section 27.3.5 - Different nature major offense detected
+            # Check for "Different Nature" (Section 27.3.5)
+            has_history = std_majors.exists() or escalated_traffic_majors_count > 0
+            
+            if not has_history:
+                # 1st Major ever recorded
+                return obj.rule.penalty_1st or "Sanction 1: Probation (1 year)"
+            
+            # Check if the ONLY history is the exact same rule
+            only_same_rule = std_majors.filter(rule=obj.rule).count() == std_majors.count() and escalated_traffic_majors_count == 0
+            
+            if not only_same_rule:
                 return "FOR SWAFO DIRECTOR DECISION (Section 27.3.5 - Different Nature)"
             
-            # 1st Major offense ever recorded
-            return obj.rule.penalty_1st or "Sanction 1: Probation (1 year)"
+            # Same rule repeating
+            count = std_majors.count() + 1
+            if count == 1: return obj.rule.penalty_1st
+            if count == 2: return obj.rule.penalty_2nd
+            if count == 3: return obj.rule.penalty_3rd
+            if count == 4: return obj.rule.penalty_4th
+            return obj.rule.penalty_5th or obj.rule.penalty_4th or "Sanction 4: Non-readmission"
 
         return "Standard Advisory Issued"
 
