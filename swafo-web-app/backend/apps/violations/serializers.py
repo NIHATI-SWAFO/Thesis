@@ -15,17 +15,15 @@ class ViolationSerializer(serializers.ModelSerializer):
         if not obj.rule:
             return "Pending Review"
             
-        # CATEGORY-BASED ESCALATION (Section 27.3.1.39)
-        # We count all violations in the SAME CATEGORY (e.g., all "Minor — Clothing")
-        count = Violation.objects.filter(
-            student=obj.student,
-            rule__category=obj.rule.category,
-            timestamp__lte=obj.timestamp
-        ).count()
-        
-        # MINOR OFFENSE ESCALATION LOGIC
-        if obj.rule.category.startswith("Minor"):
-            # We override the generic handbook names ("First minor offense") with actual ACTIONS
+        # 1. MINOR OFFENSE ESCALATION LOGIC (Category starts with 'Minor')
+        if obj.rule.category.strip().startswith("Minor"):
+            # We count all violations in the SAME CATEGORY for minor offenses
+            count = Violation.objects.filter(
+                student=obj.student,
+                rule__category=obj.rule.category,
+                timestamp__lte=obj.timestamp
+            ).count()
+            
             if count == 1: return "Written Warning (Institutional Advice issued)"
             if count == 2: return "First Minor Offense (Official Case Indexing + Formal Warning)"
             if count == 3: return "Second Minor Offense (Parental/Guardian Notification required)"
@@ -35,10 +33,10 @@ class ViolationSerializer(serializers.ModelSerializer):
             if escalation_level == 1: return "MAJOR ESCALATION: Sanction 1 (Probation - 1 Year)"
             if escalation_level == 2: return "MAJOR ESCALATION: Sanction 2 (Suspension - 3-5 school days)"
             if escalation_level == 3: return "MAJOR ESCALATION: Sanction 3 (Suspension - 6-12 school days)"
-            return f"CRITICAL ESCALATION: Sanction 4 (Non-readmission recommended)"
+            return "CRITICAL ESCALATION: Sanction 4 (Non-readmission recommended)"
             
-        # MAJOR OFFENSE LOGIC (Specific Rule Frequency)
-        # For major offenses, we count the specific rule frequency
+        # 2. MAJOR OFFENSE LOGIC (Specific Rule Frequency)
+        # Major offenses NEVER have written warnings. They start at Sanction 1 or 2.
         specific_count = Violation.objects.filter(
             student=obj.student,
             rule=obj.rule,

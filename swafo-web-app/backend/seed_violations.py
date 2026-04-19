@@ -36,7 +36,7 @@ def seed_violations():
                 officer=random.choice(officers),
                 location="CICS Lobby",
                 description=f"Demonstration incident log for handbook section {rule.rule_code}.",
-                corrective_action="First Minor Offense" if i == 0 else "Under Review",
+                corrective_action=None,
                 status="OPEN" if i == 0 else "RESOLVED",
             )
 
@@ -63,7 +63,7 @@ def seed_violations():
                 officer=random.choice(officers),
                 location=random.choice(["JFH Building", "CICS Lobby", "Main Gate", "West Campus", "Grandstand", "SWAO Office"]),
                 description=f"Automated incident log for handbook section {rule.rule_code}.",
-                corrective_action="Written Warning" if i == 0 else "Institutional Sanction Applied",
+                corrective_action=None,
                 status="RESOLVED" if random.random() > 0.3 else "OPEN",
             )
             # Note: We don't manually set timestamp here because auto_now_add=True handles it,
