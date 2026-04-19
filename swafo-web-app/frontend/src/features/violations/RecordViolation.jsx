@@ -348,15 +348,17 @@ export default function RecordViolation() {
                       />
                       {smartSearchResults.length > 0 && (
                         <div className="absolute top-[75px] left-0 right-0 z-[110] bg-white rounded-3xl shadow-[0_30px_80px_rgba(0,0,0,0.2)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
-                          {smartSearchResults.map(res => (
-                            <button key={res.id} onClick={() => { setFormData(prev => ({ ...prev, violationType: res.rule_code })); setSmartSearchQuery(res.rule_code); setSmartSearchResults([]); }} className="w-full p-6 hover:bg-emerald-50 text-left border-b border-slate-50 last:border-0 group transition-all">
-                              <div className="flex justify-between items-start mb-2">
-                                <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{res.rule_code}</span>
-                                <span className="text-[10px] font-bold text-slate-300 uppercase">{Math.round(res.score * 100)}% Match</span>
-                              </div>
-                              <p className="text-[14px] font-bold text-slate-700 leading-tight group-hover:text-[#003624] transition-colors">{res.description}</p>
-                            </button>
-                          ))}
+                          <div className="max-h-[400px] overflow-y-auto custom-scrollbar-emerald">
+                            {smartSearchResults.map(res => (
+                              <button key={res.id} onClick={() => { setFormData(prev => ({ ...prev, violationType: res.rule_code })); setSmartSearchQuery(res.rule_code); setSmartSearchResults([]); }} className="w-full p-6 hover:bg-emerald-50 text-left border-b border-slate-50 last:border-0 group transition-all">
+                                <div className="flex justify-between items-start mb-2">
+                                  <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{res.rule_code}</span>
+                                  <span className="text-[10px] font-bold text-slate-300 uppercase">{Math.round(res.score * 100)}% Match</span>
+                                </div>
+                                <p className="text-[14px] font-bold text-slate-700 leading-tight group-hover:text-[#003624] transition-colors">{res.description}</p>
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
