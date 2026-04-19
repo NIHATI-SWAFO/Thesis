@@ -1,6 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { API_ENDPOINTS } from '../../api/config';
 
 export default function CaseManagement() {
+  const { user } = useAuth();
   const [violations, setViolations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterTab, setFilterTab] = useState('all'); // 'all' or 'mine'
@@ -13,7 +16,7 @@ export default function CaseManagement() {
   const itemsPerPage = 8;
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/violations/list/')
+    fetch(API_ENDPOINTS.VIOLATIONS_LIST)
       .then(res => res.json())
       .then(data => {
         setViolations(Array.isArray(data) ? data : (data.results || []));
@@ -35,7 +38,7 @@ export default function CaseManagement() {
   const filteredCases = useMemo(() => {
     const results = violations.filter(v => {
       const studentName = v.student_details?.user_details?.full_name || '';
-      const caseId = `CAS-${new Date(v.timestamp).getFullYear()}-${v.id.toString().padStart(3, '0')}`;
+      const caseId = `#CS-${v.id.toString().padStart(5, '0')}`;
       
       const matchesSearch = studentName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                            caseId.toLowerCase().includes(searchQuery.toLowerCase());
@@ -45,13 +48,15 @@ export default function CaseManagement() {
       
       const severity = getPriority(v);
       const matchesPriority = priorityFilter === 'All Severity' || severity === priorityFilter;
-      const matchesTab = filterTab === 'all' || true; 
+      
+      // Assignment Filter: If 'mine' tab is active, only show cases assigned to current officer
+      const matchesTab = filterTab === 'all' || (v.assigned_to_details?.email === user?.email);
       
       return matchesSearch && matchesStatus && matchesPriority && matchesTab;
     });
     
     return results;
-  }, [violations, searchQuery, statusFilter, priorityFilter, filterTab]);
+  }, [violations, searchQuery, statusFilter, priorityFilter, filterTab, user]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -83,10 +88,56 @@ export default function CaseManagement() {
     resolved: violations.filter(v => v.status === 'RESOLVED').length,
   };
 
+  const [selectedCase, setSelectedCase] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleStatusUpdate = (caseId, newStatus) => {
+    setIsUpdating(true);
+    fetch(API_ENDPOINTS.VIOLATIONS_UPDATE_STATUS(caseId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    })
+    .then(res => res.json())
+    .then(updated => {
+      setViolations(prev => prev.map(v => v.id === caseId ? { ...v, status: newStatus } : v));
+      setSelectedCase(null);
+      setIsUpdating(false);
+    })
+    .catch(err => {
+      console.error("Update error:", err);
+      setIsUpdating(false);
+    });
+  };
+
+  const handleClaimCase = (caseId) => {
+    setIsUpdating(true);
+    fetch(API_ENDPOINTS.VIOLATIONS_ASSIGN(caseId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: user?.email })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        setViolations(prev => prev.map(v => 
+          v.id === caseId 
+            ? { ...v, assigned_to_details: { email: user?.email, full_name: user?.full_name }, status: 'UNDER_REVIEW' } 
+            : v
+        ));
+      }
+      setIsUpdating(false);
+    })
+    .catch(err => {
+      console.error("Assignment error:", err);
+      setIsUpdating(false);
+    });
+  };
+
   const exportToCSV = () => {
     const headers = ['Case ID', 'Student Name', 'Violation Type', 'Severity', 'Date', 'Status'];
     const rows = filteredCases.map(v => [
-      `CAS-${new Date(v.timestamp).getFullYear()}-${v.id.toString().padStart(3, '0')}`,
+      `#CS-${v.id.toString().padStart(5, '0')}`,
       v.student_details?.user_details?.full_name || 'N/A',
       v.rule_details?.category || 'General',
       getPriority(v),
@@ -133,28 +184,60 @@ export default function CaseManagement() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 mb-12">
-        {[
-          { label: 'TOTAL CASES', value: stats.total, sub: 'Live Database', badgeBg: 'bg-emerald-50', badgeText: 'text-emerald-600', hasIcon: true },
-          { label: 'OPEN CASES', value: stats.open, sub: 'Action Required', badgeBg: 'bg-orange-50', badgeText: 'text-orange-600' },
-          { label: 'UNDER REVIEW', value: stats.underReview, sub: 'In Progress', badgeBg: 'bg-blue-50', badgeText: 'text-blue-600' },
-          { label: 'RESOLVED', value: stats.resolved, sub: 'All Clear', badgeBg: 'bg-emerald-50', badgeText: 'text-emerald-600' },
-        ].map((stat, i) => (
-          <div 
-            key={i} 
-            className="bg-white p-10 rounded-[2.5rem] shadow-[0_4px_30px_rgba(0,0,0,0.02)] border border-gray-50 flex flex-col gap-5 hover:translate-y-[-6px] hover:shadow-[0_15px_45px_rgba(0,0,0,0.04)] transition-all duration-500 w-full group"
-          >
-            <span className="text-[12px] font-pjs font-bold text-emerald-950/40 tracking-[0.1em] uppercase">{stat.label}</span>
-            <div className="flex items-center">
-               <span className="text-[52px] font-pjs font-bold text-[#003624] tracking-tighter leading-none">{stat.value}</span>
+      {/* ── DYNAMIC METRIC CALCULATIONS ── */}
+      {(() => {
+        const now = new Date();
+        const thisMonthCases = violations.filter(v => new Date(v.timestamp).getMonth() === now.getMonth()).length;
+        const lastMonthCases = violations.filter(v => new Date(v.timestamp).getMonth() === (now.getMonth() - 1 + 12) % 12).length;
+        const growth = lastMonthCases === 0 ? (thisMonthCases > 0 ? 100 : 0) : Math.round(((thisMonthCases - lastMonthCases) / lastMonthCases) * 100);
+        
+        const majorUnderReview = violations.filter(v => v.status === 'UNDER_REVIEW' && getPriority(v) === 'Major').length;
+        const resolutionRate = stats.total === 0 ? 0 : Math.round((stats.resolved / stats.total) * 100);
+        const openLoad = stats.total === 0 ? 0 : Math.round((stats.open / stats.total) * 100);
+
+        return (
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 mb-12">
+            {/* Card 1: Total Cases */}
+            <div className="bg-white p-10 rounded-[2.5rem] shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-gray-50 flex flex-col gap-4 hover:translate-y-[-4px] transition-all duration-300">
+              <span className="text-[12px] font-pjs font-black text-slate-400 tracking-widest uppercase">TOTAL CASES</span>
+              <span className="text-[52px] font-pjs font-bold text-[#003624] leading-none tracking-tighter">{stats.total.toLocaleString()}</span>
+              <div className={`flex items-center gap-2 font-black text-[13px] mt-2 ${growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                <span className="material-symbols-outlined text-[20px]">{growth >= 0 ? 'trending_up' : 'trending_down'}</span>
+                {growth >= 0 ? `+${growth}%` : `${growth}%`} from last month
+              </div>
             </div>
-            <div className={`w-fit px-5 py-2 rounded-full text-[12px] font-bold ${stat.badgeBg} ${stat.badgeText} flex items-center gap-2 mt-2 transition-transform duration-300 group-hover:scale-105`}>
-              {stat.hasIcon && <span className="material-symbols-outlined text-[16px]">database</span>}
-              {stat.sub}
+
+            {/* Card 2: Open Cases */}
+            <div className="bg-white p-10 rounded-[2.5rem] shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-gray-50 flex flex-col gap-4 hover:translate-y-[-4px] transition-all duration-300">
+              <span className="text-[12px] font-pjs font-black text-slate-400 tracking-widest uppercase">OPEN CASES</span>
+              <span className="text-[52px] font-pjs font-bold text-[#003624] leading-none tracking-tighter">{stats.open.toLocaleString()}</span>
+              <div className="w-full h-1.5 bg-slate-100 rounded-full mt-4 overflow-hidden">
+                <div className="h-full bg-emerald-700 rounded-full transition-all duration-1000" style={{ width: `${openLoad}%` }}></div>
+              </div>
+            </div>
+
+            {/* Card 3: Under Review */}
+            <div className="bg-white p-10 rounded-[2.5rem] shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-gray-50 flex flex-col gap-4 hover:translate-y-[-4px] transition-all duration-300">
+              <span className="text-[12px] font-pjs font-black text-slate-400 tracking-widest uppercase">UNDER REVIEW</span>
+              <span className="text-[52px] font-pjs font-bold text-[#003624] leading-none tracking-tighter">{stats.underReview.toLocaleString()}</span>
+              <div className={`flex items-center gap-2 font-black text-[13px] mt-2 ${majorUnderReview > 0 ? 'text-red-500' : 'text-emerald-600/60'}`}>
+                <span className="material-symbols-outlined text-[20px]">{majorUnderReview > 0 ? 'warning' : 'visibility'}</span>
+                {majorUnderReview > 0 ? `${majorUnderReview} High Priority` : 'System Clear'}
+              </div>
+            </div>
+
+            {/* Card 4: Resolved */}
+            <div className="bg-white p-10 rounded-[2.5rem] shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-gray-50 flex flex-col gap-4 hover:translate-y-[-4px] transition-all duration-300">
+              <span className="text-[12px] font-pjs font-black text-slate-400 tracking-widest uppercase">RESOLVED</span>
+              <span className="text-[52px] font-pjs font-bold text-[#003624] leading-none tracking-tighter">{stats.resolved.toLocaleString()}</span>
+              <div className="flex items-center gap-2 text-emerald-600 font-black text-[13px] mt-2">
+                <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                {resolutionRate}% Resolution Rate
+              </div>
             </div>
           </div>
-        ))}
-      </div>
+        );
+      })()}
 
       <div className="flex flex-col xl:flex-row items-start gap-10">
         <div className="flex-1 w-full flex flex-col gap-8">
@@ -208,8 +291,8 @@ export default function CaseManagement() {
                   <tr className="bg-slate-50/30">
                     <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Case ID</th>
                     <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Student</th>
-                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Type / Severity</th>
-                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Type & Severity</th>
+                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date Logged</th>
                     <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                     <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
                   </tr>
@@ -217,31 +300,55 @@ export default function CaseManagement() {
                 <tbody className="divide-y divide-slate-50 font-manrope">
                   {paginatedCases.map((v) => {
                     const studentName = v.student_details?.user_details?.full_name || 'Unknown Student';
-                    const caseId = `CAS-${new Date(v.timestamp).getFullYear()}-${v.id.toString().padStart(3, '0')}`;
+                    const caseId = `#CS-${v.id.toString().padStart(5, '0')}`;
                     const date = new Date(v.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    const time = new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     const severity = getPriority(v);
+                    const isResolved = v.status === 'RESOLVED';
                     
                     return (
-                      <tr key={v.id} className="group hover:bg-emerald-50/30 transition-all duration-300">
-                        <td className="px-10 py-6 font-bold text-[#003624] text-[14px]">{caseId}</td>
-                        <td className="px-10 py-6"><span className="text-[15px] font-bold text-[#111827]">{studentName}</span></td>
-                        <td className="px-10 py-6">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[14px] font-semibold text-slate-700 truncate max-w-[200px]">{v.rule_details?.category || 'General'}</span>
-                            <span className={`text-[10px] font-black uppercase tracking-widest ${severity === 'Major' ? 'text-red-500' : severity === 'Minor' ? 'text-orange-500' : 'text-blue-500'}`}>
-                              {severity} Offense
-                            </span>
+                      <tr key={v.id} className="group hover:bg-emerald-50/20 transition-all duration-300">
+                        <td className="px-10 py-8 font-black text-[#009b69] text-[14px]">{caseId}</td>
+                        <td className="px-10 py-8">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-emerald-50 text-[#009b69] flex items-center justify-center font-bold text-[13px] border border-emerald-100">
+                               {studentName.charAt(0)}
+                            </div>
+                            <div className="flex flex-col">
+                               <span className="text-[15px] font-bold text-[#111827] leading-tight">{studentName}</span>
+                               <span className="text-[11px] font-medium text-slate-400 mt-0.5">ID: {v.student_details?.student_number}</span>
+                            </div>
                           </div>
                         </td>
-                        <td className="px-10 py-6"><span className="text-[13px] font-semibold text-slate-500">{date}</span></td>
-                        <td className="px-10 py-6">
-                          <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${v.status === 'OPEN' ? 'bg-orange-50 text-orange-600' : v.status === 'RESOLVED' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                            {v.status}
+                        <td className="px-10 py-8">
+                          <div className="flex flex-col gap-1">
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${severity === 'Major' ? 'text-red-500' : severity === 'Minor' ? 'text-[#009b69]' : 'text-orange-500'}`}>
+                              {severity}
+                            </span>
+                            <span className="text-[14px] font-bold text-slate-700 truncate max-w-[200px]">{(v.rule_details?.category || 'General Violation').replace(/^(Major|Minor|General)\s*[—\-]\s*/i, '')}</span>
+                          </div>
+                        </td>
+                        <td className="px-10 py-8">
+                           <div className="flex flex-col">
+                              <span className="text-[14px] font-bold text-slate-700">{date}</span>
+                              <span className="text-[11px] font-medium text-slate-400">{time}</span>
+                           </div>
+                        </td>
+                        <td className="px-10 py-8">
+                          <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ${
+                            v.status === 'OPEN' ? 'bg-red-50 text-red-500' : 
+                            v.status === 'UNDER_REVIEW' ? 'bg-slate-100 text-slate-500' : 
+                            'bg-emerald-600 text-white shadow-emerald-900/20'
+                          }`}>
+                            {v.status.replace('_', ' ')}
                           </span>
                         </td>
-                        <td className="px-10 py-6 text-right">
-                          <button className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 hover:bg-[#003624] hover:text-white transition-all shadow-sm">
-                            <span className="material-symbols-outlined">chevron_right</span>
+                        <td className="px-10 py-8 text-right">
+                          <button 
+                            onClick={() => setSelectedCase(v)}
+                            className="text-[13px] font-bold text-[#003624] hover:text-[#009b69] transition-all flex items-center gap-1 ml-auto"
+                          >
+                            {isResolved ? 'View Case' : 'Manage Details'}
                           </button>
                         </td>
                       </tr>
@@ -285,8 +392,202 @@ export default function CaseManagement() {
               <span className="text-[11px] font-black text-[#009b69] tracking-widest uppercase">Today</span>
             </div>
             <div className="flex flex-col gap-8">
-              <ActivityItem icon="add_circle" color="bg-orange-50 text-orange-600" title="New Case Recorded" sub="System Sync Active" time="Live" />
-              <ActivityItem icon="check_circle" color="bg-emerald-50 text-emerald-600" title="Auto-Validation" sub="Status: Healthy" time="Now" />
+              {violations.slice(0, 3).map((v, i) => {
+                const severity = getPriority(v);
+                const timeStr = new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const dateStr = new Date(v.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
+                
+                return (
+                  <ActivityItem 
+                    key={v.id}
+                    icon={severity === 'Major' ? 'priority_high' : 'add_circle'} 
+                    color={severity === 'Major' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'} 
+                    title={v.student_details?.user_details?.full_name || 'New Case'} 
+                    sub={`${(v.rule_details?.category || 'General').replace(/^(Major|Minor|General)\s*[—\-]\s*/i, '')} — ${v.status.replace('_', ' ')}`} 
+                    time={`${dateStr}, ${timeStr}`} 
+                  />
+                );
+              })}
+              {violations.length === 0 && (
+                <p className="text-[13px] text-slate-400 font-medium italic text-center py-4">No recent activity found.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      {selectedCase && (
+        <CaseDetailModal 
+          caseData={selectedCase} 
+          onClose={() => setSelectedCase(null)} 
+          onUpdate={handleStatusUpdate}
+          onClaim={handleClaimCase}
+          isUpdating={isUpdating}
+          currentUser={user}
+        />
+      )}
+    </div>
+  );
+}
+
+function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, isUpdating, currentUser }) {
+  const caseId = `CAS-${new Date(caseData.timestamp).getFullYear()}-${caseData.id.toString().padStart(3, '0')}`;
+  const date = new Date(caseData.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const time = new Date(caseData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const isUnassigned = !caseData.assigned_to_details;
+  const isAssignedToMe = caseData.assigned_to_details?.email === currentUser?.email;
+  const isResolved = caseData.status === 'RESOLVED';
+
+  return (
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-emerald-950/60 backdrop-blur-sm animate-in fade-in duration-300"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-[2.5rem] w-full max-w-[800px] overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.3)] border border-white/20 animate-in zoom-in-95 duration-300"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header Section */}
+        <div className="bg-[#003624] p-10 pb-8 text-white relative overflow-hidden">
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <p className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1">Case ID</p>
+              <p className="text-[18px] font-bold text-emerald-400">#{caseId}</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className={`px-5 py-2 rounded-full text-[11px] font-black uppercase tracking-widest ${caseData.status === 'OPEN' ? 'bg-orange-500/20 text-orange-300' : isResolved ? 'bg-emerald-500/20 text-emerald-300' : 'bg-blue-500/20 text-blue-300'}`}>
+                {caseData.status}
+              </span>
+              <button 
+                onClick={onClose} 
+                className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+          </div>
+          
+          <h2 className="text-[28px] font-pjs font-bold leading-tight tracking-tight mb-8">
+            {caseData.rule_details?.description || caseData.rule_details?.category || 'General Violation'}
+          </h2>
+
+          {/* Identity & Time Bar */}
+          <div className="flex items-center gap-6 p-4 bg-black/20 rounded-[1.5rem] border border-white/5 backdrop-blur-md">
+            <div className="flex items-center gap-4 flex-1">
+              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-emerald-500/30">
+                <img 
+                  src={`https://ui-avatars.com/api/?name=${caseData.student_details?.user_details?.full_name}&background=003624&color=fff`} 
+                  alt="avatar" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[16px] font-bold text-white">{caseData.student_details?.user_details?.full_name}</span>
+                <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">STUDENT NO: {caseData.student_details?.student_number}</span>
+              </div>
+            </div>
+            
+            <div className="h-10 w-[1px] bg-white/10"></div>
+            
+            <div className="flex items-center gap-6 px-4">
+              <div className="flex items-center gap-3 text-white/70">
+                <span className="material-symbols-outlined text-[20px] text-emerald-400">calendar_today</span>
+                <span className="text-[14px] font-bold">{date}</span>
+              </div>
+              <div className="flex items-center gap-3 text-white/70">
+                <span className="material-symbols-outlined text-[20px] text-emerald-400">schedule</span>
+                <span className="text-[14px] font-bold">{time}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Details Section */}
+        <div className="p-10 space-y-10 bg-white">
+          <div className="bg-[#F0F4F4]/50 rounded-[2rem] p-8 border-l-4 border-emerald-500">
+             <p className="text-[16px] font-manrope font-medium text-slate-700 leading-relaxed italic">
+               "{caseData.description || 'No detailed account provided.'}"
+             </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-10">
+            <div>
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Handbook Rule</p>
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-emerald-600">menu_book</span>
+                  <div>
+                    <p className="text-[15px] font-bold text-slate-900">{caseData.rule_details?.rule_code}</p>
+                    <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">{(caseData.rule_details?.category || 'General').replace(/^(Major|Minor|General)\s*[—\-]\s*/i, '')}</p>
+                  </div>
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Location</p>
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-emerald-600">location_on</span>
+                <p className="text-[15px] font-bold text-slate-900">{caseData.location || 'N/A'}</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Officer</p>
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-emerald-600">verified_user</span>
+                <p className="text-[15px] font-bold text-slate-900">{caseData.officer_name || 'System Admin'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Action Bar */}
+          <div className="pt-10 border-t border-slate-100 flex items-center justify-between">
+            <div className="flex flex-col">
+               <h4 className="text-[12px] font-black text-[#003624] uppercase tracking-widest mb-1">
+                 {isUnassigned ? 'Unclaimed Violation' : 'Case Assignment'}
+               </h4>
+               <p className="text-[13px] text-slate-400 font-medium">
+                 {isUnassigned ? 'Review details and claim to begin resolution.' : `Handled by ${caseData.assigned_to_details?.full_name}`}
+               </p>
+            </div>
+            
+            <div className="flex gap-4">
+              {isUnassigned ? (
+                <button 
+                  disabled={isUpdating}
+                  onClick={() => onClaim(caseData.id)}
+                  className="bg-orange-600 text-white px-10 py-4 rounded-xl text-[14px] font-pjs font-bold hover:bg-orange-700 transition-all shadow-xl shadow-orange-900/10 flex items-center gap-3 disabled:opacity-50"
+                >
+                  {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[20px]">pan_tool</span>}
+                  HANDLE THIS CASE
+                </button>
+              ) : isAssignedToMe ? (
+                <>
+                  {!isResolved ? (
+                    <button 
+                      disabled={isUpdating}
+                      onClick={() => onUpdate(caseData.id, 'RESOLVED')}
+                      className="bg-[#003624] text-white px-10 py-4 rounded-xl text-[14px] font-pjs font-bold hover:bg-[#004d35] transition-all shadow-xl shadow-emerald-950/10 flex items-center gap-3 disabled:opacity-50"
+                    >
+                      {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[20px]">check_circle</span>}
+                      MARK AS RESOLVED
+                    </button>
+                  ) : (
+                    <button 
+                      disabled={isUpdating}
+                      onClick={() => onUpdate(caseData.id, 'OPEN')}
+                      className="bg-slate-200 text-slate-700 px-10 py-4 rounded-xl text-[14px] font-pjs font-bold hover:bg-slate-300 transition-all flex items-center gap-3 disabled:opacity-50"
+                    >
+                      {isUpdating ? <div className="w-4 h-4 border-2 border-slate-400/30 border-t-slate-400 rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[20px]">history</span>}
+                      RE-OPEN CASE
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="flex items-center gap-2 bg-slate-50 px-6 py-3 rounded-xl border border-slate-100">
+                  <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">
+                    <img src={`https://ui-avatars.com/api/?name=${caseData.assigned_to_details?.full_name}&background=cbd5e1&color=64748b`} alt="officer" />
+                  </div>
+                  <span className="text-[13px] font-bold text-slate-500 uppercase tracking-wide">Locked for Review</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

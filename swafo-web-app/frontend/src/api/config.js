@@ -14,17 +14,21 @@ export const API_ENDPOINTS = {
   // Users
   SEARCH_USERS: `${API_BASE_URL}/api/users/search/`,
   USERS_LIST: `${API_BASE_URL}/api/users/list/`,
+  PROFILE_BY_EMAIL: `${API_BASE_URL}/api/users/profile-by-email/`,
   
   // Violations
   VIOLATIONS_LIST: `${API_BASE_URL}/api/violations/list/`,
   VIOLATIONS_CREATE: `${API_BASE_URL}/api/violations/record/`,
   VIOLATIONS_ASSESS: `${API_BASE_URL}/api/violations/assess/`,
+  VIOLATIONS_ASSIGN: (id) => `${API_BASE_URL}/api/violations/${id}/assign/`,
+  VIOLATIONS_UPDATE_STATUS: (id) => `${API_BASE_URL}/api/violations/${id}/update-status/`,
   
   // Patrols
   PATROLS_LIST: `${API_BASE_URL}/api/patrols/list/`,
   
   // Analytics
   OFFICER_DASHBOARD: `${API_BASE_URL}/api/analytics/officer-dashboard/`,
+  ADMIN_DASHBOARD: `${API_BASE_URL}/api/analytics/admin-dashboard/`,
   
   // Handbook
   HANDBOOK_RULES: `${API_BASE_URL}/api/handbook/rules/`,

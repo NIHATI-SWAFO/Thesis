@@ -35,7 +35,7 @@ class ProfileByEmailView(APIView):
             return Response({"error": "Email parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
             
         try:
-            student = StudentProfile.objects.get(user__email=email)
+            student = StudentProfile.objects.get(user__email__iexact=email)
             serializer = StudentProfileSerializer(student)
             return Response(serializer.data)
         except StudentProfile.DoesNotExist:

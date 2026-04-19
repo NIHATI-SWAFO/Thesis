@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { useAuth } from "../../context/AuthContext";
 
 export default function ChatBot() {
+  const { user } = useAuth();
+  const firstName = user?.name?.split(' ')[0] || 'Student';
   const [input, setInput] = useState('');
   
   // Initialize empty
@@ -100,7 +103,7 @@ export default function ChatBot() {
               </span>
             </div>
             <h1 className="text-[2.8rem] lg:text-[3.2rem] font-pjs font-bold text-[#1c2b26] leading-tight mb-2 tracking-tight">
-              Hello, Michael.
+              Hello, {firstName}.
             </h1>
             <p className="text-[1.1rem] lg:text-[1.2rem] font-manrope text-[#606d67]">
               How can I assist with your inquiries today?

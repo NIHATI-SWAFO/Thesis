@@ -84,7 +84,21 @@ export default function StudentProfile() {
           <SectionCard title="Academic Status" icon="analytics">
             <div className="space-y-4">
               <StatusRow label="Enrollment" status="Active" type="success" />
-              <StatusRow label="Standing" status="Good Standing" type="success" />
+              {(() => {
+                const count = profile?.violation_count || 0;
+                let standing = "Good Standing";
+                let type = "success";
+                
+                if (count >= 5) {
+                  standing = "Disciplinary Probation";
+                  type = "error";
+                } else if (count >= 2) {
+                  standing = "Under Review";
+                  type = "warning";
+                }
+                
+                return <StatusRow label="Standing" status={standing} type={type} />;
+              })()}
               
               <div className="mt-5 pt-5 border-t border-emerald-50/50">
                 <p className="text-[9px] uppercase font-pjs font-bold text-portal-text-muted/50 tracking-widest mb-1.5">Current Semester</p>
@@ -102,28 +116,28 @@ export default function StudentProfile() {
                 <DetailItem 
                   icon="alternate_email" 
                   label="School Email" 
-                  value="tld0283@dlsud.edu.ph" 
+                  value={profile?.user_details?.email || email || "---"} 
                   iconBg="bg-white" 
                   iconColor="text-emerald-600" 
                 />
                 <DetailItem 
                   icon="account_balance" 
                   label="College" 
-                  value="College of Information and Computer Studies" 
+                  value={profile?.course?.includes('Computer') ? 'College of Information and Computer Studies' : (profile?.course || '---')} 
                   iconBg="bg-white" 
                   iconColor="text-emerald-600" 
                 />
                  <DetailItem 
                   icon="account_tree" 
                   label="Department & Level" 
-                  value="Computer Science (Third Year)" 
+                  value={`${profile?.course || '---'} (Year ${profile?.year_level || '-'})`} 
                   iconBg="bg-white" 
                   iconColor="text-emerald-600" 
                 />
                 <DetailItem 
                   icon="call" 
                   label="Contact Number" 
-                  value="0917263547" 
+                  value="0917-XXX-XXXX (Verified)" 
                   iconBg="bg-white" 
                   iconColor="text-emerald-600" 
                 />
@@ -190,7 +204,9 @@ function StatusRow({ label, status, type }) {
     <div className="flex items-center justify-between">
       <span className="font-manrope font-semibold text-portal-text text-lg">{label}</span>
       <span className={`px-5 py-2 rounded-2xl text-[13px] font-bold font-pjs uppercase tracking-tight shadow-sm ${
-        type === 'success' ? 'bg-[#d1fadf] text-[#006b5d]' : 'bg-amber-100 text-amber-700'
+        type === 'success' ? 'bg-[#d1fadf] text-[#006b5d]' : 
+        type === 'error' ? 'bg-red-100 text-red-700' :
+        'bg-amber-100 text-amber-700'
       }`}>
         {status}
       </span>

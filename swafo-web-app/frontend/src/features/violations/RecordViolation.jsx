@@ -1,19 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { API_ENDPOINTS } from '../../api/config';
+import { useAuth } from '../../context/AuthContext';
 
 export default function RecordViolation() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [foundStudent, setFoundStudent] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [pastViolations, setPastViolations] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-  // ── State for form fields ──
   const [formData, setFormData] = useState({
     violationType: '',
     incidentDate: new Date().toISOString().split('T')[0],
     incidentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
     location: '',
     description: '',
-    handbookSection: '',
   });
 
   const [evidenceFiles, setEvidenceFiles] = useState([]);
@@ -26,7 +29,6 @@ export default function RecordViolation() {
   const [smartSearchResults, setSmartSearchResults] = useState([]);
   const fileInputRef = useRef(null);
 
-  // ── Fetch Handbook Rules on Mount ──
   useEffect(() => {
     const fetchRules = async () => {
       try {
@@ -42,16 +44,31 @@ export default function RecordViolation() {
     fetchRules();
   }, []);
 
-  // ── Live API: Search Student ──
+  const fetchStudentHistory = async (studentEmail) => {
+    if (!studentEmail) return;
+    setHistoryLoading(true);
+    try {
+      const response = await fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?email=${studentEmail}`);
+      if (response.ok) {
+        const data = await response.json();
+        setPastViolations(Array.isArray(data) ? data : (data.results || []));
+      }
+    } catch (error) {
+      console.error("Failed to fetch history:", error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   const [searchResults, setSearchResults] = useState([]);
 
-  // ── Live API: Search Student ──
   const handleSearch = async () => {
     if (!searchQuery) return;
     setIsSearching(true);
     setFoundStudent(null);
     setSearchResults([]);
     setAssessment(null);
+    setPastViolations([]);
     
     try {
       const response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${searchQuery}`);
@@ -60,12 +77,11 @@ export default function RecordViolation() {
         if (Array.isArray(data) && data.length > 0) {
           if (data.length === 1) {
             setFoundStudent(data[0]);
+            fetchStudentHistory(data[0].user_details?.email);
           } else {
             setSearchResults(data);
           }
         }
-      } else {
-        console.error("Student not found");
       }
     } catch (error) {
       console.error("Search failed:", error);
@@ -74,17 +90,16 @@ export default function RecordViolation() {
     }
   };
 
-  // ── Live API: Smart Violation Search ──
   const handleSmartSearch = async (val) => {
     setSmartSearchQuery(val);
-    if (val.length < 3) {
+    const query = val.trim();
+    if (query.length < 3) {
       setSmartSearchResults([]);
       return;
     }
     setSmartSearchLoading(true);
-    
     try {
-      const resp = await fetch(`${API_ENDPOINTS.SMART_SEARCH}?q=${encodeURIComponent(val)}`);
+      const resp = await fetch(`${API_ENDPOINTS.SMART_SEARCH}?q=${encodeURIComponent(query)}`);
       if (resp.ok) {
         const data = await resp.json();
         setSmartSearchResults(data);
@@ -96,14 +111,13 @@ export default function RecordViolation() {
     }
   };
 
-  // ── Live API: Assess Violation Logic ──
   const handleGenerateRecommendation = async () => {
     if (!formData.violationType || !foundStudent) return;
     setIsGenerating(true);
-    
     try {
       const response = await fetch(
-        `${API_ENDPOINTS.VIOLATIONS_ASSESS}?student_id=${foundStudent.student_number}&rule_code=${formData.violationType}`
+        `${API_ENDPOINTS.VIOLATIONS_ASSESS}?student_id=${foundStudent.student_number}&rule_code=${formData.violationType}`,
+        { credentials: 'include' }
       );
       if (response.ok) {
         const data = await response.json();
@@ -117,6 +131,8 @@ export default function RecordViolation() {
   };
 
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [lastLoggedId, setLastLoggedId] = useState(null);
 
   useEffect(() => {
     if (assessment?.is_duplicate) {
@@ -124,43 +140,39 @@ export default function RecordViolation() {
     }
   }, [assessment]);
 
-  // ── Live API: Submit Case (Record Violation) ──
   const handleSubmit = async () => {
     if (!foundStudent || !assessment) return;
     setIsSubmitting(true);
-
     try {
       const selectedRule = handbookRules.find(r => r.rule_code === formData.violationType);
-      
+      if (!selectedRule) {
+        alert("ERROR: Rule not found.");
+        setIsSubmitting(false);
+        return;
+      }
       const payload = {
         student: foundStudent.id,
-        rule: selectedRule?.id,
+        rule: selectedRule.id,
         location: formData.location,
         description: formData.description,
         corrective_action: assessment.recommendation,
+        officer_email: user?.email, 
         status: 'OPEN'
       };
-
       const response = await fetch(API_ENDPOINTS.VIOLATIONS_CREATE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload)
       });
-
       if (response.ok) {
-        alert("CASE LOGGED SUCCESSFULLY: The violation has been indexed in the student's permanent record.");
-        setFoundStudent(null);
-        setAssessment(null);
-        setSearchQuery('');
-        setFormData({
-          violationType: '',
-          incidentDate: new Date().toISOString().split('T')[0],
-          incidentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-          location: '',
-          description: '',
-          handbookSection: '',
-        });
-        setEvidenceFiles([]);
+        const result = await response.json();
+        setLastLoggedId(result.id);
+        setShowSuccess(true);
+        fetchStudentHistory(foundStudent.user_details?.email);
+      } else {
+        const errorData = await response.json();
+        alert(`FAILED: ${JSON.stringify(errorData)}`);
       }
     } catch (error) {
       console.error("Submission error:", error);
@@ -169,479 +181,395 @@ export default function RecordViolation() {
     }
   };
 
+  const handleCloseSuccess = () => {
+    setShowSuccess(false);
+    setAssessment(null);
+    setFormData({
+      violationType: '',
+      incidentDate: new Date().toISOString().split('T')[0],
+      incidentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+      location: '',
+      description: '',
+    });
+    setSmartSearchQuery('');
+    setEvidenceFiles([]);
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileUpload = (e) => {
-    const files = Array.from(e.target.files);
-    setEvidenceFiles(prev => [...prev, ...files]);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const files = Array.from(e.dataTransfer.files);
-    setEvidenceFiles(prev => [...prev, ...files]);
-  };
-
   return (
-    <div className="max-w-[1200px] animate-fade-in-up pb-16 mx-auto px-6">
-      {/* ═══════════ SEARCH SECTION ═══════════ */}
-      <div className="bg-[#003624] rounded-[2.5rem] p-10 mb-10 text-white relative shadow-2xl">
-         <div className="absolute -right-20 -bottom-20 opacity-5 pointer-events-none">
-            <span className="material-symbols-outlined text-[300px]">person_search</span>
+    <div className="max-w-[1200px] animate-fade-in-up pb-16 mx-auto px-6 font-pjs">
+      {/* HEADER SECTION - REFINED */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-2xl bg-[#003624] flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-950/20">
+              <span className="material-symbols-outlined text-[24px] font-bold">assignment_add</span>
+            </div>
+            <h1 className="text-[36px] font-black text-[#003624] tracking-tight leading-none">Record Violation</h1>
+          </div>
+          <p className="text-[15px] text-slate-400 font-medium ml-1">Official Institutional Incident Logging & Escalation Portal</p>
+        </div>
+        <div className="flex items-center gap-4">
+           <div className="bg-white px-6 py-3 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-end">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Session Authority</p>
+              <p className="text-[13px] font-bold text-[#003624]">{user?.email || 'Unauthorized'}</p>
+           </div>
+        </div>
+      </div>
+
+      {/* STUDENT IDENTIFICATION - GLASS DESIGN */}
+      <div className="bg-[#003624] rounded-[3rem] p-10 mb-10 text-white relative shadow-[0_30px_100px_rgba(0,54,36,0.25)] overflow-hidden">
+         <div className="absolute -right-20 -bottom-20 opacity-10 pointer-events-none">
+            <span className="material-symbols-outlined text-[400px]">history_edu</span>
          </div>
-         <div className="relative z-10 flex flex-col md:flex-row gap-10 items-center">
-            <div className="flex-1">
-               <h2 className="text-[24px] font-pjs font-bold mb-2">Identify Student</h2>
-                <p className="text-[14px] text-emerald-100/60 font-medium mb-6">Enter the 9-digit student ID or Student Name to retrieve digital identity.</p>
+         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.05),transparent)]"></div>
+         
+         <div className="relative z-10 flex flex-col lg:flex-row gap-12 items-center">
+            <div className="flex-1 w-full">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+                    <span className="material-symbols-outlined text-[18px] text-emerald-400 font-bold">person_search</span>
+                  </div>
+                  <h2 className="text-[14px] font-black uppercase tracking-[0.2em] text-emerald-100/60">Target Student Lookup</h2>
+                </div>
                 <div className="flex gap-4 relative">
-                   <div className="flex-1 relative">
-                     <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-emerald-600">badge</span>
+                   <div className="flex-1 relative group">
+                     <span className="material-symbols-outlined absolute left-6 top-1/2 -translate-y-1/2 text-emerald-500 group-focus-within:text-emerald-300 transition-all">search</span>
                      <input 
                        type="text" 
-                       placeholder="Enter ID or Student Name..."
-                       className="w-full bg-white/10 border border-white/20 rounded-2xl h-[60px] pl-14 pr-5 text-[15px] font-bold text-white placeholder-white/30 outline-none focus:bg-white/20 focus:border-emerald-400 transition-all"
+                       placeholder="Enter Student Number or Full Name..."
+                       className="w-full bg-white/5 border-2 border-white/10 rounded-[2rem] h-[72px] pl-16 pr-6 text-[16px] font-bold text-white placeholder-white/20 outline-none focus:bg-white/10 focus:border-emerald-400 transition-all shadow-inner"
                        value={searchQuery}
                        onChange={(e) => setSearchQuery(e.target.value)}
                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                      />
                    </div>
-                   <button onClick={handleSearch} disabled={isSearching} className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold h-[60px] px-8 rounded-2xl transition-all active:scale-95 flex items-center gap-3 shadow-lg shadow-emerald-500/20 disabled:opacity-50">
-                     {isSearching ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined">search</span>}
-                     {isSearching ? 'SEARCHING...' : 'SEARCH'}
+                   <button onClick={handleSearch} disabled={isSearching} className="bg-emerald-500 hover:bg-emerald-400 text-white font-black h-[72px] px-10 rounded-[2rem] transition-all active:scale-95 flex items-center gap-3 shadow-[0_15px_35px_rgba(16,185,129,0.3)] disabled:opacity-50 tracking-widest text-[13px]">
+                     {isSearching ? <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" /> : 'FETCH PROFILE'}
                    </button>
-
-                   {/* Student Search Results Dropdown */}
+                   
+                   {/* Search Results Dropdown - Premium */}
                    {searchResults.length > 0 && (
-                     <div className="absolute top-[65px] left-0 right-0 bg-white rounded-2xl shadow-2xl z-50 overflow-hidden border border-emerald-100 animate-fade-in mt-2">
-                       <div className="p-3 bg-emerald-50/50 border-b border-emerald-100 flex justify-between items-center">
-                          <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest">Found {searchResults.length} matches</span>
-                          <button onClick={() => setSearchResults([])} className="text-[10px] font-bold text-emerald-600 hover:text-emerald-800">CLEAR</button>
-                       </div>
-                       <div className="max-h-[300px] overflow-y-auto">
-                         {searchResults.map((student) => (
-                           <button
-                             key={student.id}
-                             onClick={() => {
-                               setFoundStudent(student);
-                               setSearchResults([]);
-                               setSearchQuery(student.student_number);
-                             }}
-                             className="w-full flex items-center gap-4 p-4 hover:bg-emerald-50 transition-colors text-left border-b border-gray-50 last:border-0"
-                           >
-                             <div className="w-10 h-10 rounded-full bg-[#003624] text-white flex items-center justify-center font-bold text-[12px]">
-                               {student.user_details?.full_name?.charAt(0)}
-                             </div>
-                             <div>
-                               <p className="text-[14px] font-bold text-[#003624]">{student.user_details?.full_name}</p>
-                               <p className="text-[11px] font-medium text-gray-400">{student.student_number} • {student.course}</p>
-                             </div>
-                           </button>
-                         ))}
-                       </div>
+                     <div className="absolute top-[85px] left-0 right-0 bg-white rounded-[2rem] shadow-[0_30px_90px_rgba(0,0,0,0.3)] z-[100] overflow-hidden border border-emerald-100 mt-2 animate-in slide-in-from-top-4 duration-300">
+                        <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+                          {searchResults.map(s => (
+                            <button key={s.id} onClick={() => { setFoundStudent(s); setSearchResults([]); fetchStudentHistory(s.user_details?.email); }} className="w-full flex items-center gap-5 p-6 hover:bg-emerald-50 transition-all text-left border-b border-slate-50 last:border-0 group">
+                              <div className="w-14 h-14 rounded-2xl bg-[#003624] text-white flex items-center justify-center font-black text-[18px] group-hover:scale-110 transition-transform shadow-lg">{s.user_details?.full_name?.charAt(0)}</div>
+                              <div className="flex-1">
+                                <p className="text-[16px] font-black text-[#003624] leading-none mb-1">{s.user_details?.full_name}</p>
+                                <p className="text-[12px] font-bold text-slate-400 tracking-tight">{s.student_number} • {s.course}</p>
+                              </div>
+                              <span className="material-symbols-outlined text-emerald-600 opacity-0 group-hover:opacity-100 transition-all">arrow_forward_ios</span>
+                            </button>
+                          ))}
+                        </div>
                      </div>
                    )}
                 </div>
-             </div>
-             <div className="w-full md:w-[400px]">
+            </div>
+
+            {/* Profile Glance Card */}
+            <div className="w-full lg:w-[360px] shrink-0">
                {foundStudent ? (
-                  <div className="bg-white rounded-3xl p-6 text-[#003624] flex gap-5 items-center animate-scale-in">
-                     <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center relative overflow-hidden shrink-0">
-                        <span className="material-symbols-outlined text-[40px] text-slate-300">person</span>
-                        <div className="absolute bottom-0 inset-x-0 h-1 bg-emerald-500"></div>
+                  <div className="bg-white rounded-[2.5rem] p-6 text-[#003624] flex gap-5 items-center animate-in zoom-in-95 duration-500 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-white">
+                     <div className="w-20 h-20 rounded-[1.5rem] bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 relative">
+                        <span className="material-symbols-outlined text-[42px] text-slate-200">person</span>
+                        <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 border-4 border-white"></div>
                      </div>
-                     <div className="flex-1">
-                        <div className="flex justify-between items-start mb-1">
-                           <h3 className="text-[18px] font-pjs font-bold leading-tight uppercase">{foundStudent.user_details?.full_name}</h3>
-                           <span className="material-symbols-outlined text-emerald-500 text-[18px]">verified</span>
-                        </div>
-                        <p className="text-[12px] font-bold text-gray-400 mb-2">{foundStudent.student_number}</p>
-                        <div className="flex gap-2">
-                           <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md tracking-tighter">{foundStudent.course}</span>
-                           <span className="text-[10px] font-bold px-2 py-0.5 bg-gray-50 text-gray-500 rounded-md">{foundStudent.year_level}</span>
+                     <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Identified Subject</p>
+                        <h3 className="text-[16px] font-black leading-tight uppercase truncate mb-1">{foundStudent.user_details?.full_name}</h3>
+                        <div className="flex flex-wrap gap-2">
+                           <span className="text-[10px] font-black px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg uppercase border border-emerald-100">{foundStudent.student_number}</span>
+                           <span className="text-[10px] font-black px-3 py-1 bg-slate-100 text-slate-600 rounded-lg uppercase">{foundStudent.course}</span>
                         </div>
                      </div>
                   </div>
                ) : (
-                  <div className="bg-white/5 border border-white/10 border-dashed rounded-3xl p-10 flex flex-col items-center justify-center text-center">
-                      <span className="material-symbols-outlined text-white/20 text-[48px] mb-2">person_off</span>
-                      <p className="text-[12px] text-white/40 font-bold uppercase tracking-widest">No Student Identified</p>
+                  <div className="bg-white/5 border-2 border-white/10 border-dashed rounded-[2.5rem] p-10 text-center flex flex-col items-center justify-center animate-pulse">
+                    <span className="material-symbols-outlined text-white/10 text-[48px] mb-2 font-light">account_circle_off</span>
+                    <p className="text-[11px] text-white/30 font-black uppercase tracking-[0.25em]">Pending Identification</p>
                   </div>
                )}
             </div>
          </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-8 items-start">
-        <div className="col-span-2">
-          <div className="mb-8">
-            <h1 className="text-[32px] font-pjs font-extrabold text-[#003624] tracking-tight mb-3">Case Details</h1>
-            <p className="text-[14px] text-gray-500 font-manrope font-medium leading-[1.6] max-w-[560px]">
-              Complete the situational context below. The Institutional Logic will recommend a sanction based on Section 27.
-            </p>
-          </div>
-
-          <div className="bg-white border border-[#f1f5f9] rounded-2xl p-8 pb-10 shadow-[0_4px_24px_rgba(0,0,0,0.03)] mb-6 relative overflow-hidden">
-            <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-[#10b981]" />
-            <div className="flex items-center gap-3 mb-8">
-              <span className="material-symbols-outlined text-[#10b981] text-[24px]">assignment</span>
-              <h2 className="text-[18px] font-pjs font-bold text-[#0f172a]">Infraction Context</h2>
-            </div>
-
-            <label className="block text-[11px] font-pjs font-black text-[#003624] uppercase tracking-[0.15em] mb-3">
-              Violation Type (Smart Search / AI Curator)
-            </label>
-            <div className="relative mb-6">
-              <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-[#10b981] text-[22px] animate-pulse">auto_awesome</span>
-              <input 
-                type="text"
-                placeholder="Type violation (e.g. 'smoking', 'dress code', 'vandalism')..."
-                value={smartSearchQuery}
-                onChange={(e) => handleSmartSearch(e.target.value)}
-                className="w-full bg-emerald-50/50 border border-emerald-100 rounded-xl h-[65px] pl-14 pr-6 text-[14px] font-manrope font-bold text-[#003624] placeholder-emerald-800/30 outline-none focus:bg-white focus:ring-4 focus:ring-emerald-500/5 transition-all"
-              />
-              {smartSearchLoading && (
-                <div className="absolute right-6 top-1/2 -translate-y-1/2">
-                   <div className="w-5 h-5 border-3 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
-                </div>
-              )}
-            </div>
-
-            {/* Smart Suggestions */}
-            {smartSearchResults.length > 0 && (
-              <div className="mb-8 space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-400">
-                <div className="flex items-center justify-between pl-2 mb-4">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Recommended Logic Matches</p>
-                  <button 
-                    onClick={() => setSmartSearchResults([])}
-                    className="text-[10px] font-bold text-slate-400 hover:text-rose-500 transition-colors uppercase tracking-widest"
-                  >
-                    Clear results
-                  </button>
-                </div>
-                
-                {smartSearchResults.map((res, index) => (
-                  <button
-                    key={res.id}
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, violationType: res.rule_code }));
-                      setSmartSearchQuery(`${res.rule_code} — ${res.description.substring(0, 50)}...`);
-                      setSmartSearchResults([]);
-                    }}
-                    className={`w-full group flex items-center gap-4 p-4 rounded-2xl border transition-all duration-300 text-left relative overflow-hidden ${
-                      formData.violationType === res.rule_code 
-                        ? 'bg-[#003624] border-[#003624] text-white shadow-[0_8px_30px_rgb(0,54,36,0.15)]' 
-                        : 'bg-[#f8fafc]/50 border-[#f1f5f9] text-[#1e293b] hover:border-emerald-200 hover:bg-white hover:shadow-sm'
-                    }`}
-                  >
-                    {/* Visual coding for Best Match */}
-                    {index === 0 && res.score > 0.7 && formData.violationType !== res.rule_code && (
-                      <div className="absolute top-0 right-0">
-                        <div className="bg-emerald-500/10 text-emerald-600 text-[8px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-widest">
-                          High Relevance
-                        </div>
-                      </div>
-                    )}
-
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-95 ${
-                      formData.violationType === res.rule_code ? 'bg-white/10 text-white' : 'bg-white border border-slate-100 text-[#003624]'
-                    }`}>
-                      <span className="text-[10px] font-black tracking-tighter">{res.rule_code}</span>
-                    </div>
-
-                    <div className="flex-1 pr-14">
-                      <p className={`text-[13px] font-bold mb-0.5 leading-snug ${
-                        formData.violationType === res.rule_code ? 'text-white' : 'text-[#0f172a]'
-                      }`}>
-                        {res.description}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[9px] font-bold uppercase tracking-wider ${
-                          formData.violationType === res.rule_code ? 'text-emerald-200' : 'text-slate-400'
-                        }`}>
-                          Handbook Section 27
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Refined Match Indicator */}
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end gap-1">
-                       <div className={`px-2.5 py-1 rounded-full text-[10px] font-black block shadow-sm ${
-                         formData.violationType === res.rule_code 
-                           ? 'bg-white/10 text-white' 
-                           : 'bg-emerald-50 text-emerald-700'
-                       }`}>
-                         {Math.round(res.score * 100)}% Match
-                       </div>
-                       <div className={`w-12 h-1 rounded-full overflow-hidden ${
-                         formData.violationType === res.rule_code ? 'bg-white/10' : 'bg-slate-100'
-                       }`}>
-                          <div 
-                            className={`h-full rounded-full transition-all duration-1000 ${
-                              formData.violationType === res.rule_code ? 'bg-emerald-300' : 'bg-emerald-500'
-                            }`}
-                            style={{ width: `${Math.round(res.score * 100)}%` }}
-                          />
-                       </div>
-                    </div>
-                  </button>
-                ))}
+      {/* MAIN CONTENT GRID - REFINED PROPORTIONS */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start mb-10">
+        
+        {/* INFRACTION FORM - LEFT SIDE */}
+        <div className="lg:col-span-7 space-y-8">
+           <div className="bg-white rounded-[3rem] p-10 shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-slate-100 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-[#003624]"></div>
+              
+              <div className="flex items-center gap-3 mb-10">
+                <h2 className="text-[24px] font-black text-[#003624] tracking-tight">Incident Parameters</h2>
+                <div className="h-px bg-slate-100 flex-1 ml-4"></div>
               </div>
-            )}
 
-            <label className="block text-[11px] font-pjs font-black text-[#003624] uppercase tracking-[0.15em] mb-3">Or Select Manually (Full List)</label>
-            <div className="relative mb-8">
-              <select name="violationType" value={formData.violationType} onChange={handleInputChange} className="w-full bg-gray-50 rounded-xl h-[60px] px-6 pr-12 text-[14px] font-manrope font-semibold text-[#0f172a] outline-none appearance-none cursor-pointer focus:bg-white border border-transparent focus:border-emerald-100 transition-all font-mono">
-                <option value="">Select handbook category...</option>
-                <optgroup label="Section 27.1 - Minor Offenses">
-                  {handbookRules.filter(r => r.rule_code.startsWith('27.1')).map(rule => (
-                    <option key={rule.id} value={rule.rule_code}>{rule.rule_code} — {rule.description.substring(0, 100)}...</option>
-                  ))}
-                </optgroup>
-                <optgroup label="Section 27.2 - Major Offenses (Tier 2)">
-                   {handbookRules.filter(r => r.rule_code.startsWith('27.2')).map(rule => (
-                    <option key={rule.id} value={rule.rule_code}>{rule.rule_code} — {rule.description.substring(0, 100)}...</option>
-                  ))}
-                </optgroup>
-                <optgroup label="Section 27.3 - Major Offenses (Standard)">
-                  {handbookRules.filter(r => r.rule_code.startsWith('27.3')).map(rule => (
-                    <option key={rule.id} value={rule.rule_code}>{rule.rule_code} — {rule.description.substring(0, 100)}...</option>
-                  ))}
-                </optgroup>
-              </select>
-              <span className="material-symbols-outlined absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 text-[24px] pointer-events-none">unfold_more</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6 mb-8">
-              <div>
-                <label className="block text-[11px] font-pjs font-black text-[#003624] uppercase tracking-[0.15em] mb-3">Incident Date</label>
-                <input type="date" name="incidentDate" value={formData.incidentDate} onChange={handleInputChange} className="w-full bg-gray-50 border border-transparent focus:border-emerald-100 focus:bg-white rounded-xl h-[60px] px-6 text-[14px] font-manrope font-bold text-gray-700 outline-none transition-all"/>
-              </div>
-              <div>
-                <label className="block text-[11px] font-pjs font-black text-[#003624] uppercase tracking-[0.15em] mb-3">Incident Time</label>
-                <input type="time" name="incidentTime" value={formData.incidentTime} onChange={handleInputChange} className="w-full bg-gray-50 border border-transparent focus:border-emerald-100 focus:bg-white rounded-xl h-[60px] px-6 text-[14px] font-manrope font-bold text-gray-700 outline-none transition-all"/>
-              </div>
-            </div>
-
-            <label className="block text-[11px] font-pjs font-black text-[#003624] uppercase tracking-[0.15em] mb-3">Location / Building</label>
-            <div className="relative mb-8">
-              <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">pin_drop</span>
-              <input type="text" name="location" placeholder="e.g. JFH Building" value={formData.location} onChange={handleInputChange} className="w-full bg-gray-50 border border-transparent focus:border-emerald-100 focus:bg-white rounded-xl h-[60px] pl-14 pr-6 text-[14px] font-manrope font-bold text-gray-700 outline-none transition-all"/>
-            </div>
-
-            <label className="block text-[11px] font-pjs font-black text-[#003624] uppercase tracking-[0.15em] mb-3">Description</label>
-            <textarea name="description" rows="5" placeholder="Detailed objective account..." value={formData.description} onChange={handleInputChange} className="w-full bg-gray-50 border border-transparent focus:border-emerald-100 focus:bg-white rounded-xl p-6 text-[14px] font-manrope font-semibold text-gray-600 outline-none resize-none leading-relaxed transition-all"/>
-          </div>
-
-          {/* Evidence Upload */}
-          <div className="bg-[#f2fcf8] rounded-[2rem] p-8 border border-emerald-100 mb-6 transition-all">
-            <div className="flex items-center gap-3 mb-6">
-              <span className="material-symbols-outlined text-[#10b981] text-[24px]">camera_enhance</span>
-              <h2 className="text-[18px] font-pjs font-bold text-[#003624]">Digital Evidence</h2>
-            </div>
-            <div className="border-2 border-dashed border-emerald-200 rounded-[1.5rem] py-16 flex flex-col items-center justify-center text-center cursor-pointer hover:border-[#10b981] transition-all bg-white group shadow-sm" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()} onClick={() => fileInputRef.current?.click()}>
-              <input ref={fileInputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.mp4" onChange={handleFileUpload} className="hidden"/>
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-[#10b981] flex items-center justify-center mb-5 group-hover:scale-110 Transition-transform">
-                <span className="material-symbols-outlined text-[28px] font-bold">upload_file</span>
-              </div>
-              <p className="text-[17px] font-pjs font-bold text-[#0f172a] mb-2">Upload Evidence Logs</p>
-              <p className="text-[13px] text-gray-400 font-medium mb-6">Drop incident photos or PDF statements.</p>
-              <span className="text-[10px] font-pjs font-black text-emerald-600 uppercase tracking-[0.2em] bg-emerald-100/50 px-4 py-1.5 rounded-full">MAX PAYLOAD: 50MB</span>
-            </div>
-          </div>
-
-          {/* Assessment Result */}
-          {assessment && (
-            <div className="bg-[#003624] rounded-[2rem] p-10 text-white shadow-2xl mb-6 animate-scale-in border border-white/5 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-5">
-                 <span className="material-symbols-outlined text-[120px]">psychology</span>
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-emerald-400 animate-pulse text-[22px]">auto_awesome</span>
+              <div className="space-y-8">
+                {/* Rule Search */}
+                <div className="relative">
+                  <label className="block text-[11px] font-black text-[#003624]/40 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px]">policy</span>
+                    Handbook Rule Reference
+                  </label>
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors">auto_fix_high</span>
+                    <input 
+                      type="text" 
+                      placeholder="Smart search (e.g. 'smoking', 'uniform', 'noise')..." 
+                      value={smartSearchQuery} 
+                      onChange={(e) => handleSmartSearch(e.target.value)} 
+                      className="w-full bg-slate-50 border-2 border-transparent rounded-2xl h-[64px] pl-14 pr-4 text-[15px] font-bold text-slate-700 outline-none focus:bg-white focus:border-emerald-100 focus:shadow-lg focus:shadow-emerald-950/5 transition-all" 
+                    />
                   </div>
-                  <h3 className="text-[12px] font-pjs font-black uppercase tracking-[0.2em] text-emerald-400">Institutional Logic Suggestion</h3>
-                </div>
-                
-                <div className="space-y-4">
-                  <p className="text-[16px] font-manrope font-semibold leading-[1.7] text-white tracking-tight">
-                    {assessment.rule_code?.startsWith('27.1') ? (
-                      <>
-                        This is the student's <span className="text-emerald-400 underline decoration-emerald-400/30 underline-offset-4">
-                          {(() => {
-                            const n = (assessment.total_minor_count || 0) + 1;
-                            const s = ["th", "st", "nd", "rd"], v = n % 100;
-                            return n + (s[(v - 20) % 10] || s[v] || s[0]);
-                          })()} Minor Offense
-                        </span> overall.
-                      </>
-                    ) : (
-                      <>This is the <span className="text-emerald-400 underline decoration-emerald-400/30 underline-offset-4">{assessment.instance_number === 1 ? 'First' : assessment.instance_number === 2 ? 'Second' : 'Third+'} Instance</span> of this major rule.</>
-                    )}
-                  </p>
-                  
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                     <p className="text-[12px] font-black text-white/40 uppercase tracking-widest mb-2">Recommended Corrective Action</p>
-                     <p className="text-[18px] font-pjs font-extrabold text-[#10b981] leading-tight">
-                       {assessment.recommendation || "Consult SWAFO Director"}
-                     </p>
-                  </div>
-
-                  {assessment.policy_notes && assessment.policy_notes.length > 0 && (
-                    <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4 space-y-2">
-                       {assessment.policy_notes.map((note, i) => (
-                         <div key={i} className="flex gap-3 text-orange-400 text-[12px] font-bold leading-relaxed">
-                            <span className="material-symbols-outlined text-[16px] shrink-0">info</span>
-                            {note}
-                         </div>
-                       ))}
-                    </div>
-                  )}
-
-                  {assessment.is_repeat_offender && (
-                    <div className="flex items-center gap-3 text-emerald-400/60 text-[12px] font-medium py-1">
-                       <span className="material-symbols-outlined text-[16px]">info</span>
-                       Repeat offense: student has {assessment.instance_number - 1} prior record(s) for this specific code.
+                  {smartSearchResults.length > 0 && (
+                    <div className="absolute top-[95px] left-0 right-0 z-[110] bg-white rounded-3xl shadow-[0_30px_80px_rgba(0,0,0,0.2)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
+                      {smartSearchResults.map(res => (
+                        <button key={res.id} onClick={() => { setFormData(prev => ({ ...prev, violationType: res.rule_code })); setSmartSearchQuery(res.rule_code); setSmartSearchResults([]); }} className="w-full p-6 hover:bg-emerald-50 text-left border-b border-slate-50 last:border-0 group transition-all">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{res.rule_code}</span>
+                            <span className="text-[10px] font-bold text-slate-300 uppercase">{Math.round(res.score * 100)}% Match</span>
+                          </div>
+                          <p className="text-[14px] font-bold text-slate-700 leading-tight group-hover:text-[#003624] transition-colors">{res.description}</p>
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-white/10 flex justify-end items-center gap-6">
-                  <button onClick={() => setAssessment(null)} className="text-[12px] font-bold text-white/40 hover:text-white transition-colors underline underline-offset-8">DISCARD DRAFT</button>
-                  <button 
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="bg-emerald-500 text-white px-8 py-3 rounded-xl text-[13px] font-pjs font-bold hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
-                  >
-                    {isSubmitting ? 'LOGGING CASE...' : 'CONFIRM & LOG CASE'}
-                  </button>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-[11px] font-black text-[#003624]/40 uppercase tracking-[0.2em] mb-3">Incident Date</label>
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-[20px]">event</span>
+                      <input type="date" name="incidentDate" value={formData.incidentDate} onChange={handleInputChange} className="w-full bg-slate-50 border-none rounded-2xl h-[60px] pl-12 pr-4 text-[14px] font-bold text-slate-700 outline-none focus:bg-white focus:ring-4 ring-emerald-50 transition-all" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-[#003624]/40 uppercase tracking-[0.2em] mb-3">Logging Time</label>
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-[20px]">alarm</span>
+                      <input type="time" name="incidentTime" value={formData.incidentTime} onChange={handleInputChange} className="w-full bg-slate-50 border-none rounded-2xl h-[60px] pl-12 pr-4 text-[14px] font-bold text-slate-700 outline-none focus:bg-white focus:ring-4 ring-emerald-50 transition-all" />
+                    </div>
+                  </div>
                 </div>
+
+                <div>
+                  <label className="block text-[11px] font-black text-[#003624]/40 uppercase tracking-[0.2em] mb-3">Precise Location</label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-[20px]">share_location</span>
+                    <input type="text" name="location" placeholder="e.g. JFH 4th Floor Corridor" value={formData.location} onChange={handleInputChange} className="w-full bg-slate-50 border-none rounded-2xl h-[64px] pl-12 pr-4 text-[14px] font-bold text-slate-700 outline-none focus:bg-white focus:ring-4 ring-emerald-50 transition-all" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black text-[#003624]/40 uppercase tracking-[0.2em] mb-3">Contextual Remarks</label>
+                  <textarea name="description" rows="4" placeholder="Objectively describe the observed behavior and situational factors..." value={formData.description} onChange={handleInputChange} className="w-full bg-slate-50 border-none rounded-[2rem] p-6 text-[15px] font-medium text-slate-600 outline-none focus:bg-white focus:ring-4 ring-emerald-50 transition-all resize-none leading-relaxed" />
+                </div>
+
+                {!assessment && (
+                  <button onClick={handleGenerateRecommendation} disabled={isGenerating || !foundStudent || !formData.violationType} className="w-full h-[72px] bg-[#003624] text-white rounded-[2rem] font-black text-[15px] hover:bg-[#004d35] transition-all flex items-center justify-center gap-4 shadow-[0_20px_60px_rgba(0,54,36,0.2)] active:scale-[0.98] disabled:opacity-30 tracking-[0.1em]">
+                    {isGenerating ? <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" /> : <><span className="material-symbols-outlined text-[24px] text-emerald-400">psychology</span> RUN ASSESSMENT ENGINE</>}
+                  </button>
+                )}
               </div>
-            </div>
-          )}
+           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="col-span-1 space-y-6 pt-[124px]">
-          <div className="bg-white border border-gray-100 rounded-[2rem] p-8 shadow-[0_15px_50px_rgba(0,0,0,0.03)] relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#10b981]/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-1000"></div>
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-[#10b981]">
-                 <span className="material-symbols-outlined text-[26px]">gavel</span>
+        {/* HISTORY TIMELINE - RIGHT SIDE */}
+        <div className="lg:col-span-5 flex flex-col gap-8">
+           
+           {/* Summary Bento Box */}
+           <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex items-center justify-between overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-24 h-full bg-emerald-50 opacity-30 skew-x-[-20deg] translate-x-12"></div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Conduct Standing</p>
+                <div className="flex items-center gap-3">
+                   <h4 className="text-[28px] font-black text-[#003624] leading-none">{pastViolations.length}</h4>
+                   <span className="text-[12px] font-bold text-slate-500 uppercase tracking-tight">Logged Incidents</span>
+                </div>
               </div>
-              <h2 className="text-[18px] font-pjs font-bold text-[#003624] tracking-tight">Compliance Protocol</h2>
-            </div>
-            <ul className="space-y-6">
-              {[
-                { title: 'Section 27 Logic', text: 'Minor offenses escalate to Major on the 4th occurrence.' },
-                { title: 'Sanction Tiers', text: 'Sanctions 1–6 are defined in the student handbook appendix.' },
-                { title: 'Repeat Offenders', text: 'System flags cumulative history within the stay.' },
-              ].map((tip, i) => (
-                <li key={i} className="flex gap-4">
-                  <span className="text-[14px] font-pjs font-black text-emerald-200 shrink-0 mt-0.5">0{i+1}</span>
-                  <div>
-                    <p className="text-[13px] font-bold text-gray-900 mb-1">{tip.title}</p>
-                    <p className="text-[11px] text-gray-400 font-medium leading-[1.6]">{tip.text}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="bg-[#003624] rounded-[2rem] p-10 text-white shadow-2xl relative overflow-hidden">
-            <h3 className="text-[20px] font-pjs font-bold mb-4 leading-tight tracking-tight relative z-10">Institutional Policy Reference</h3>
-            <p className="text-[13px] text-emerald-100/40 font-medium leading-[1.7] mb-8 relative z-10">Violations are based on the 2024 Handbook Section 27.</p>
-            <button className="w-full bg-[#004d33] border border-white/5 hover:bg-[#005c3d] py-4 rounded-xl text-[12px] font-pjs font-bold transition-all flex items-center justify-center gap-3 tracking-widest text-[#10b981] group relative z-10">DOWNLOAD PDF <span className="material-symbols-outlined text-[20px] group-hover:translate-y-1 Transition-transform">download_for_offline</span></button>
-          </div>
+              <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 ${pastViolations.length > 3 ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                 {pastViolations.length > 3 ? 'High Risk' : 'Standard'}
+              </div>
+           </div>
+
+           {/* Real Timeline */}
+           <div className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm flex flex-col h-full max-h-[700px] relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-12 bg-gradient-to-b from-white to-transparent z-10 pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-white to-transparent z-10 pointer-events-none"></div>
+              
+              <div className="flex items-center justify-between mb-8 relative z-20">
+                 <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                       <span className="material-symbols-outlined font-bold">timeline</span>
+                    </div>
+                    <h3 className="text-[18px] font-black text-[#003624] tracking-tight">Institutional Record</h3>
+                 </div>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto custom-scrollbar-emerald space-y-6 pr-4 relative z-0">
+                 {foundStudent ? (
+                   historyLoading ? (
+                     <div className="py-20 text-center flex flex-col items-center gap-4">
+                        <div className="w-8 h-8 border-3 border-emerald-100 border-t-emerald-600 rounded-full animate-spin"></div>
+                        <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Querying History...</p>
+                     </div>
+                   ) : pastViolations.length > 0 ? (
+                     pastViolations.map((v, idx) => (
+                       <div key={v.id} className="relative pl-8 group">
+                          {/* Timeline Line */}
+                          {idx !== pastViolations.length - 1 && <div className="absolute left-[11px] top-6 bottom-[-24px] w-[2px] bg-slate-100 group-hover:bg-emerald-100 transition-colors"></div>}
+                          {/* Timeline Dot */}
+                          <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center group-hover:border-emerald-400 transition-all shadow-sm z-10">
+                             <div className="w-2 h-2 rounded-full bg-slate-300 group-hover:bg-emerald-500 transition-all"></div>
+                          </div>
+                          
+                          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm group-hover:shadow-lg group-hover:shadow-emerald-950/5 group-hover:border-emerald-100 transition-all">
+                             <div className="flex justify-between items-start mb-3">
+                                <span className={`text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-widest ${v.rule_details?.category?.includes('Minor') ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>
+                                   {v.rule_details?.rule_code}
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">{new Date(v.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                             </div>
+                             <h5 className="text-[14px] font-bold text-slate-800 leading-snug mb-3 group-hover:text-[#003624] transition-colors">{v.rule_details?.description}</h5>
+                             <div className="flex items-center gap-4 text-[11px] font-medium text-slate-400 italic">
+                                <div className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[14px]">location_on</span>{v.location}</div>
+                             </div>
+                          </div>
+                       </div>
+                     ))
+                   ) : (
+                     <div className="py-20 text-center flex flex-col items-center gap-4 opacity-40">
+                        <span className="material-symbols-outlined text-[48px] font-light">verified</span>
+                        <p className="text-[12px] font-bold text-slate-500 uppercase tracking-widest leading-none">Clean Record • Exemplary Conduct</p>
+                     </div>
+                   )
+                 ) : (
+                   <div className="py-24 text-center flex flex-col items-center gap-6">
+                      <div className="w-16 h-16 rounded-[2rem] bg-slate-50 flex items-center justify-center border border-slate-100">
+                         <span className="material-symbols-outlined text-[28px] text-slate-200">contact_support</span>
+                      </div>
+                      <p className="text-[13px] font-medium text-slate-400 max-w-[200px] leading-relaxed italic">Select a student profile to load institutional context.</p>
+                   </div>
+                 )}
+              </div>
+           </div>
         </div>
       </div>
 
+      {/* ASSESSMENT RESULT - PREMIUM OVERLAY */}
+      {assessment && (
+        <div className="bg-[#003624] rounded-[4rem] p-12 text-white shadow-[0_50px_120px_rgba(0,0,0,0.4)] animate-in slide-in-from-bottom-12 duration-700 border-4 border-white/5 relative overflow-hidden mb-12">
+          <div className="absolute top-0 right-0 p-12 opacity-5 scale-[2] pointer-events-none">
+             <span className="material-symbols-outlined text-[150px]">gavel</span>
+          </div>
+          <div className="absolute top-0 left-0 w-full h-full bg-[conic-gradient(from_0deg_at_50%_50%,rgba(16,185,129,0.05),transparent)] animate-spin-slow"></div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-5 mb-10">
+              <div className="w-16 h-16 rounded-[1.5rem] bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+                <span className="material-symbols-outlined text-emerald-400 text-[32px] animate-pulse">verified_user</span>
+              </div>
+              <div>
+                <h3 className="text-[13px] font-black uppercase tracking-[0.3em] text-emerald-400 mb-1 leading-none">Final Assessment Engine Output</h3>
+                <p className="text-[16px] font-medium text-emerald-100/40">Verified against University Disciplinary Policy v2.4</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-12">
+              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-[2.5rem] p-10 flex flex-col justify-between group hover:bg-white/10 transition-all">
+                 <div>
+                    <p className="text-[11px] font-black text-white/30 uppercase tracking-[0.2em] mb-4">Escalation Logic Result</p>
+                    <p className="text-[24px] font-black text-white leading-tight mb-2 tracking-tight">
+                       {assessment.rule_code?.startsWith('27.1') ? `Violation #${(assessment.total_minor_count || 0) + 1}` : `Instance #${assessment.instance_number}`}
+                    </p>
+                    <p className="text-[14px] font-bold text-emerald-100/50 uppercase tracking-widest">
+                       {assessment.rule_code?.startsWith('27.1') ? 'MINOR CATEGORY ESCALATION' : 'MAJOR CATEGORY VIOLATION'}
+                    </p>
+                 </div>
+              </div>
+              <div className="bg-emerald-500 rounded-[2.5rem] p-10 shadow-[0_20px_60px_rgba(16,185,129,0.4)] flex flex-col justify-between group hover:scale-[1.02] transition-all">
+                 <div>
+                    <p className="text-[11px] font-black text-emerald-950/40 uppercase tracking-[0.2em] mb-4">Mandated Sanction</p>
+                    <p className="text-[32px] font-black text-[#003624] leading-tight tracking-tighter">
+                       {assessment.recommendation}
+                    </p>
+                 </div>
+                 <div className="mt-6 flex items-center gap-2 text-[#003624]/60">
+                    <span className="material-symbols-outlined text-[18px]">info</span>
+                    <span className="text-[11px] font-black uppercase tracking-widest">Handbook Page {assessment.rule_code?.substring(0, 4) || 'Ref'}</span>
+                 </div>
+              </div>
+            </div>
 
-
-      {!assessment && foundStudent && formData.violationType && (
-        <div className="mt-16 flex flex-col items-center">
-          <button onClick={handleGenerateRecommendation} disabled={isGenerating} className={`w-full max-w-[800px] h-[72px] rounded-3xl flex items-center justify-center gap-4 font-pjs font-bold text-[18px] tracking-tight transition-all shadow-2xl bg-[#003624] text-white hover:bg-[#004d35] hover:translate-y-[-2px] active:scale-[0.98] shadow-emerald-950/20 disabled:opacity-50`}>
-            {isGenerating ? 'CALCULATING...' : <><span className="material-symbols-outlined text-[24px] text-emerald-400">auto_awesome</span> ASSESS CASE & RECOMMEND PENALTY</>}
-          </button>
+            <div className="flex flex-col md:flex-row justify-end items-center gap-8 pt-10 border-t border-white/10">
+              <button onClick={() => setAssessment(null)} className="text-[14px] font-black text-white/30 hover:text-white transition-all tracking-[0.2em] uppercase active:scale-95">Discard Entry</button>
+              <button onClick={handleSubmit} disabled={isSubmitting} className="w-full md:w-auto bg-white text-[#003624] px-14 py-5 rounded-[2rem] text-[16px] font-black hover:bg-emerald-50 transition-all shadow-[0_15px_40px_rgba(255,255,255,0.1)] active:scale-[0.98] tracking-widest">
+                {isSubmitting ? 'ENCRYPTING & LOGGING...' : 'COMMIT TO INSTITUTIONAL RECORD'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      <DuplicateWarningModal 
-        isOpen={showDuplicateWarning}
-        onCancel={() => {
-          setShowDuplicateWarning(false);
-          setAssessment(null);
-        }}
-        onContinue={() => setShowDuplicateWarning(false)}
-        previousIncident={assessment?.previous_incident}
-        ruleCode={assessment?.rule_code}
-        studentName={assessment?.student_name}
-      />
-    </div>
-  );
-}
-
-function DuplicateWarningModal({ isOpen, onCancel, onContinue, previousIncident, ruleCode, studentName }) {
-  if (!isOpen) return null;
-
-  const time = new Date(previousIncident?.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const date = new Date(previousIncident?.timestamp).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-emerald-950/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white rounded-[2.5rem] w-full max-w-[550px] overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.3)] border border-white/20 animate-in zoom-in-95 duration-300">
-        <div className="bg-amber-500 p-8 text-white flex items-center gap-6">
-          <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[36px]">warning</span>
-          </div>
-          <div>
-            <h3 className="text-[20px] font-pjs font-bold leading-tight">Potential Duplicate Detected</h3>
-            <p className="text-[12px] text-white/70 font-medium uppercase tracking-widest mt-1">Rule Code: {ruleCode}</p>
-          </div>
-        </div>
-
-        <div className="p-8">
-          <p className="text-[15px] text-gray-600 font-manrope leading-relaxed mb-8">
-            Our intelligent scanner found an existing violation for <span className="font-bold text-[#003624]">{studentName}</span> with the same rule code recorded earlier today.
-          </p>
-
-          <div className="bg-amber-50 rounded-2xl p-6 border border-amber-100 mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-[11px] font-black text-amber-800 uppercase tracking-widest">Previous Record Details</span>
-              <span className="text-[10px] font-bold text-amber-600">ID: #{previousIncident?.id}</span>
+      {/* SUCCESS DIALOG - PORTAL */}
+      {showSuccess && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-6 bg-[#003624]/70 backdrop-blur-2xl animate-in fade-in duration-500">
+          <div className="bg-white rounded-[4rem] w-full max-w-[540px] p-14 text-center shadow-[0_50px_150px_rgba(0,0,0,0.5)] border border-white/20 animate-in zoom-in-95 duration-300 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500"></div>
+            
+            <div className="w-24 h-24 rounded-[2rem] bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-8 shadow-inner">
+               <span className="material-symbols-outlined text-[48px] font-bold animate-bounce-slow">verified</span>
             </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 text-gray-700">
-                <span className="material-symbols-outlined text-[18px] text-amber-500">calendar_today</span>
-                <span className="text-[13px] font-bold">{date} at {time}</span>
-              </div>
-              <div className="flex items-center gap-3 text-gray-700">
-                <span className="material-symbols-outlined text-[18px] text-amber-500">pin_drop</span>
-                <span className="text-[13px] font-bold">{previousIncident?.location}</span>
-              </div>
+            
+            <h2 className="text-[32px] font-black text-[#003624] mb-3 tracking-tighter leading-none">Incident Securely Logged</h2>
+            <p className="text-[12px] font-black text-emerald-600/60 uppercase tracking-[0.3em] mb-10">Permanent Reference: SW-{lastLoggedId?.toString().padStart(4, '0')}</p>
+            
+            <div className="bg-slate-50 rounded-[2.5rem] p-8 mb-12 text-left border border-slate-100 shadow-inner group">
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Actioned Sanction</p>
+               <p className="text-[22px] font-black text-[#003624] leading-tight group-hover:text-emerald-700 transition-colors">{assessment?.recommendation}</p>
+               <div className="mt-6 pt-4 border-t border-slate-200 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[16px] text-emerald-500">task_alt</span>
+                  <span className="text-[11px] font-bold text-slate-500">Automated Parent/Guardian Notification Queued</span>
+               </div>
             </div>
+            
+            <button onClick={handleCloseSuccess} className="w-full h-[76px] bg-[#003624] text-white rounded-[2rem] font-black text-[15px] uppercase tracking-[0.2em] hover:bg-[#004d35] transition-all shadow-[0_15px_40px_rgba(0,54,36,0.3)] active:scale-[0.98]">Dismiss & Start New Session</button>
           </div>
+        </div>, document.body
+      )}
 
-          <p className="text-[13px] font-bold text-gray-400 mb-8 text-center italic">Do you still wish to proceed with recording this duplicate instance?</p>
+      {/* CUSTOM SCROLLBAR STYLES */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-          <div className="grid grid-cols-2 gap-4">
-            <button 
-              onClick={onCancel}
-              className="h-[60px] rounded-2xl border-2 border-gray-100 text-gray-500 font-pjs font-bold text-[14px] hover:bg-gray-50 transition-all active:scale-95"
-            >
-              DISCARD ENTRY
-            </button>
-            <button 
-              onClick={onContinue}
-              className="h-[60px] rounded-2xl bg-amber-500 text-white font-pjs font-bold text-[14px] hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/20 active:scale-95"
-            >
-              PROCEED ANYWAY
-            </button>
-          </div>
-        </div>
-      </div>
+        .custom-scrollbar-emerald::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar-emerald::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar-emerald::-webkit-scrollbar-thumb { background: #10b981; border-radius: 10px; opacity: 0.3; }
+        
+        @keyframes bounce-slow {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        .animate-bounce-slow { animation: bounce-slow 3s infinite ease-in-out; }
+        
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow { animation: spin-slow 20s linear infinite; }
+      `}} />
     </div>
   );
 }

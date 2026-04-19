@@ -1,21 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../api/config';
+import { ChevronDown, BarChart2, PieChart } from 'lucide-react';
 
 export default function OfficerDashboard() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(API_ENDPOINTS.OFFICER_DASHBOARD)
+    const url = user?.email 
+      ? `${API_ENDPOINTS.OFFICER_DASHBOARD}?email=${user.email}`
+      : API_ENDPOINTS.OFFICER_DASHBOARD;
+      
+    fetch(url)
       .then(res => res.json())
       .then(json => {
+        if (json.error) {
+           console.error("Dashboard API Error:", json.error);
+           setLoading(false);
+           return;
+        }
         setData(json);
         setLoading(false);
       })
-      .catch(err => console.error("Error fetching dashboard:", err));
-  }, []);
+      .catch(err => {
+        console.error("Error fetching dashboard:", err);
+        setLoading(false);
+      });
+  }, [user]);
 
   if (loading || !data) {
     return (
@@ -31,257 +46,271 @@ export default function OfficerDashboard() {
   const { stats, violations_by_type, status_distribution, recent_violations } = data;
 
   return (
-    <div className="max-w-[1400px] mx-auto animate-fade-in-up pb-12">
+    <div className="max-w-[1400px] mx-auto animate-fade-in-up pb-12 px-4">
       {/* Header */}
-      <div className="mb-10">
-        <h1 className="text-[28px] font-pjs font-extrabold text-[#003624] tracking-tight mb-1">SWAFO Dashboard</h1>
-        <p className="text-[14px] text-gray-500 font-medium">Welcome back! Here's your overview for today.</p>
+      <div className="mb-8">
+        <h1 className="text-[32px] font-pjs font-extrabold text-[#111827] tracking-tight mb-1">Welcome back!</h1>
+        <p className="text-[15px] text-gray-500 font-medium">Here's your overview for today.</p>
       </div>
 
-      {/* Stat Cards - High-Fidelity Sync */}
-      <div className="grid grid-cols-4 gap-6 mb-10">
-        <div className="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.02)] border border-[#f1f5f9] flex flex-col justify-between hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-500 group">
-          <div className="flex items-start justify-between mb-8">
-             <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 shadow-sm group-hover:scale-110 transition-transform duration-500">
-                <span className="material-symbols-outlined text-[24px]">gavel</span>
-             </div>
-             <span className="px-3 py-1 bg-red-50 text-red-700 text-[10px] font-black rounded-full uppercase tracking-widest border border-red-100">Live Today</span>
-          </div>
-          <div>
-            <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none mb-3">{stats.violations_today.toString().padStart(2, '0')}</h3>
-            <p className="text-[12px] text-slate-600 font-bold uppercase tracking-[0.1em]">Violations Recorded</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.02)] border border-[#f1f5f9] flex flex-col justify-between hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-500 group">
-          <div className="flex items-start justify-between mb-8">
-             <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shadow-sm group-hover:scale-110 transition-transform duration-500">
-                <span className="material-symbols-outlined text-[24px]">folder</span>
-             </div>
-             <span className="px-3 py-1 bg-amber-50 text-amber-700 text-[10px] font-black rounded-full uppercase tracking-widest border border-amber-100">Pending</span>
-          </div>
-          <div>
-            <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none mb-3">{stats.active_cases.toString().padStart(2, '0')}</h3>
-            <p className="text-[12px] text-slate-600 font-bold uppercase tracking-[0.1em]">Pending Cases</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.02)] border border-[#f1f5f9] flex flex-col justify-between hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-500 group">
-          <div className="flex items-start justify-between mb-8">
-             <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm group-hover:scale-110 transition-transform duration-500">
-                <span className="material-symbols-outlined text-[24px]">shield</span>
-             </div>
-             <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black rounded-full uppercase tracking-widest border border-emerald-100">On Patrol</span>
-          </div>
-          <div>
-            <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none mb-3">{stats.active_patrols.toString().padStart(2, '0')}</h3>
-            <p className="text-[12px] text-slate-600 font-bold uppercase tracking-[0.1em]">Active Patrols</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.02)] border border-[#f1f5f9] flex flex-col justify-between hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-500 group">
-          <div className="flex items-start justify-between mb-8">
-             <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-600 shadow-sm group-hover:scale-110 transition-transform duration-500">
-                <span className="material-symbols-outlined text-[24px]">person_alert</span>
-             </div>
-             <span className="px-3 py-1 bg-slate-50 text-slate-700 text-[10px] font-black rounded-full uppercase tracking-widest border border-slate-100">Flagged</span>
-          </div>
-          <div>
-            <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none mb-3">{stats.repeat_offenders.toString().padStart(2, '0')}</h3>
-            <p className="text-[12px] text-slate-600 font-bold uppercase tracking-[0.1em]">Repeat Offenders</p>
-          </div>
-        </div>
+      {/* ══════════════════════════════ STAT CARDS ROW ══════════════════════════════ */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+        <StatCard 
+          label="LIVE TODAY"
+          value={stats.violations_today}
+          subtitle="New Violations Today"
+          icon="warning"
+          iconBg="bg-emerald-50"
+          iconColor="text-emerald-600"
+        />
+        <StatCard 
+          label="PENDING"
+          value={stats.active_cases}
+          subtitle="Total Pending Cases"
+          icon="assignment"
+          iconBg="bg-blue-50"
+          iconColor="text-blue-600"
+        />
+        <StatCard 
+          label="ON PATROL"
+          value={stats.active_patrols}
+          subtitle="Active Patrol Sessions"
+          icon="radio_button_checked"
+          iconBg="bg-emerald-50"
+          iconColor="text-emerald-500"
+        />
+        <StatCard 
+          label="MY WORKLOAD"
+          value={stats.my_workload || 0}
+          subtitle="My Assigned Cases"
+          icon="person"
+          iconBg="bg-amber-50"
+          iconColor="text-amber-600"
+        />
       </div>
 
-      {/* Quick Actions */}
-      <div className="mb-10">
-        <h2 className="text-[18px] font-pjs font-bold text-gray-900 mb-1">Quick Actions</h2>
-        <p className="text-[12px] text-gray-500 font-medium mb-4">Access frequently used features</p>
+      {/* ══════════════════════════════ MAIN BENTO GRID ══════════════════════════════ */}
+      <div className="grid grid-cols-12 gap-6">
         
-        <div className="grid grid-cols-4 gap-6">
+        {/* LEFT COLUMN: QUICK ACTIONS (4-SQUARE GRID) */}
+        <div className="col-span-12 lg:col-span-4 grid grid-cols-2 gap-4">
           <QuickActionButton 
             onClick={() => navigate('/officer/patrol-history')}
-            icon="bolt"
-            label="Start Patrol"
+            icon="ads_click"
+            label="START PATROL"
           />
           <QuickActionButton 
             icon="qr_code_scanner"
-            label="Scan Student ID"
+            label="SCAN ID"
           />
           <QuickActionButton 
             onClick={() => navigate('/officer/violations/new')}
-            icon="history_edu"
-            label="Record Violation"
+            icon="edit_note"
+            label="RECORD VIOLATION"
           />
           <QuickActionButton 
             onClick={() => navigate('/officer/cases')}
-            icon="menu_book"
-            label="Manage Cases"
+            icon="folder_open"
+            label="MANAGE CASES"
           />
         </div>
-      </div>
 
-      {/* Main Grid: Graphs & Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10 w-full min-h-[380px]">
-        {/* Violations by Type (Progress Bars) */}
-        <div className="lg:col-span-2 bg-white rounded-3xl p-8 shadow-[0_8px_30px_rgba(0,54,36,0.04)] border border-gray-100/50 flex flex-col h-full">
-           <div className="flex justify-between items-center mb-8">
-              <h2 className="text-[18px] font-pjs font-bold text-gray-900">Violations by Type</h2>
-              <div className="text-[11px] font-bold text-[#005e43] bg-emerald-50 px-3 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer transition-colors hover:bg-emerald-100">
-                 All Time <span className="material-symbols-outlined text-[14px]">expand_more</span>
-              </div>
-           </div>
+        {/* MIDDLE COLUMN: VIOLATIONS BY TYPE */}
+        <div className="col-span-12 lg:col-span-4 bg-white rounded-[2.5rem] p-8 shadow-[0_4px_25px_rgba(0,0,0,0.03)] border border-gray-100/80">
+          <div className="flex justify-between items-center mb-10">
+            <h2 className="text-[17px] font-pjs font-black text-gray-800 tracking-tight">Violations by Type</h2>
+            <BarChart2 size={18} className="text-slate-300" />
+          </div>
 
-           <div className="space-y-8 flex-1 flex flex-col justify-center">
-              {violations_by_type.map((v, i) => {
-                const maxCount = violations_by_type[0].count;
-                const percentage = (v.count / maxCount) * 100;
-                const colors = ['#005e43', '#20df7a', '#62b98f', '#aeeecb', '#e8f5ef'];
-                return (
-                  <div key={i}>
-                    <div className="flex justify-between items-end mb-2">
-                      <span className="text-[14px] font-pjs font-bold text-gray-700">{v.name}</span>
-                      <span className="text-[15px] font-bold text-gray-900">{v.count}</span>
-                    </div>
-                    <div className="h-3 w-full bg-[#f1f3f5] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${percentage}%`, backgroundColor: colors[i % colors.length] }}></div>
-                    </div>
+          <div className="space-y-7">
+            {violations_by_type.slice(0, 4).map((v, i) => {
+              const maxCount = violations_by_type[0].count;
+              const percentage = (v.count / maxCount) * 100;
+              const colors = ['#064e3b', '#059669', '#10b981', '#34d399'];
+              return (
+                <div key={i}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">{v.name}</span>
+                    <span className="text-[14px] font-bold text-slate-900">{v.count}</span>
                   </div>
-                );
-              })}
-              {violations_by_type.length === 0 && <p className="text-center text-gray-400 py-10">No violations recorded yet.</p>}
-           </div>
+                  <div className="h-[7px] w-full bg-slate-50 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${percentage}%`, backgroundColor: colors[i % colors.length] }}></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Case Status Distribution — Donut Chart */}
-        <div className="bg-[#c2ded1] rounded-3xl p-8 shadow-[0_8px_30px_rgba(0,54,36,0.06)] flex flex-col relative h-full">
-           <h2 className="text-[20px] font-pjs font-bold text-gray-900 mb-1 leading-tight">Case Status<br/>Distribution</h2>
-           <p className="text-[12px] text-[#0a482e] font-semibold mb-6">Current status of all cases</p>
-           
-           <div className="relative w-[180px] h-[180px] mx-auto mb-8 flex items-center justify-center">
-              {/* SVG Donut Chart */}
-              <svg width="180" height="180" viewBox="0 0 180 180" className="transform -rotate-90">
-                 <circle cx="90" cy="90" r="70" fill="none" stroke="#b0d4c2" strokeWidth="28" opacity="0.3" />
-                 
-                 {(() => {
-                    let cumulativePercentage = 0;
-                    const circumference = 2 * Math.PI * 70;
-                    const colors = {
-                      'CLOSED': '#005e43',
-                      'PENDING': '#10b981'
-                    };
-                    
-                    return status_distribution.breakdown.map((s, i) => {
-                      const percentage = (s.count / status_distribution.total) * 100;
-                      const strokeDasharray = `${(percentage / 100) * circumference} ${circumference}`;
-                      const strokeDashoffset = `-${(cumulativePercentage / 100) * circumference}`;
-                      cumulativePercentage += percentage;
-                      
-                      return (
-                        <circle key={i} cx="90" cy="90" r="70" fill="none" 
-                          stroke={colors[s.status] || '#ccc'} 
-                          strokeWidth="28"
-                          strokeDasharray={strokeDasharray}
-                          strokeDashoffset={strokeDashoffset}
+        {/* RIGHT COLUMN: CASE STATUS DISTRIBUTION */}
+        <div className="col-span-12 lg:col-span-4 bg-white rounded-[2.5rem] p-8 shadow-[0_4px_25px_rgba(0,0,0,0.03)] border border-gray-100/80">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-[17px] font-pjs font-black text-gray-800 tracking-tight">Case Status Distribution</h2>
+          </div>
+
+          <div className="relative w-[190px] h-[190px] mx-auto my-10 flex items-center justify-center">
+            <svg width="190" height="190" viewBox="0 0 190 190" className="transform -rotate-90">
+                <circle cx="95" cy="95" r="75" fill="none" stroke="#f1f5f9" strokeWidth="22" />
+                {(() => {
+                  const total = status_distribution.total;
+                  // Handle inconsistent backend labels (RESOLVED vs CLOSED)
+                  const closed = status_distribution.breakdown.find(s => 
+                    s.status.toUpperCase() === 'RESOLVED' || s.status.toUpperCase() === 'CLOSED'
+                  )?.count || 0;
+                  const pending = total - closed;
+                  const circumference = 2 * Math.PI * 75;
+                  
+                  const closedPct = (closed / total) * 100;
+                  const pendingPct = (pending / total) * 100;
+                  
+                  const closedDash = `${(closedPct / 100) * circumference} ${circumference}`;
+                  const pendingDash = `${(pendingPct / 100) * circumference} ${circumference}`;
+                  const pendingOffset = `-${(closedPct / 100) * circumference}`;
+
+                  return (
+                    <>
+                      {/* Pending Segment (Light Red) */}
+                      {pending > 0 && (
+                        <circle cx="95" cy="95" r="75" fill="none" 
+                          stroke="#fca5a5" 
+                          strokeWidth="22"
+                          strokeDasharray={pendingDash}
+                          strokeDashoffset={pendingOffset}
                           strokeLinecap="round"
                           className="transition-all duration-1000"
                         />
-                      );
-                    });
-                 })()}
-              </svg>
+                      )}
+                      {/* Closed Segment (Emerald) */}
+                      {closed > 0 && (
+                        <circle cx="95" cy="95" r="75" fill="none" 
+                          stroke="#10b981" 
+                          strokeWidth="22"
+                          strokeDasharray={closedDash}
+                          strokeDashoffset="0"
+                          strokeLinecap="round"
+                          className="transition-all duration-1000"
+                        />
+                      )}
+                    </>
+                  );
+                })()}
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-[32px] font-pjs font-black text-slate-900 leading-none">{status_distribution.total}</span>
+              <span className="text-[8px] font-black text-slate-400 tracking-[0.2em] uppercase mt-1">Total Cases</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 mt-auto">
+              {(() => {
+                const total = status_distribution.total;
+                const closed = status_distribution.breakdown.find(s => 
+                  s.status.toUpperCase() === 'RESOLVED' || s.status.toUpperCase() === 'CLOSED'
+                )?.count || 0;
+                const pending = total - closed;
+                const closedPct = Math.round((closed / total) * 100);
+                const pendingPct = Math.round((pending / total) * 100);
 
-              {/* Center white circle */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                 <div className="w-[95px] h-[95px] bg-white rounded-full flex flex-col items-center justify-center shadow-md">
-                    <span className="text-[24px] font-pjs font-black text-[#005e43] leading-none">{status_distribution.total}</span>
-                    <span className="text-[7px] font-bold text-gray-500 tracking-[0.15em] uppercase mt-1">Total Cases</span>
-                 </div>
-              </div>
-           </div>
-
-           <div className="space-y-4 mt-auto">
-               {status_distribution.breakdown.map((s, i) => {
-                 const colors = { 'CLOSED': '#005e43', 'PENDING': '#10b981' };
-                 const labels = { 'CLOSED': 'Closed', 'PENDING': 'Pending' };
-                 const percentage = Math.round((s.count / status_distribution.total) * 100);
-                 return (
-                   <div key={i} className="flex justify-between text-[13px] font-pjs font-bold text-gray-900 items-center">
-                     <div className="flex items-center gap-3">
-                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors[s.status] || '#cbd5e1' }}></div> {labels[s.status] || s.status}
-                     </div>
-                     <span>{percentage}%</span>
-                   </div>
-                 );
-               })}
-           </div>
+                return (
+                  <>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#10b981]"></div>
+                        <span className="text-[12px] font-bold text-slate-700">Closed</span>
+                      </div>
+                      <span className="text-[13px] font-medium text-slate-400 ml-4.5">({closedPct}%)</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#fca5a5]"></div>
+                        <span className="text-[12px] font-bold text-slate-700">Pending</span>
+                      </div>
+                      <span className="text-[13px] font-medium text-slate-400 ml-4.5">({pendingPct}%)</span>
+                    </div>
+                  </>
+                );
+              })()}
+          </div>
         </div>
       </div>
 
-      {/* Improved Recent Violations Table */}
-      <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgba(0,54,36,0.04)] border border-gray-100/50 overflow-hidden">
-        <div className="flex justify-between items-center p-8 pb-4">
+      {/* ══════════════════════════════ RECENT VIOLATIONS TABLE ══════════════════════════════ */}
+      <div className="mt-10 bg-white rounded-[2.5rem] shadow-[0_4px_30px_rgba(0,0,0,0.03)] border border-gray-100/80 overflow-hidden">
+        <div className="flex justify-between items-center p-10 pb-4">
            <div>
-              <h2 className="text-[20px] font-pjs font-bold text-gray-900 leading-tight">Recent Violations</h2>
-              <p className="text-[13px] text-gray-500 font-medium mt-1">Latest report incidents</p>
+              <h2 className="text-[20px] font-pjs font-black text-gray-900 leading-tight">Recent Violations</h2>
+              <p className="text-[13px] text-gray-400 font-bold uppercase tracking-widest mt-1">Institutional Live Feed</p>
            </div>
            <button 
             onClick={() => navigate('/officer/cases')}
-            className="text-[13px] font-bold text-[#006f4f] bg-emerald-50/50 hover:bg-emerald-50 px-5 py-2.5 rounded-xl transition-colors"
+            className="text-[13px] font-bold text-[#064e3b] bg-emerald-50 hover:bg-emerald-100 px-6 py-3 rounded-2xl transition-all active:scale-95"
            >
             View All Cases
            </button>
         </div>
 
-        <div className="w-full px-8 pb-8 pt-2">
-           {/* Table Header — gray bar matching mockup */}
-           <div className="grid grid-cols-5 py-3.5 px-4 rounded-lg bg-[#f0f1f3] text-[10px] font-extrabold text-[#9ca3af] uppercase tracking-[0.15em] mb-3">
-              <div className="col-span-2">Student Name</div>
-              <div className="col-span-1">Violation Type</div>
-              <div className="col-span-1">Time</div>
+        <div className="w-full px-10 pb-10 pt-4">
+           {/* Table Header */}
+           <div className="grid grid-cols-5 py-4 px-6 rounded-2xl bg-slate-50/80 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
+              <div className="col-span-2">Student Identity</div>
+              <div className="col-span-1">Classification</div>
+              <div className="col-span-1">Timestamp</div>
               <div className="col-span-1 text-right">Status</div>
            </div>
 
-           {/* Table Rows with Card-style Separation */}
-           <div className="space-y-4">
+           {/* Table Rows */}
+           <div className="space-y-3">
               {recent_violations.map((v) => {
                 const fullName = v.student_details?.user_details?.full_name || 'System Student';
                 const initials = fullName.split(' ').map(n => n[0]).join('').substring(0, 2);
                 const statusColors = {
-                  'CLOSED': 'bg-[#cdefda] text-[#0a5231]',
-                  'OPEN': 'bg-[#fae3e3] text-[#b91c1c]',
-                  'UNDER_REVIEW': 'bg-[#fae3e3] text-[#b91c1c]',
-                  'APPEALED': 'bg-[#fae3e3] text-[#b91c1c]'
-                };
-                const statusLabels = { 
-                  'CLOSED': 'Closed', 
-                  'OPEN': 'Pending',
-                  'UNDER_REVIEW': 'Pending',
-                  'APPEALED': 'Pending'
+                  'RESOLVED': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                  'OPEN': 'bg-red-50 text-red-700 border-red-100',
+                  'UNDER_REVIEW': 'bg-amber-50 text-amber-700 border-amber-100'
                 };
                 const time = new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 
                 return (
-                  <div key={v.id} className="grid grid-cols-5 items-center p-4 bg-white hover:bg-[#f8fbf9] rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all cursor-pointer">
+                  <div key={v.id} className="grid grid-cols-5 items-center p-5 bg-white hover:bg-emerald-50/30 rounded-2xl border border-gray-100/60 shadow-sm transition-all cursor-pointer group">
                     <div className="col-span-2 flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-[#e8f5ef] text-[#006f4f] font-bold text-[12px] flex items-center justify-center uppercase">{initials}</div>
-                        <span className="font-pjs font-bold text-[14px] text-gray-900">{fullName}</span>
+                        <div className="w-11 h-11 rounded-full bg-[#064e3b] text-white font-bold text-[13px] flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">{initials}</div>
+                        <div className="flex flex-col">
+                            <span className="font-pjs font-bold text-[15px] text-slate-800">{fullName}</span>
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">{v.student_details?.student_number}</span>
+                        </div>
                     </div>
-                    <div className="col-span-1 text-[13px] font-semibold text-gray-600 truncate pr-4">{v.rule_details?.category || 'General'}</div>
-                    <div className="col-span-1 text-[13px] font-medium text-gray-500">{time}</div>
+                    <div className="col-span-1">
+                        <span className="text-[13px] font-black text-slate-600 uppercase tracking-tighter">{v.rule_details?.category || 'General'}</span>
+                    </div>
+                    <div className="col-span-1 text-[13px] font-bold text-slate-400">{time}</div>
                     <div className="col-span-1 text-right">
-                        <span className={`inline-block px-4 py-1.5 text-[10px] font-extrabold rounded-full uppercase tracking-wider ${statusColors[v.status] || 'bg-gray-100 text-gray-500'}`}>
-                          {statusLabels[v.status] || v.status}
+                        <span className={`inline-block px-4 py-2 text-[10px] font-black rounded-xl border uppercase tracking-wider ${statusColors[v.status] || 'bg-slate-100 text-slate-600'}`}>
+                          {v.status === 'RESOLVED' ? 'Closed' : 'Pending'}
                         </span>
                     </div>
                   </div>
                 );
               })}
-              {recent_violations.length === 0 && <p className="text-center text-gray-400 py-10">No recent violations.</p>}
+              {recent_violations.length === 0 && <p className="text-center text-gray-400 py-10">No recent activity detected.</p>}
            </div>
         </div>
       </div>
+    </div>
+  );
+}
 
+function StatCard({ label, value, subtitle, icon, iconBg, iconColor }) {
+  return (
+    <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative flex flex-col justify-between overflow-hidden">
+      <div className="flex justify-between items-start mb-6">
+        <span className="text-[10px] font-black text-slate-400 tracking-[0.15em] uppercase">{label}</span>
+        <div className={`w-9 h-9 rounded-full ${iconBg} flex items-center justify-center ${iconColor} shadow-sm`}>
+          <span className="material-symbols-outlined text-[18px] font-bold">{icon}</span>
+        </div>
+      </div>
+      <div>
+        <h3 className="text-[44px] font-pjs font-black text-slate-900 tracking-tighter leading-none mb-1">{value.toString().padStart(2, '0')}</h3>
+        <p className="text-[13px] font-bold text-slate-800 tracking-tight">{subtitle}</p>
+      </div>
     </div>
   );
 }
@@ -290,12 +319,14 @@ function QuickActionButton({ onClick, icon, label }) {
   return (
     <button 
       onClick={onClick}
-      className="bg-[#e4e9eb] group p-8 rounded-[1.8rem] flex flex-col items-center justify-center gap-4 transition-all duration-300 transform hover:-translate-y-2 hover:bg-[#004d33] shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] active:scale-95 border border-transparent hover:border-emerald-600/20"
+      className="bg-slate-100 group aspect-square p-6 rounded-[2.5rem] flex flex-col items-center justify-center text-center gap-4 transition-all duration-500 shadow-sm border border-slate-200/50 hover:bg-[#064e3b] hover:shadow-2xl hover:shadow-emerald-900/40 active:scale-95 group"
     >
-      <span className="material-symbols-outlined text-[32px] text-[#003624] group-hover:text-white transition-colors duration-300">
-        {icon}
-      </span>
-      <span className="font-pjs font-bold text-[14px] text-slate-700 group-hover:text-white transition-colors duration-300">
+      <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 mb-1 group-hover:bg-white/10 group-hover:text-white transition-all duration-500">
+        <span className="material-symbols-outlined text-[28px] group-hover:scale-110 transition-transform duration-500">
+          {icon}
+        </span>
+      </div>
+      <span className="font-pjs font-black text-[11px] text-slate-800 tracking-wider leading-tight group-hover:text-white transition-colors duration-500">
         {label}
       </span>
     </button>

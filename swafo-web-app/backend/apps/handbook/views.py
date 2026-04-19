@@ -25,14 +25,10 @@ class HandbookSmartSearchView(APIView):
                 'id': e.id,
                 'rule_code': e.rule_code,
                 'description': e.description,
-                'text': f"{e.rule_code} {e.category} {e.description}"
+                'text': f"{e.description} ({e.rule_code})"
             }
             for e in entries
         ]
-
-        # Auto pre-warm cache on first run
-        if not gemini_service._embedding_cache:
-            gemini_service.prewarm_handbook_cache(candidates)
 
         # Use the Gemini Semantic Search logic
         results = gemini_service.semantic_search(query, candidates, top_k=8)

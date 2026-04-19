@@ -35,17 +35,28 @@ export default function StudentRecords() {
       });
   }, []);
 
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
   const filteredStudents = useMemo(() => {
     return students.filter(student => {
       const name = student.user_details?.full_name || '';
       const id = student.student_number || '';
-      const college = student.course || '';
+      const course = student.course || '';
+      const studentStatus = student.is_repeat_offender ? 'Repeat' : student.violation_count > 0 ? 'Active' : 'Clean';
       
-      return name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-             id.includes(searchQuery) ||
-             college.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           id.includes(searchQuery) ||
+                           course.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'All' || 
+                           (statusFilter === 'Compliant' && studentStatus === 'Clean') ||
+                           (statusFilter === 'Under Review' && studentStatus === 'Active') ||
+                           (statusFilter === 'Non-Compliant' && studentStatus === 'Repeat');
+
+      return matchesSearch && matchesStatus;
     });
-  }, [searchQuery, students]);
+  }, [searchQuery, students, statusFilter]);
 
   const stats = useMemo(() => {
     return {
@@ -63,10 +74,13 @@ export default function StudentRecords() {
 
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
 
-  const handleExportPDF = () => {
+  const handleExportData = () => {
     const csvContent = "data:text/csv;charset=utf-8," 
-      + ["Student ID,Name,Course,Violations,Repeat Offender"].concat(
-        students.map(s => `${s.student_number},${s.user_details?.full_name},${s.course},${s.violation_count},${s.is_repeat_offender}`)
+      + ["Student ID,Name,Course,Violations,Status"].concat(
+        students.map(s => {
+          const sStatus = s.is_repeat_offender ? 'Non-Compliant' : s.violation_count > 0 ? 'Under Review' : 'Compliant';
+          return `${s.student_number},${s.user_details?.full_name},${s.course},${s.violation_count},${sStatus}`;
+        })
       ).join("\n");
     
     const encodedUri = encodeURI(csvContent);
@@ -98,16 +112,35 @@ export default function StudentRecords() {
         </div>
         <div className="flex gap-3">
           <button 
-            onClick={handleExportPDF}
+            onClick={handleExportData}
             className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-100 rounded-xl text-[13px] font-pjs font-bold text-gray-700 shadow-sm hover:bg-gray-50 transition-all active:scale-95"
           >
             <span className="material-symbols-outlined text-[20px]">download</span>
-            Export PDF
+            Export Data
           </button>
-          <button className="flex items-center gap-2 px-6 py-3 bg-[#003624] text-white rounded-xl text-[13px] font-pjs font-bold shadow-lg shadow-emerald-950/20 hover:bg-[#004d35] transition-all active:scale-95">
-            <span className="material-symbols-outlined text-[20px]">filter_list</span>
-            Filter View
-          </button>
+          <div className="relative">
+            <button 
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="flex items-center gap-2 px-6 py-3 bg-[#003624] text-white rounded-xl text-[13px] font-pjs font-bold shadow-lg shadow-emerald-950/20 hover:bg-[#004d35] transition-all active:scale-95"
+            >
+              <span className="material-symbols-outlined text-[20px]">filter_list</span>
+              {statusFilter === 'All' ? 'Filter View' : statusFilter}
+            </button>
+            {isFilterOpen && (
+              <div className="absolute top-full mt-2 right-0 w-[220px] bg-white border border-slate-100 rounded-2xl shadow-xl z-50 p-2 animate-in fade-in slide-in-from-top-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest p-3">Compliance Status</p>
+                {['All', 'Compliant', 'Under Review', 'Non-Compliant'].map(f => (
+                  <button 
+                    key={f}
+                    onClick={() => { setStatusFilter(f); setIsFilterOpen(false); setCurrentPage(1); }}
+                    className={`w-full text-left px-4 py-3 rounded-xl text-[13px] font-bold transition-colors ${statusFilter === f ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -160,9 +193,9 @@ export default function StudentRecords() {
                           </td>
                           <td className="py-5 px-6 bg-white border-y border-gray-50 shadow-sm group-hover:border-emerald-100">
                             <div className="flex items-center gap-3">
-                              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-black shadow-inner ${
-                                status === 'Repeat' ? 'bg-red-50 text-red-600' : 
-                                status === 'Active' ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'
+                              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-black shadow-inner border ${
+                                status === 'Repeat' ? 'bg-red-100 text-red-600 border-red-200' : 
+                                status === 'Active' ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-emerald-100 text-emerald-600 border-emerald-200'
                               }`}>
                                 {name.split(' ').map(n => n[0]).join('')}
                               </div>
@@ -176,19 +209,24 @@ export default function StudentRecords() {
                             </div>
                           </td>
                           <td className="py-5 px-6 bg-white border-y border-gray-50 shadow-sm group-hover:border-emerald-100">
-                            <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-[13px] font-black ${
-                              student.violation_count >= 3 ? 'bg-red-50 text-red-600' :
-                              student.violation_count > 0 ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'
+                            <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-[13px] font-black border ${
+                              student.violation_count >= 3 ? 'bg-red-100 text-red-600 border-red-200' :
+                              student.violation_count > 0 ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-emerald-100 text-emerald-600 border-emerald-200'
                             }`}>
                               {student.violation_count}
                             </div>
                           </td>
                           <td className="py-5 px-6 bg-white border-y border-gray-50 shadow-sm group-hover:border-emerald-100">
-                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                              status === 'Repeat' ? 'bg-red-50 text-red-600 shadow-sm' :
-                              status === 'Active' ? 'bg-orange-50 text-orange-600 shadow-sm' :
-                              'bg-emerald-50 text-[#0f603c] shadow-sm'
+                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 shadow-sm border ${
+                              status === 'Repeat' ? 'bg-red-50 text-red-500 border-red-100' :
+                              status === 'Active' ? 'bg-slate-100 text-slate-500 border-slate-200' :
+                              'bg-emerald-600 text-white border-emerald-600 shadow-emerald-900/10'
                             }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                status === 'Repeat' ? 'bg-red-500 animate-pulse' :
+                                status === 'Active' ? 'bg-slate-400' :
+                                'bg-white'
+                              }`}></span>
                               {status === 'Repeat' ? 'NON-COMPLIANT' : status === 'Active' ? 'UNDER REVIEW' : 'COMPLIANT'}
                             </span>
                           </td>

@@ -67,7 +67,7 @@ class GeminiService:
             result = genai.embed_content(
                 model="models/gemini-embedding-001",
                 content=text,
-                task_type="retrieval_query" # Use query task type for queries
+                task_type="retrieval_query"
             )
             vec = result['embedding']
             self._embedding_cache[text] = vec
@@ -77,37 +77,17 @@ class GeminiService:
             return None
 
     def semantic_search(self, query, candidates, top_k=8):
-        """
-        Ranks candidates using a batch-optimized Hybrid Search with Keyword Fallback.
-        """
+        """Ranks candidates using original Hybrid Search logic."""
         from .algorithms import SmartSearchAlgorithm
         
         try:
-            # 1. Get query embedding (single API call)
             query_vec = self.get_embedding(query)
-            
-            # 2. Ensure all candidates are in cache (batch embed if missing)
-            missing_texts = [c['text'] for c in candidates if c['text'] not in self._embedding_cache]
-            if missing_texts and query_vec: # Only batch embed if query succeeded
-                print(f"Batch embedding {len(missing_texts)} missing rules...")
-                try:
-                    result = genai.embed_content(
-                        model="models/gemini-embedding-001",
-                        content=missing_texts,
-                        task_type="retrieval_document"
-                    )
-                    for i, vec in enumerate(result['embeddings']):
-                        self._embedding_cache[missing_texts[i]] = vec
-                except Exception as e:
-                    print(f"Batch embedding error: {e}")
-
-            # 3. Score all candidates using hybrid logic
             scored_candidates = []
+            
             for item in candidates:
                 item_text = item.get('text', '')
-                item_vec = self._embedding_cache.get(item_text) # Might be None if batch failed
+                item_vec = self._embedding_cache.get(item_text)
                 
-                # Hybrid score handles None vectors by falling back to keywords
                 similarity = SmartSearchAlgorithm.hybrid_score(
                     query_vec, 
                     item_vec, 
@@ -115,7 +95,7 @@ class GeminiService:
                     item_text
                 )
                 
-                if similarity > 0.1: # Threshold for relevance
+                if similarity > 0.1:
                     scored_candidates.append({
                         'id': item.get('id'),
                         'rule_code': item.get('rule_code'),
@@ -123,18 +103,10 @@ class GeminiService:
                         'score': similarity
                     })
 
-            # 4. If AI results are empty or AI failed entirely, use pure Keyword Fallback
-            if not scored_candidates:
-                print("AI returned no results, using pure keyword fallback.")
-                return SmartSearchAlgorithm.fallback_keyword_search(query, candidates, top_k)
-
-            # 5. Sort and return
             scored_candidates.sort(key=lambda x: x['score'], reverse=True)
             return scored_candidates[:top_k]
-
         except Exception as e:
-            print(f"Smart Search Fatal Error: {e}")
-            # Absolute safety net: return keyword results if everything else crashes
-            return SmartSearchAlgorithm.fallback_keyword_search(query, candidates, top_k)
+            print(f"Search error: {e}")
+            return []
 
 gemini_service = GeminiService()

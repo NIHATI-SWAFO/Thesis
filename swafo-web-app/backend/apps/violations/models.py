@@ -12,6 +12,7 @@ class Violation(models.Model):
 
     student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name='violations')
     officer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='recorded_violations')
+    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='assigned_violations', blank=True)
     rule = models.ForeignKey(HandbookEntry, on_delete=models.PROTECT, related_name='violations')
     
     location = models.CharField(max_length=255)

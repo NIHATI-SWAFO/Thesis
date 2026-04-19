@@ -34,9 +34,10 @@ const COLLEGE_ACRONYMS = {
 };
 
 export default function ReportsAnalytics() {
-  const [timeFilter, setTimeFilter] = useState('This Month');
+  const [timeFilter, setTimeFilter] = useState('Month');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   useEffect(() => {
     fetch(API_ENDPOINTS.OFFICER_DASHBOARD)
@@ -51,11 +52,38 @@ export default function ReportsAnalytics() {
       });
   }, []);
 
+  const handleExport = () => {
+    if (!data) return;
+    const csvRows = [];
+    csvRows.push("KPI,Value,Trend");
+    (data.kpis || []).forEach(k => csvRows.push(`${k.label},${k.value},${k.trend}`));
+    
+    csvRows.push("\nCollege,Violation Count");
+    (data.byCollege || []).forEach(c => csvRows.push(`${c.name},${c.count}`));
+
+    const blob = new Blob([csvRows.join("\n")], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `SWAFO_Analytics_${timeFilter.replace(' ', '_')}.csv`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const changeFilter = (filter) => {
+    setTimeFilter(filter);
+    setIsFilterOpen(false);
+    setLoading(true);
+    setTimeout(() => setLoading(false), 800); // Simulate re-fetch
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh]">
         <Loader2 className="w-16 h-16 text-[#004d33] animate-spin mb-4" />
-        <p className="text-[18px] font-pjs font-extrabold text-[#004d33]">Generating Compliance Intelligence...</p>
+        <p className="text-[18px] font-pjs font-extrabold text-[#004d33]">Updating Compliance Intelligence...</p>
       </div>
     );
   }
@@ -74,13 +102,32 @@ export default function ReportsAnalytics() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="relative group">
-            <button className="flex items-center gap-3 px-6 py-3 bg-white border border-[#f1f5f9] rounded-2xl text-[15px] font-bold text-[#475569] shadow-sm hover:bg-gray-50 transition-all">
+          <div className="relative">
+            <button 
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="flex items-center gap-3 px-6 py-3 bg-white border border-[#f1f5f9] rounded-2xl text-[15px] font-bold text-[#475569] shadow-sm hover:bg-gray-50 transition-all"
+            >
               {timeFilter}
-              <ChevronDown size={18} className="group-hover:translate-y-0.5 transition-transform" />
+              <ChevronDown size={18} className={`${isFilterOpen ? 'rotate-180' : ''} transition-transform`} />
             </button>
+            {isFilterOpen && (
+              <div className="absolute top-full mt-2 right-0 w-[200px] bg-white border border-slate-100 rounded-2xl shadow-xl z-50 p-2 animate-in fade-in slide-in-from-top-2">
+                {['Month', 'Year'].map(f => (
+                  <button 
+                    key={f}
+                    onClick={() => changeFilter(f)}
+                    className={`w-full text-left px-4 py-3 rounded-xl text-[14px] font-bold transition-colors ${timeFilter === f ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <button className="flex items-center gap-3 px-8 py-3 bg-[#004d33] text-white rounded-2xl text-[15px] font-black shadow-lg shadow-[#004d33]/20 hover:scale-[1.02] active:scale-95 transition-all">
+          <button 
+            onClick={handleExport}
+            className="flex items-center gap-3 px-8 py-3 bg-[#004d33] text-white rounded-2xl text-[15px] font-black shadow-lg shadow-[#004d33]/20 hover:scale-[1.02] active:scale-95 transition-all"
+          >
             <Download size={18} />
             Export Report
           </button>
@@ -92,9 +139,18 @@ export default function ReportsAnalytics() {
         {(analytics.kpis || []).map((kpi, idx) => {
           const Icon = ICON_MAP[kpi.icon] || AlertTriangle;
           const kpiColor = kpi.label.includes('TOTAL') ? 'text-red-600 bg-red-50/50 border-red-100' : 
-                         kpi.label.includes('ACTIVE') ? 'text-emerald-600 bg-emerald-50/50 border-emerald-100' :
+                         kpi.label.includes('PENDING') || kpi.label.includes('ACTIVE') ? 'text-amber-600 bg-amber-50/50 border-amber-100' :
                          kpi.label.includes('RESOLUTION') ? 'text-blue-600 bg-blue-50/50 border-blue-100' : 
                          'text-emerald-600 bg-emerald-50/50 border-emerald-100';
+
+          const getInsight = () => {
+            const label = kpi.label.toUpperCase();
+            if (label.includes('TOTAL')) return kpi.trendUp ? 'Volume Increasing' : 'Compliance Improving';
+            if (label.includes('PENDING') || label.includes('ACTIVE')) return 'Operational Workload';
+            if (label.includes('RESOLUTION')) return kpi.trendUp ? 'Efficiency Rising' : 'Action Required';
+            if (label.includes('REPEAT')) return kpi.trendUp ? 'Recidivism Risk' : 'Intervention Success';
+            return 'Institutional Trend';
+          };
           
           return (
             <div key={idx} className="bg-white rounded-[2.5rem] p-10 border border-[#f1f5f9] shadow-[0_10px_40px_rgba(0,0,0,0.02)] relative overflow-hidden group hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-500 ring-1 ring-transparent hover:ring-[#f1f5f9]">
@@ -108,15 +164,14 @@ export default function ReportsAnalytics() {
               <div className="flex flex-col gap-2 relative z-10">
                 <span className="text-[48px] font-pjs font-black text-[#003624] tracking-tighter leading-none mb-2">{kpi.value}</span>
                 <div className="flex items-center gap-2">
-                  <span className={`flex items-center text-[14px] font-bold px-2 py-0.5 rounded-lg ${kpi.trendUp ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                    {kpi.trendUp ? <TrendingUp size={14} className="mr-1" /> : <TrendingDown size={14} className="mr-1" />}
+                  <span className={`flex items-center text-[11px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${kpi.trendUp && kpi.label.includes('TOTAL') ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                    {kpi.trendUp ? <TrendingUp size={12} className="mr-1.5" /> : <TrendingDown size={12} className="mr-1.5" />}
                     {kpi.trend}
                   </span>
-                  <span className="text-[12px] font-bold text-slate-500 uppercase tracking-widest leading-none">vs last month</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none ml-1">{getInsight()}</span>
                 </div>
               </div>
               
-              {/* Subtle background decoration */}
               <div className={`absolute -bottom-6 -right-6 w-24 h-24 bg-current opacity-[0.02] rounded-full transition-transform group-hover:scale-150 duration-700 ${kpiColor.split(' ')[0]}`}></div>
             </div>
           );

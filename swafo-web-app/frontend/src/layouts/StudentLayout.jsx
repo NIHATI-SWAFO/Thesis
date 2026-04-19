@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMsal } from "@azure/msal-react";
 import { useAuth } from '../context/AuthContext';
@@ -12,15 +13,16 @@ const navItems = [
 ];
 
 export default function StudentLayout() {
-  const location = useLocation();
-  const { user, logout } = useAuth();
   const { instance } = useMsal();
+  const { user, logout } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
+
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const handleLogout = () => {
     logout();
-    instance.logoutRedirect();
-    navigate('/login');
   };
 
   const fullName = user?.name || 'Student';
@@ -43,19 +45,6 @@ export default function StudentLayout() {
           </div>
         </div>
 
-        {/* User Info (Mini Profile) */}
-        <div className="px-8 mb-10">
-          <div className="flex items-center gap-4 p-1">
-            <div className="w-14 h-14 rounded-2xl bg-[#003624] ring-1 ring-[#003624]/10 flex items-center justify-center relative overflow-hidden shadow-sm">
-                <span className="material-symbols-outlined text-white text-[40px] opacity-90">account_circle</span>
-                <div className="absolute bottom-1 right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
-            </div>
-            <div>
-              <p className="text-[15px] font-pjs font-bold text-[#1a1a1a] leading-tight">{fullName}</p>
-              <p className="text-[11px] font-manrope text-emerald-600/80 font-bold uppercase tracking-wider">BCS33 STUDENT</p>
-            </div>
-          </div>
-        </div>
 
         {/* Navigation */}
         <nav className="flex-1 px-5 space-y-2 overflow-y-auto custom-scrollbar">
@@ -113,18 +102,87 @@ export default function StudentLayout() {
           </div>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-4">
-            <button className="p-2 rounded-lg text-portal-text-muted hover:bg-portal-sidebar/5 transition-all active:scale-95">
-              <span className="material-symbols-outlined text-[20px]">notifications</span>
+          <div className="flex items-center gap-4 relative">
+            <button 
+              onClick={() => {
+                setShowNotifications(!showNotifications);
+                setShowHelp(false);
+              }}
+              className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all active:scale-95 relative group ${showNotifications ? 'bg-[#003624] text-white shadow-lg' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}
+            >
+              <span className="material-symbols-outlined text-[22px]">notifications</span>
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
             </button>
-            <button className="p-2 rounded-lg text-portal-text-muted hover:bg-portal-sidebar/5 transition-all active:scale-95">
-              <span className="material-symbols-outlined text-[20px]">help_outline</span>
+
+            {/* Notification Dropdown */}
+            {showNotifications && (
+              <div className="absolute top-14 right-24 w-[320px] bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-emerald-50 z-50 animate-fade-in-up overflow-hidden">
+                <div className="p-6 border-b border-emerald-50 flex items-center justify-between">
+                  <h4 className="font-pjs font-bold text-[#003624]">Notifications</h4>
+                  <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-full uppercase">3 New</span>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                  <div className="p-4 hover:bg-emerald-50/50 transition-colors cursor-pointer border-b border-emerald-50/30">
+                    <p className="text-[13px] font-bold text-[#1a1a1a]">System Status: Secure</p>
+                    <p className="text-[11px] text-slate-500 mt-1">SWAFO portal is successfully synced with institutional records.</p>
+                    <p className="text-[10px] text-emerald-600 font-bold mt-2 uppercase tracking-widest">Active Session</p>
+                  </div>
+                  <div className="p-4 hover:bg-emerald-50/50 transition-colors cursor-pointer border-b border-emerald-50/30">
+                    <p className="text-[13px] font-bold text-[#1a1a1a]">Academic Profile Updated</p>
+                    <p className="text-[11px] text-slate-500 mt-1">Your 2nd Semester 2025-2026 records are now visible.</p>
+                    <p className="text-[10px] text-emerald-600 font-bold mt-2 uppercase tracking-widest">Verified</p>
+                  </div>
+                  <div className="p-4 hover:bg-emerald-50/50 transition-colors cursor-pointer">
+                    <p className="text-[13px] font-bold text-[#1a1a1a]">Campus Handbook Live</p>
+                    <p className="text-[11px] text-slate-500 mt-1">Digital rules and regulations have been successfully indexed.</p>
+                    <p className="text-[10px] text-emerald-600 font-bold mt-2 uppercase tracking-widest">Permanent Notice</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <button 
+              onClick={() => {
+                setShowHelp(!showHelp);
+                setShowNotifications(false);
+              }}
+              className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all active:scale-95 group relative ${showHelp ? 'bg-[#003624] text-white shadow-lg' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}
+            >
+              <span className="material-symbols-outlined text-[22px]">help_outline</span>
             </button>
+
+            {/* Help Modal Overlay */}
+            {showHelp && (
+              <div className="absolute top-14 right-10 w-[280px] bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-emerald-50 z-50 animate-fade-in-up overflow-hidden">
+                <div className="p-6 bg-[#003624] text-white text-center">
+                  <span className="material-symbols-outlined text-3xl mb-2">support_agent</span>
+                  <h4 className="font-pjs font-bold">Help Center</h4>
+                  <p className="text-[11px] opacity-70">Need assistance? We're here.</p>
+                </div>
+                <div className="p-4 space-y-2">
+                  <button className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-50 transition-all text-left group/item">
+                    <span className="material-symbols-outlined text-[18px] text-emerald-600">book</span>
+                    <span className="text-[13px] font-bold text-[#1a1a1a] group-hover/item:translate-x-1 transition-transform">Read Student FAQ</span>
+                  </button>
+                  <button className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-50 transition-all text-left group/item">
+                    <span className="material-symbols-outlined text-[18px] text-emerald-600">contact_support</span>
+                    <span className="text-[13px] font-bold text-[#1a1a1a] group-hover/item:translate-x-1 transition-transform">Contact SWAFO Support</span>
+                  </button>
+                  <button className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-50 transition-all text-left group/item">
+                    <span className="material-symbols-outlined text-[18px] text-emerald-600">chat</span>
+                    <span className="text-[13px] font-bold text-[#1a1a1a] group-hover/item:translate-x-1 transition-transform">Talk to AI Curator</span>
+                  </button>
+                </div>
+              </div>
+            )}
             
-            <div className="flex items-center gap-4 ml-2 pl-4 border-l border-emerald-50">
-              <span className="text-[14px] font-pjs font-bold text-portal-primary hidden xl:block leading-none uppercase tracking-tight">{fullName}</span>
-              <div className="w-10 h-10 rounded-full bg-[#003624] flex items-center justify-center ring-4 ring-emerald-50/20 shadow-sm overflow-hidden text-white">
-                <span className="material-symbols-outlined text-[28px]">account_circle</span>
+            <div className="flex items-center gap-4 ml-2 pl-6 border-l border-emerald-50/50">
+              <div className="text-right hidden md:block">
+                <p className="text-[14px] font-pjs font-bold text-[#1a1a1a] leading-tight">{fullName}</p>
+                <p className="text-[10px] font-manrope text-emerald-600 font-bold uppercase tracking-wider">Authenticated Student</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#003624] flex items-center justify-center ring-1 ring-emerald-100/50 shadow-sm overflow-hidden group cursor-pointer hover:bg-[#003624] hover:text-white transition-all duration-300">
+                <span className="material-symbols-outlined text-[24px]">account_circle</span>
               </div>
             </div>
           </div>

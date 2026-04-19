@@ -83,7 +83,7 @@ export default function SignIn() {
               </div>
               <h2 className="text-[2.25rem] font-extrabold text-[#111827] mb-2 tracking-tight">Sign In</h2>
               <p className="text-base text-gray-500 font-medium">
-                Access your {activeTab === 'officer' ? 'administrative workstation' : 'student portal'}
+                Access your {activeTab === 'admin' ? 'Director command center' : activeTab === 'officer' ? 'administrative workstation' : 'student portal'}
               </p>
             </div>
 
@@ -91,10 +91,18 @@ export default function SignIn() {
             <div className="relative flex rounded-xl p-[5px] bg-[#f2f4f6] mb-10 border border-[#e5e7eb] shadow-inner">
               {/* Highlight Slider */}
               <div 
-                className={`absolute inset-y-[5px] w-[calc(50%-5px)] bg-white rounded-lg shadow-sm border border-gray-200/80 transition-transform duration-300 ease-out ${
-                  activeTab === 'student' ? 'translate-x-[100%]' : 'translate-x-0'
+                className={`absolute inset-y-[5px] w-[calc(33.33%-5px)] bg-white rounded-lg shadow-sm border border-gray-200/80 transition-transform duration-300 ease-out ${
+                  activeTab === 'officer' ? 'translate-x-[100%]' : activeTab === 'student' ? 'translate-x-[200%]' : 'translate-x-0'
                 }`}
               />
+              <button
+                className={`relative z-10 flex-1 py-2.5 text-[14px] font-bold transition-colors duration-200 ${
+                  activeTab === 'admin' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => setActiveTab('admin')}
+              >
+                Admin
+              </button>
               <button
                 className={`relative z-10 flex-1 py-2.5 text-[14px] font-bold transition-colors duration-200 ${
                   activeTab === 'officer' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
@@ -115,12 +123,44 @@ export default function SignIn() {
 
             {/* Forms Container */}
             <div className="min-h-[320px]">
-              {activeTab === 'officer' ? (
-                <form className="flex flex-col space-y-6" onSubmit={(e) => {
+              {activeTab === 'admin' ? (
+                <form className="flex flex-col space-y-6 animate-in fade-in duration-300" onSubmit={(e) => {
+                  e.preventDefault();
+                  navigate('/admin/dashboard');
+                }}>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 ml-1">Director Email</label>
+                    <div className="relative group">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                        <ShieldCheck className="h-[20px] w-[20px] text-gray-400 group-focus-within:text-[#113a26] transition-colors" />
+                      </div>
+                      <input type="text" className="block w-full rounded-xl border-0 bg-[#f4f5f7] py-4 pl-[3.25rem] pr-4 text-gray-900 ring-1 ring-inset ring-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#113a26] hover:bg-[#eef0f2] focus:hover:bg-white transition-all text-[15px] font-medium" placeholder="Director Account" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 ml-1">Master Password</label>
+                    <div className="relative group">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                        <Lock className="h-[20px] w-[20px] text-gray-400 group-focus-within:text-[#113a26] transition-colors" />
+                      </div>
+                      <input type="password" placeholder="••••••••" className="block w-full rounded-xl border-0 bg-[#f4f5f7] py-4 pl-[3.25rem] pr-4 text-gray-900 ring-1 ring-inset ring-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#113a26] hover:bg-[#eef0f2] focus:hover:bg-white transition-all text-[15px] font-medium" />
+                    </div>
+                  </div>
+                  <button type="submit" className="group relative flex w-full items-center justify-center rounded-xl bg-[#0f3422] px-4 py-4 text-[15px] font-bold text-white shadow-lg shadow-[#0f3422]/20 hover:bg-[#15462e] transition-all duration-200">
+                    <span>Access Director Portal</span>
+                    <ArrowRight className="absolute right-6 h-5 w-5 text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                  </button>
+                  <div className="relative pt-2">
+                    <div className="absolute inset-0 flex items-center h-px bg-gray-100" />
+                    <span className="relative z-10 bg-white px-4 text-[11px] font-bold uppercase tracking-widest text-gray-400">DIRECTOR ACCESS (DEMO)</span>
+                  </div>
+                  <DirectorQuickLogin />
+                </form>
+              ) : activeTab === 'officer' ? (
+                <form className="flex flex-col space-y-6 animate-in fade-in duration-300" onSubmit={(e) => {
                   e.preventDefault();
                   navigate('/officer/dashboard');
                 }}>
-                  
                   {/* ID Input */}
                   <div className="space-y-2">
                     <label className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 ml-1">
@@ -166,24 +206,6 @@ export default function SignIn() {
                     </div>
                   </div>
 
-                  {/* Sub Actions */}
-                  <div className="flex items-center justify-between pt-1 pb-2">
-                    <label className="flex items-center cursor-pointer group">
-                      <input
-                        id="remember-me"
-                        name="remember-me"
-                        type="checkbox"
-                        className="h-4 w-4 rounded-[4px] border-gray-300 text-[#113a26] focus:ring-[#113a26] cursor-pointer"
-                      />
-                      <span className="ml-3 block text-[13px] font-bold text-gray-600 group-hover:text-gray-900 transition-colors">
-                        Remember Me
-                      </span>
-                    </label>
-                    <a href="#" className="text-[13px] font-bold text-gray-800 hover:text-[#113a26] transition-colors">
-                      Forgot Password?
-                    </a>
-                  </div>
-
                   {/* Submit Button */}
                   <button
                     type="submit"
@@ -201,13 +223,9 @@ export default function SignIn() {
                   </div>
 
                   <OfficerQuickLogin />
-
-                  <p className="text-center text-[13px] font-medium text-gray-500 pt-4">
-                    Facing issues? <a href="#" className="font-bold text-[#111827] hover:text-[#113a26] underline decoration-gray-300 underline-offset-4 transition-colors">Contact IT Support</a>
-                  </p>
                 </form>
               ) : (
-                <div className="flex flex-col space-y-6 text-center animate-in fade-in slide-in-from-bottom-4 duration-500 pt-2">
+                <div className="flex flex-col space-y-6 text-center animate-in fade-in duration-500 pt-2">
                   <button
                     type="button"
                     onClick={handleMicrosoftLogin}
@@ -251,9 +269,27 @@ export default function SignIn() {
   );
 }
 
+function DirectorQuickLogin() {
+  const { loginAsAdmin } = useAuth();
+  const navigate = useNavigate();
+
+  return (
+    <button 
+      type="button"
+      onClick={() => {
+        loginAsAdmin("Director Ruel Elias", "director@dlsud.edu.ph");
+        navigate('/admin/dashboard');
+      }}
+      className="w-full px-5 py-4 bg-[#0f3422] border border-emerald-900 rounded-xl text-[14px] font-pjs font-bold text-white flex items-center justify-between hover:bg-[#15462e] transition-all"
+    >
+      <span>Login as Director (Admin)</span>
+      <ShieldCheck size={18} className="text-[#a1dbba]" />
+    </button>
+  );
+}
+
 function MockLoginSection() {
   const [students, setStudents] = useState([]);
-  const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const { loginAsMock } = useAuth();
   const navigate = useNavigate();
@@ -265,32 +301,23 @@ function MockLoginSection() {
       .catch(err => console.error("Error fetching students:", err));
   }, []);
 
-  const filtered = students.filter(s => 
-    s.user_details.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    s.student_number.includes(search)
-  ).slice(0, 5);
-
   return (
     <div className="relative text-left">
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-1 py-1 flex items-center mb-[2px]">
-            <div className="w-8 h-8 rounded-lg bg-[#0f3422]/5 flex items-center justify-center p-4">
-                <span className="material-symbols-outlined text-[#0f3422] text-[16px] font-bold">person_add</span>
-            </div>
+      <button 
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-5 py-4 bg-emerald-50 border border-emerald-100/50 rounded-xl text-[14px] font-pjs font-bold text-[#0f3422] flex items-center justify-between hover:bg-emerald-100 transition-all"
+      >
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[18px]">person_add</span>
+          <span>Select Mock Student (Demo Mode)...</span>
         </div>
-        <input 
-          type="text"
-          placeholder="Select Mock Student (Demo Mode)..."
-          value={search}
-          onFocus={() => setIsOpen(true)}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-black/5 rounded-xl text-[14px] font-manrope font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f3422]/10 transition-all"
-        />
-      </div>
+        <ChevronDown size={18} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
 
-      {isOpen && search.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-2xl max-h-[300px] overflow-y-auto overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-          {filtered.length > 0 ? filtered.map((s) => (
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-2xl max-h-[240px] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+          {students.length > 0 ? students.map((s) => (
             <button
               key={s.id}
               onClick={() => {
@@ -305,12 +332,12 @@ function MockLoginSection() {
               </p>
             </button>
           )) : (
-            <div className="p-4 text-center text-[12px] font-manrope text-gray-400">No students found matching your search</div>
+            <div className="p-4 text-center text-[12px] font-manrope text-gray-400 italic">Fetching student identities...</div>
           )}
         </div>
       )}
     </div>
-  )
+  );
 }
 function OfficerQuickLogin() {
   const [isOpen, setIsOpen] = useState(false);

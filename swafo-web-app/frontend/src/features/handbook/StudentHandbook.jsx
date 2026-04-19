@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { API_ENDPOINTS } from '../../api/config';
 
 export default function StudentHandbook() {
   const [sections, setSections] = useState([]);
@@ -7,11 +8,14 @@ export default function StudentHandbook() {
   const [expandedSections, setExpandedSections] = useState(new Set());
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/handbook/')
+    fetch(API_ENDPOINTS.HANDBOOK_RULES)
       .then(res => res.json())
       .then(data => {
         // Transform the flat list into grouped sections for the UI
-        const grouped = data.reduce((acc, rule) => {
+        // Handle both direct array and paginated results
+        const results = Array.isArray(data) ? data : (data.results || []);
+        
+        const grouped = results.reduce((acc, rule) => {
           const category = rule.category || "General Policies";
           if (!acc[category]) {
             acc[category] = {

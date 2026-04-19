@@ -1,6 +1,8 @@
 from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from apps.users.models import StudentProfile
 from apps.handbook.models import HandbookEntry
 from .models import Violation
@@ -42,23 +44,24 @@ class ViolationAssessmentView(APIView):
                 current_total_minors = total_minors + 1
                 
                 if current_total_minors == 1:
-                    recommendation = "Institutional Warning (Written)"
+                    recommendation = "Written Warning (Institutional Advice issued)"
                 elif current_total_minors == 2:
-                    recommendation = "First Minor Offense on Record"
+                    recommendation = "First Minor Offense (Official Case Indexing + Formal Warning)"
                 elif current_total_minors == 3:
-                    recommendation = "Second Minor Offense on Record"
+                    recommendation = "Second Minor Offense (Parental/Guardian Notification required)"
                 elif current_total_minors >= 4:
                     is_escalated = True
                     recommendation = "MAJOR OFFENSE ESCALATION (Section 27.3.1.43): "
                     
-                    escalation_count = Violation.objects.filter(
-                        student=student, 
-                        corrective_action__icontains="27.3.1.43"
-                    ).count()
+                    # Escalation level is based on how many minor offenses have passed the 3-offense threshold
+                    # 4th total minor = Level 1 (Probation)
+                    # 5th total minor = Level 2 (Suspension 3-5)
+                    # 6th total minor = Level 3 (Suspension 6-12)
+                    escalation_level = current_total_minors - 3
                     
-                    if escalation_count == 0: recommendation += "Sanction 1: Probation (1 year)"
-                    elif escalation_count == 1: recommendation += "Sanction 2: Suspension (3–5 school days)"
-                    elif escalation_count == 2: recommendation += "Sanction 3: Suspension (6–12 school days)"
+                    if escalation_level == 1: recommendation += "Sanction 1: Probation (1 year)"
+                    elif escalation_level == 2: recommendation += "Sanction 2: Suspension (3–5 school days)"
+                    elif escalation_level == 3: recommendation += "Sanction 3: Suspension (6–12 school days)"
                     else: recommendation += "Sanction 4: Non-readmission"
 
             else:
@@ -96,6 +99,7 @@ class ViolationAssessmentView(APIView):
                     "timestamp": last_identical.timestamp,
                     "location": last_identical.location,
                     "description": last_identical.description,
+                    "officer_name": last_identical.officer.full_name if last_identical.officer else "Institutional Authority",
                     "id": last_identical.id
                 }
 
@@ -118,6 +122,7 @@ class ViolationAssessmentView(APIView):
         except HandbookEntry.DoesNotExist:
             return Response({"error": "Handbook rule not found"}, status=status.HTTP_404_NOT_FOUND)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ViolationCreateView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
     """
@@ -137,8 +142,45 @@ class ViolationListView(generics.ListAPIView):
         queryset = Violation.objects.all()
         
         if email:
-            queryset = queryset.filter(student__user__email=email)
+            queryset = queryset.filter(student__user__email__iexact=email)
         if student_id:
             queryset = queryset.filter(student__student_number=student_id)
             
         return queryset.order_by('-timestamp')
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ViolationUpdateStatusView(generics.UpdateAPIView):
+    permission_classes = [permissions.AllowAny]
+    queryset = Violation.objects.all()
+    serializer_class = ViolationSerializer
+    lookup_field = 'id'
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ViolationAssignView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def patch(self, request, id):
+        try:
+            violation = Violation.objects.get(id=id)
+            email = request.data.get('email')
+            
+            if not email:
+                return Response({"error": "No officer identifier provided"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            officer = User.objects.get(email=email)
+            
+            violation.assigned_to = officer
+            violation.status = 'UNDER_REVIEW'
+            violation.save()
+            
+            return Response({
+                "success": True, 
+                "assigned_to": officer.email,
+                "status": violation.status
+            })
+        except Violation.DoesNotExist:
+            return Response({"error": "Violation not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

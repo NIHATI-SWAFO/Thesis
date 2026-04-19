@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMsal } from "@azure/msal-react";
 import { useAuth } from '../context/AuthContext';
@@ -18,9 +19,13 @@ export default function OfficerLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+
+
   const handleLogout = () => {
     logout();
-    instance.logoutRedirect();
   };
 
   return (
@@ -83,34 +88,93 @@ export default function OfficerLayout() {
       {/* ══════════════════════════════ CONTENT AREA ══════════════════════════════ */}
       <div className="flex-1 ml-[270px] flex flex-col h-full overflow-hidden shrink-0">
         
-        {/* Topbar */}
-        <header className="h-[72px] px-10 bg-[#F7F9FB] flex items-center justify-between z-30 relative shrink-0">
-          {/* Search */}
-          <div className="flex-1 max-w-[500px] relative">
-            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400 text-[20px]">search</span>
+        {/* Topbar: Translucent Emerald Glass */}
+        <header className="sticky top-0 h-[80px] px-10 bg-[#003624]/90 backdrop-blur-xl flex items-center justify-between z-40 relative shrink-0 border-b border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.15)]">
+          <div className="flex-1 max-w-[500px] relative group">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-[20px] group-focus-within:text-emerald-400 transition-colors">search</span>
             <input
               type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search academic records, handbook..."
-              className="block w-full rounded-xl border-none bg-emerald-50/50 py-2.5 pl-12 pr-4 text-portal-text focus:ring-1 focus:ring-emerald-200 text-[13px] font-manrope font-medium placeholder:text-gray-400 outline-none transition-all w-[380px]"
+              className="block w-full rounded-2xl border border-white/10 bg-white/10 py-3 pl-12 pr-4 text-white focus:ring-2 focus:ring-emerald-500/50 text-[13px] font-manrope font-semibold placeholder:text-white/30 outline-none transition-all shadow-inner hover:bg-white/15"
             />
+            {searchQuery && (
+              <div className="absolute top-full mt-3 left-0 w-full bg-white/95 backdrop-blur-xl border border-slate-200/50 rounded-2xl shadow-2xl z-50 p-2 animate-in fade-in slide-in-from-top-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest p-3">Global Search Results</p>
+                <div className="max-h-[300px] overflow-y-auto">
+                   <div className="p-4 text-center">
+                     <p className="text-[13px] font-bold text-[#003624]">Searching for "{searchQuery}"...</p>
+                     <p className="text-[11px] text-slate-400 mt-1 italic">Fetching records from Institutional Ledger</p>
+                   </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Right Actions */}
-          <div className="flex items-center gap-4">
-            <button className="p-2 rounded-full text-emerald-500 hover:bg-emerald-50 transition-all">
-              <span className="material-symbols-outlined text-[20px]">notifications</span>
-            </button>
-            <button className="p-2 rounded-full text-emerald-500 hover:bg-emerald-50 transition-all">
-              <span className="material-symbols-outlined text-[20px]">help_outline</span>
-            </button>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <button 
+                onClick={() => { setIsNotifOpen(!isNotifOpen); setIsHelpOpen(false); }}
+                className={`w-11 h-11 flex items-center justify-center rounded-2xl transition-all ${isNotifOpen ? 'bg-white/20 text-white shadow-lg' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+              >
+                <span className="material-symbols-outlined text-[22px]">notifications</span>
+                <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-[#003624]"></div>
+              </button>
+              {isNotifOpen && (
+                <div className="absolute top-full mt-3 right-0 w-[340px] bg-white/95 backdrop-blur-xl border border-slate-200/50 rounded-3xl shadow-2xl z-50 p-2 animate-in fade-in slide-in-from-top-2">
+                  <div className="p-5 border-b border-slate-100/50 flex justify-between items-center">
+                    <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Notification Pulse</p>
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">3 NEW</span>
+                  </div>
+                  <div className="max-h-[350px] overflow-y-auto p-2">
+                    {[
+                      { title: 'New Violation Logged', desc: 'Sector A-12: Dress code violation reported.', time: '2m ago' },
+                      { title: 'Case Assigned', desc: 'Case #8291 has been moved to your list.', time: '15m ago' },
+                      { title: 'Patrol Warning', desc: 'Heavy traffic reported near Gate 2.', time: '1h ago' }
+                    ].map((n, i) => (
+                      <div key={i} className="p-4 rounded-2xl hover:bg-slate-50/80 transition-all cursor-pointer group mb-1">
+                        <p className="text-[13px] font-bold text-[#003624] group-hover:text-emerald-700 transition-colors">{n.title}</p>
+                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{n.desc}</p>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase mt-3 tracking-wider">{n.time}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="relative">
+              <button 
+                onClick={() => { setIsHelpOpen(!isHelpOpen); setIsNotifOpen(false); }}
+                className={`w-11 h-11 flex items-center justify-center rounded-2xl transition-all ${isHelpOpen ? 'bg-white/20 text-white shadow-lg' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+              >
+                <span className="material-symbols-outlined text-[22px]">help_outline</span>
+              </button>
+              {isHelpOpen && (
+                <div className="absolute top-full mt-3 right-0 w-[260px] bg-white/95 backdrop-blur-xl border border-slate-200/50 rounded-3xl shadow-2xl z-50 p-2 animate-in fade-in slide-in-from-top-2">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest p-4 border-b border-slate-100/50">Support Center</p>
+                  <div className="p-2 flex flex-col gap-1">
+                    <button className="w-full text-left px-5 py-3.5 rounded-2xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-4 transition-all">
+                      <span className="material-symbols-outlined text-[18px]">menu_book</span>
+                      Officer Manual
+                    </button>
+                    <button className="w-full text-left px-5 py-3.5 rounded-2xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-4 transition-all">
+                      <span className="material-symbols-outlined text-[18px]">support_agent</span>
+                      IT Support
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             
-            <div className="flex items-center gap-3 ml-4 pl-6 border-l border-emerald-100">
+            <div className="flex items-center gap-4 ml-6 pl-8 border-l border-white/10">
               <div className="flex flex-col items-end">
-                <span className="text-[13px] font-pjs font-bold text-gray-800 leading-none mb-1">{user?.name || 'Officer Timothy'}</span>
-                <span className="text-[10px] font-manrope text-gray-500 uppercase tracking-widest leading-none">SWAFO Officer</span>
+                <span className="text-[14px] font-pjs font-bold text-white leading-none mb-2">{user?.name || 'Officer Timothy'}</span>
+                <span className="text-[10px] font-manrope text-emerald-400/80 font-black uppercase tracking-[0.2em] leading-none">SWAFO Officer</span>
               </div>
-              <div className="w-10 h-10 rounded-full bg-[#003624] flex items-center justify-center shadow-sm overflow-hidden text-white border-2 border-white">
-                <span className="material-symbols-outlined text-[24px]">account_circle</span>
+              <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shadow-2xl overflow-hidden text-white border border-white/20 hover:bg-white/20 hover:scale-105 transition-all cursor-pointer">
+                <span className="material-symbols-outlined text-[28px] fill-1">account_circle</span>
               </div>
             </div>
           </div>
