@@ -25,96 +25,71 @@ class ViolationAssessmentView(APIView):
             student = StudentProfile.objects.get(student_number=student_id)
             rule = HandbookEntry.objects.get(rule_code=rule_code)
             
-            # --- 1. Rule-Specific Frequency ---
-            rule_specific_count = Violation.objects.filter(student=student, rule=rule).count()
-            instance_number = rule_specific_count + 1
+            # Fetch all history for reference
+            history = Violation.objects.filter(student=student).order_by('timestamp')
+            history_data = ViolationSerializer(history, many=True).data
             
-            # --- 2. Global Minor Offense Count (Escalation Logic) ---
-            total_minors = Violation.objects.filter(
-                student=student, 
-                rule__rule_code__startswith='27.1'
-            ).count()
-            
-            is_escalated = False
             recommendation = ""
-            details = []
+            is_escalated = False
 
-            if rule.rule_code.startswith('27.1'):
-                # MINOR LOGIC (Section 27.1 and 27.3.1.43)
-                current_total_minors = total_minors + 1
-                
-                if current_total_minors == 1:
-                    recommendation = "Written Warning (Institutional Advice issued)"
-                elif current_total_minors == 2:
-                    recommendation = "First Minor Offense (Official Case Indexing + Formal Warning)"
-                elif current_total_minors == 3:
-                    recommendation = "Second Minor Offense (Parental/Guardian Notification required)"
-                elif current_total_minors >= 4:
+            # --- 1. MINOR OFFENSE LOGIC ---
+            if rule.category.strip().startswith("Minor"):
+                same_rule_count = Violation.objects.filter(student=student, rule=rule).count()
+                if same_rule_count >= 2: # This would be the 3rd+ instance
+                    recommendation = "MAJOR ESCALATION: 27.3.1.39 (Habitual Minor Offense)"
                     is_escalated = True
-                    recommendation = "MAJOR OFFENSE ESCALATION (Section 27.3.1.43): "
-                    
-                    # Escalation level is based on how many minor offenses have passed the 3-offense threshold
-                    # 4th total minor = Level 1 (Probation)
-                    # 5th total minor = Level 2 (Suspension 3-5)
-                    # 6th total minor = Level 3 (Suspension 6-12)
-                    escalation_level = current_total_minors - 3
-                    
-                    if escalation_level == 1: recommendation += "Sanction 1: Probation (1 year)"
-                    elif escalation_level == 2: recommendation += "Sanction 2: Suspension (3–5 school days)"
-                    elif escalation_level == 3: recommendation += "Sanction 3: Suspension (6–12 school days)"
-                    else: recommendation += "Sanction 4: Non-readmission"
+                else:
+                    total_minors = Violation.objects.filter(student=student, rule__category__startswith="Minor").count()
+                    if total_minors >= 2: # This would be the 3rd+ total minor
+                        recommendation = "MAJOR ESCALATION: 27.3.1.43 (Third Minor Offense - Sanction 1)"
+                        is_escalated = True
+                    else:
+                        current_minor_count = total_minors + 1
+                        if current_minor_count == 1: recommendation = rule.penalty_1st or "Written Warning"
+                        elif current_minor_count == 2: recommendation = rule.penalty_2nd or "First Minor Offense"
+                        else: recommendation = rule.penalty_3rd or "Second Minor Offense"
 
+            # --- 2. MAJOR OFFENSE LOGIC ---
             else:
-                # MAJOR LOGIC (27.3.x)
-                if instance_number == 1: recommendation = rule.penalty_1st
-                elif instance_number == 2: recommendation = rule.penalty_2nd
-                elif instance_number == 3: recommendation = rule.penalty_3rd
-                elif instance_number == 4: recommendation = rule.penalty_4th
-                else: recommendation = rule.penalty_5th
+                prev_majors = Violation.objects.filter(student=student, rule__category__startswith="Major")
                 
-                different_majors_count = Violation.objects.filter(
-                    student=student, 
-                    rule__rule_code__startswith='27.3'
-                ).exclude(rule=rule).count()
-                
-                if different_majors_count > 0:
-                    details.append("Note: Student has prior major offenses of a DIFFERENT nature. Final sanction per Section 27.3.5 is at the discretion of the SWAFO Director.")
+                if not prev_majors.exists():
+                    # 1st Major ever
+                    recommendation = rule.penalty_1st or "Sanction 1: Probation (1 year)"
+                else:
+                    # Check for "Different Nature" (Section 27.3.5)
+                    different_nature_exists = prev_majors.exclude(rule=rule).exists()
+                    
+                    if different_nature_exists:
+                        recommendation = "REFER TO SWAFO DIRECTOR (Section 27.3.5 - Different Nature)"
+                    else:
+                        # Same rule repeating
+                        count = prev_majors.count() + 1
+                        if count == 1: recommendation = rule.penalty_1st
+                        elif count == 2: recommendation = rule.penalty_2nd
+                        elif count == 3: recommendation = rule.penalty_3rd
+                        elif count == 4: recommendation = rule.penalty_4th
+                        else: recommendation = rule.penalty_5th or rule.penalty_4th or "Sanction 4: Non-readmission"
 
-            # --- 3. Duplicate Detection Logic (24-Hour Temporal Window) ---
+            # --- 3. Duplicate Detection Logic ---
             from django.utils import timezone
             from datetime import timedelta
-            
             day_threshold = timezone.now() - timedelta(hours=24)
-            last_identical = Violation.objects.filter(
-                student=student, 
-                rule=rule,
-                timestamp__gte=day_threshold
-            ).order_by('-timestamp').first()
+            last_identical = Violation.objects.filter(student=student, rule=rule, timestamp__gte=day_threshold).order_by('-timestamp').first()
             
-            is_duplicate = last_identical is not None
-            
-            duplicate_info = None
-            if is_duplicate:
-                duplicate_info = {
-                    "timestamp": last_identical.timestamp,
-                    "location": last_identical.location,
-                    "description": last_identical.description,
-                    "officer_name": last_identical.officer.full_name if last_identical.officer else "Institutional Authority",
-                    "id": last_identical.id
-                }
-
             return Response({
                 "student_name": student.user.full_name,
                 "rule_code": rule.rule_code,
                 "rule_description": rule.description,
-                "instance_number": instance_number,
-                "total_minor_count": total_minors,
                 "recommendation": recommendation,
-                "is_repeat_offender": rule_specific_count > 0,
-                "is_duplicate": is_duplicate,
-                "previous_incident": duplicate_info,
                 "is_escalated": is_escalated,
-                "policy_notes": details
+                "is_duplicate": last_identical is not None,
+                "history": history_data,
+                "previous_incident": {
+                    "timestamp": last_identical.timestamp,
+                    "location": last_identical.location,
+                    "id": last_identical.id
+                } if last_identical else None
             })
 
         except StudentProfile.DoesNotExist:
