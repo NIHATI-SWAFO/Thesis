@@ -27,6 +27,7 @@ export default function RecordViolation() {
   const [smartSearchQuery, setSmartSearchQuery] = useState('');
   const [smartSearchLoading, setSmartSearchLoading] = useState(false);
   const [smartSearchResults, setSmartSearchResults] = useState([]);
+  const [searchMode, setSearchMode] = useState('smart'); // 'smart' or 'manual'
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -314,35 +315,70 @@ export default function RecordViolation() {
 
               <div className="space-y-8">
                 {/* Rule Search */}
-                <div className="relative">
-                  <label className="block text-[11px] font-black text-[#003624]/40 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[16px]">policy</span>
-                    Handbook Rule Reference
-                  </label>
-                  <div className="relative group">
-                    <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors">auto_fix_high</span>
-                    <input 
-                      type="text" 
-                      placeholder="Smart search (e.g. 'smoking', 'uniform', 'noise')..." 
-                      value={smartSearchQuery} 
-                      onChange={(e) => handleSmartSearch(e.target.value)} 
-                      className="w-full bg-slate-50 border-2 border-transparent rounded-2xl h-[64px] pl-14 pr-4 text-[15px] font-bold text-slate-700 outline-none focus:bg-white focus:border-emerald-100 focus:shadow-lg focus:shadow-emerald-950/5 transition-all" 
-                    />
+                  <div className="flex items-center justify-between mb-4">
+                    <label className="block text-[11px] font-black text-[#003624]/40 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[16px]">policy</span>
+                      Handbook Rule Reference
+                    </label>
+                    <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+                      <button 
+                        onClick={() => setSearchMode('smart')}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${searchMode === 'smart' ? 'bg-[#003624] text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                      >
+                        Smart
+                      </button>
+                      <button 
+                        onClick={() => setSearchMode('manual')}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${searchMode === 'manual' ? 'bg-[#003624] text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                      >
+                        Manual
+                      </button>
+                    </div>
                   </div>
-                  {smartSearchResults.length > 0 && (
-                    <div className="absolute top-[95px] left-0 right-0 z-[110] bg-white rounded-3xl shadow-[0_30px_80px_rgba(0,0,0,0.2)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
-                      {smartSearchResults.map(res => (
-                        <button key={res.id} onClick={() => { setFormData(prev => ({ ...prev, violationType: res.rule_code })); setSmartSearchQuery(res.rule_code); setSmartSearchResults([]); }} className="w-full p-6 hover:bg-emerald-50 text-left border-b border-slate-50 last:border-0 group transition-all">
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{res.rule_code}</span>
-                            <span className="text-[10px] font-bold text-slate-300 uppercase">{Math.round(res.score * 100)}% Match</span>
-                          </div>
-                          <p className="text-[14px] font-bold text-slate-700 leading-tight group-hover:text-[#003624] transition-colors">{res.description}</p>
-                        </button>
-                      ))}
+
+                  {searchMode === 'smart' ? (
+                    <div className="relative group">
+                      <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors">auto_fix_high</span>
+                      <input 
+                        type="text" 
+                        placeholder="Smart search (e.g. 'smoking', 'uniform', 'noise')..." 
+                        value={smartSearchQuery} 
+                        onChange={(e) => handleSmartSearch(e.target.value)} 
+                        className="w-full bg-slate-50 border-2 border-transparent rounded-2xl h-[64px] pl-14 pr-4 text-[15px] font-bold text-slate-700 outline-none focus:bg-white focus:border-emerald-100 focus:shadow-lg focus:shadow-emerald-950/5 transition-all" 
+                      />
+                      {smartSearchResults.length > 0 && (
+                        <div className="absolute top-[75px] left-0 right-0 z-[110] bg-white rounded-3xl shadow-[0_30px_80px_rgba(0,0,0,0.2)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
+                          {smartSearchResults.map(res => (
+                            <button key={res.id} onClick={() => { setFormData(prev => ({ ...prev, violationType: res.rule_code })); setSmartSearchQuery(res.rule_code); setSmartSearchResults([]); }} className="w-full p-6 hover:bg-emerald-50 text-left border-b border-slate-50 last:border-0 group transition-all">
+                              <div className="flex justify-between items-start mb-2">
+                                <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{res.rule_code}</span>
+                                <span className="text-[10px] font-bold text-slate-300 uppercase">{Math.round(res.score * 100)}% Match</span>
+                              </div>
+                              <p className="text-[14px] font-bold text-slate-700 leading-tight group-hover:text-[#003624] transition-colors">{res.description}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="relative group">
+                      <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors">list_alt</span>
+                      <select 
+                        name="violationType"
+                        value={formData.violationType}
+                        onChange={handleInputChange}
+                        className="w-full bg-slate-50 border-2 border-transparent rounded-2xl h-[64px] pl-14 pr-4 text-[15px] font-bold text-slate-700 outline-none focus:bg-white focus:border-emerald-100 focus:shadow-lg focus:shadow-emerald-950/5 transition-all appearance-none"
+                      >
+                        <option value="">Select Handbook Rule...</option>
+                        {handbookRules.map(rule => (
+                          <option key={rule.id} value={rule.rule_code}>
+                            [{rule.rule_code}] {rule.description.substring(0, 80)}...
+                          </option>
+                        ))}
+                      </select>
+                      <span className="material-symbols-outlined absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
                     </div>
                   )}
-                </div>
 
                 <div className="grid grid-cols-2 gap-6">
                   <div>
