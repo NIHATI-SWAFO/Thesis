@@ -7,7 +7,7 @@
 **Stack:** React (Vite) + Tailwind CSS | Django + DRF | PostgreSQL  
 
 > Source: `additional context/plan.md`, `project_context.md`, `research.md`
-> **Current Focus & Status:** Actively implementing the SWAFO Officer Portal Frontend components (Case Management & Record Violation). We are moving through the Figma designs using the MCP with no major blockers. The current step is finalizing the remaining Officer views before backend mapping.
+> **Current Focus & Status:** Aligning institutional data for thesis defense. We are synchronizing the Patrol Monitoring and Analytics modules with our core Violation database (April 18-20). Current step: Finalizing the Officer Portal's live data feeds.
 
 ---
 
@@ -119,7 +119,8 @@
 ### Reports & Analytics — *"View violation statistics and officer activity"*
 - [x] Implement `ReportsAnalytics.jsx`
 - [x] KPI Bento Grid (Total Violations, Resolved Rate, Patrol Coverage, Response Time)
-- [x] temporal bar charts showing violation trends over time
+-- [x] temporal bar charts showing violation trends over time
++- [x] **Rolling Analytics Window:** Implemented dynamic 7-day temporal window for offense trends (Frontend/Backend Sync).
 - [x] Multi-segment SVG Donut Charts for status distribution
 - [x] "Officer Intelligence" detail cards with activity heatmaps
 - [x] High-fidelity visual parity (Plus Jakarta Sans, brand green palette)
@@ -128,9 +129,11 @@
 
 ### Patrol History & Monitoring — *"Replace SWAFO's current third-party timestamp app"*
 - [x] Implement `PatrolHistory.jsx` with 2-column list/detail layout
-- [x] Interactive patrol list with high-fidelity status badges (mint/white)
+-- [x] Interactive patrol list with high-fidelity status badges (mint/white)
++- [x] **Live Monitoring Sync:** `PatrolMonitoring.jsx` is fully connected to backend APIs; showing real active officers (Timothy De Castro, Harlene Bautista, etc.) from the DB.
++- [x] **Institutional Metric Alignment:** Charts and cards now accurately reflect 4 Active Patrols and a ~3.5h Average Duration.
 - [x] Checkpoint timeline with semantic status indicators (secure/check)
-- [x] Map Navigation module with "View Full Map" interactive state
+- [ ] Map Navigation module with "View Full Map" interactive state
 - [x] **Visual Refinement:** ACHIEVED 1:1 parity (ultra-thin 2px accents, solid white KPI text, balanced metric scaling)
 - [ ] "Start Patrol" functional module (recording live session)
 - [ ] Select patrol area/checkpoint within university
@@ -145,15 +148,20 @@
 - [x] **Visual Refinement:** Implemented "Violation History" list within the recording view for context.
 - [ ] Barcode scanner (camera-based, browser) using `html5-qrcode` or `@ericblade/quagga2`
 - [ ] Auto-retrieve student profile from scanned barcode (name, college, department)
-- [ ] Violation type dropdown selector + manual entry option
-- [ ] Written statement / description field
+-- [ ] Violation type dropdown selector + manual entry option
+-- [ ] Written statement / description field
++- [x] Violation type dropdown selector + manual entry option
++- [x] Written statement / description field
 - [ ] Evidence upload (photo/file) via cloud storage (S3/Cloudinary)
-- [ ] Map each violation to a university handbook entry
+-- [ ] Map each violation to a university handbook entry
++- [ ] Map each violation to a university handbook entry (Smart Search integrated).
++- [x] **Traffic Offense Support:** Integrated Section 27.4 logic for independent escalation and fine tracking (Php 1,000/2,000).
 
 ### System Output After Violation Submission
 - [x] Auto-generated **case summary** of the incident (Tentatively working - needs improvement)
 - [x] **Corrective action recommendation** based on violation type, student history, severity (Tentatively working - needs improvement)
-- [ ] **Duplicate case detection** — flag if student has a prior similar violation
+-- [ ] **Duplicate case detection** — flag if student has a prior similar violation
++- [x] **Duplicate case detection** — flag if student has a prior similar violation (24-hour window backend verified).
 
 ---
 
@@ -161,10 +169,13 @@
 
 > Requirement source: `research.md` §7 — Reporting Dashboard (Admin)
 
-- [ ] Summary of all reported violations
-- [ ] Violation statistics and trends (charts via Recharts or Chart.js)
-- [ ] Patrol log summary and officer activity
-- [ ] User management interface (Students, Officers, Admins)
+-- [ ] Summary of all reported violations
+-- [ ] Violation statistics and trends (charts via Recharts or Chart.js)
+-- [ ] Patrol log summary and officer activity
+-- [ ] User management interface (Students, Officers, Admins)
++- [ ] Summary of reported violations (Section 27 breakdown)
++- [ ] Enrollment/Violation proportionality analytics
++- [ ] Officer performance heatmaps
 
 ---
 
@@ -192,6 +203,7 @@
 - [x] **Analytics Engine**: Real-time charts on dashboard (Distribution & Trends)
 - [ ] **Spatial Heatmap**: Visual map of the campus showing "Red Zones"
 - [ ] Input: Coordinate mapping of violation records for spatial plotting
++- [x] **Rolling Analytics Window**: Implemented dynamic 7-day temporal window for offense trends (Frontend/Backend Sync).
 
 ### 5.5 Rule-Based Handbook Chatbot (In Progress)
 - [x] **Hybrid Semantic Retrieval** (VSM + Cosine Similarity)
