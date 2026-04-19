@@ -95,8 +95,37 @@ The algorithm implements a **Cross-Table Handover** mechanism:
 
 ---
 
+## 6. Temporal Analytics Aggregation Algorithm
+The dashboard's rolling intelligence is powered by a **Sliding-Window Time-Series Aggregation** algorithm that provides real-time visibility into campus compliance trends.
+
+### 6.1 Rolling 7-Day Window Calculation
+To drive the trend charts, the system executes a look-behind aggregation:
+1.  **Interval Definition**: Defines a window $W = [T_{now} - 6 \text{ days}, T_{now}]$.
+2.  **Date Normalization**: The algorithm normalizes all `ViolationRecord` timestamps to the local `Asia/Manila` timezone to ensure alignment with university business hours.
+3.  **Grouped Aggregation**: Performs a `COUNT(*)` grouped by `DATE(timestamp)` for each day in $W$.
+4.  **Zero-Fill Logic**: To ensure chart continuity, the algorithm injects $0$ values for any dates within the window that have no recorded violations, preventing UI "jumps."
+
+### 6.2 Hotspot Ranking (Frequency Clustering)
+The system identifies "Red Zones" using a simple frequency-based ranking:
+- **Formula**: $Score_{location} = \sum V_{location}$ within $W$.
+- **Output**: Returns the top 5 locations with a status indicator (e.g., "High Alert") if $Score > \text{threshold}$.
+
+---
+
+## 7. Institutional Identity Bridge Algorithm
+To ensure 100% data integrity, the system implements a **Deterministic Profile Resolution Bridge** that connects the Cloud Authentication layer to the Institutional Data layer.
+
+### 7.1 MSAL-to-DRF Handshake
+1.  **Auth Token Extraction**: Upon Microsoft SSO success, the system extracts the `preferred_username` (Verified Email).
+2.  **Unique Identifier Resolution**: The algorithm performs an exact match query: `User.objects.get(email=verified_email)`.
+3.  **Profile Linking**: It then executes a **1:1 Mapping** to the `StudentProfile` table using the User Foreign Key.
+4.  **Outcome**: This eliminates manual data entry errors. The student's **Student Number** and **College** are resolved algorithmically, ensuring that every violation is recorded against the correct legal identity.
+
+---
+
 ## Summary of Technical Stack
 - **AI Core**: Google Gemini 1.5 (Pro/Flash)
 - **Embedding Engine**: Gemini Embedding 001
 - **Backend**: Django (Python 3.12)
-- **Database**: SQLite (Development) / Vector Simulation via In-Memory Arrays.
+- **Frontend**: React 19 (Vite)
+- **Database**: PostgreSQL (Production) / SQLite (Development)
