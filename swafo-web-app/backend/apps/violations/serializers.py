@@ -30,10 +30,7 @@ class ViolationSerializer(serializers.ModelSerializer):
                 if traffic_instance == 3: return "Commission of 2nd minor offense + Php 2,000 fine"
                 return "Cancellation of vehicle pass + Commission of 3rd minor offense (Major Risk)"
             else: # Major Traffic
-                if traffic_instance == 1: return "Major administrative sanction + Php 2,000 fine"
-                
-                # 2nd Major Traffic = 1st Major Offense on Record.
-                # CROSS-CHECK: Does the student have OTHER major offenses?
+                # Check for ANY other standard major offenses on record (even for 1st traffic instance)
                 std_majors_count = Violation.objects.filter(
                     student=obj.student, 
                     rule__category__startswith="Major",
@@ -41,7 +38,10 @@ class ViolationSerializer(serializers.ModelSerializer):
                 ).count()
                 
                 if std_majors_count > 0:
-                    return "FOR SWAFO DIRECTOR DECISION (Section 27.3.5 - Different Nature: Traffic Major + Existing Major)"
+                    return "FOR SWAFO DIRECTOR DECISION (Section 27.3.5 - Different Nature: Major Traffic + Existing Disciplinary Major)"
+                
+                if traffic_instance == 1: 
+                    return "Major administrative sanction + Php 2,000 fine"
                 
                 return "Major offense + Cancellation of vehicle sticker for 1 Academic Year"
 
