@@ -168,60 +168,61 @@
 
 ---
 
-## 5. INTELLIGENT FEATURES / ALGORITHMS (Not Started)
+## 5. INTELLIGENT FEATURES / ALGORITHMS (In Progress)
 
 > Requirement source: `research.md` §7 — Intelligent Features; `plan.md` §5  
 > These are the CS thesis highlights for defense
 
-### 5.1 Patrol Route Optimization
-- [ ] Graph-based algorithm (Dijkstra, TSP heuristic, or greedy nearest neighbor)
-- [ ] Input: list of patrol checkpoints/locations
-- [ ] Output: suggested patrol order/route
+### 5.1 Patrol Route Optimization (Planned)
+- [ ] Graph-based algorithm (Greedy Nearest Neighbor)
+- [ ] Input: Building locations + Violation frequency
+- [ ] Output: **Dynamic Patrol Sequence** (suggesting which building to check next)
 
-### 5.2 Duplicate Case Detection
-- [ ] Rule-based matching or string similarity (e.g., Levenshtein) or embedding-based
-- [ ] Input: new violation details + student's existing violation history
-- [ ] Output: warning/flag if duplicate or near-duplicate found
+### 5.2 Duplicate Case Detection (Implementation Complete)
+- [x] **24-Hour Temporal Window** algorithm implemented in Backend
+- [x] Interactive Amber Warning Modal in Frontend
+- [x] Logic: Distinguishes between accidental double-logs and separate offenses.
 
-### 5.3 Corrective Action Recommendation
-- [ ] Rule-based decision logic mapped from university handbook
-- [ ] Input: violation type, student violation count, violation severity
-- [ ] Output: recommended action (warning, referral, suspension)
+### 5.3 Smart Corrective Action Recommendation (In Progress)
+- [x] **Core Escalation Engine**: Counts violations and escalates per Section 27
+- [/] **Handbook-to-Action Mapping**: Explicitly suggesting actions (e.g., Guidance Referral)
+- [x] Output: Automated penalty recommendation during assessment.
 
-### 5.4 Violation Analytics & Heatmap
-- [ ] Spatial clustering (K-means) or frequency aggregation by location
-- [ ] Input: violation records with location/timestamp data
-- [ ] Output: heatmap or chart on admin dashboard
+### 5.4 Violation Analytics & Heatmap (In Progress)
+- [x] **Analytics Engine**: Real-time charts on dashboard (Distribution & Trends)
+- [ ] **Spatial Heatmap**: Visual map of the campus showing "Red Zones"
+- [ ] Input: Coordinate mapping of violation records for spatial plotting
 
-### 5.5 Rule-Based Handbook Chatbot
-- [ ] Rule-based keyword matching or lightweight NLP-based retrieval
-- [ ] Input: student query
-- [ ] Output: relevant handbook section or answer
+### 5.5 Rule-Based Handbook Chatbot (In Progress)
+- [x] **Hybrid Semantic Retrieval** (VSM + Cosine Similarity)
+- [x] **Context-Injected NLP**: AI responses strictly limited to official rules
+- [/] **Full Handbook Coverage**: Currently covers Section 27; expansion to entire manual pending.
+- [x] Functionality: Student can ask handbook questions and get cited answers.
 
 ---
 
-## 6. BACKEND & DATABASE (Not Started)
+## 6. BACKEND & DATABASE (Implementation Complete)
 
 > Requirement source: `plan.md` §2 Backend, §6 Database
 
 ### Django + DRF Setup
-- [ ] Initialize Django project with Django REST Framework
-- [ ] Configure PostgreSQL database connection
-- [ ] Implement Django SimpleJWT authentication
+- [x] Initialize Django project with Django REST Framework
+- [/] Configure PostgreSQL database connection (Currently SQLite for local dev)
+- [x] Implement Django SimpleJWT authentication
 
 ### Database Tables (from `plan.md` §6)
-- [x] `Users` — initialized
-- [x] `Students` — initialized
+- [x] `Users` — fully functional
+- [x] `Students` — fully functional with profile resolution
 - [x] `Violations` — fully functional with escalation logic
 - [x] `HandbookEntries` — seeded with 82 rules
-- [x] **Database Seeding:** 55 students and 10 students with historical violation data.
+- [x] **Database Seeding:** 51 students (including Timothy De Castro) and historical data.
 
 ### API Endpoints
-- [ ] Student profile CRUD
-- [ ] Violation submission and retrieval
-- [ ] Patrol log recording
-- [ ] Handbook content retrieval
-- [ ] Chatbot query processing
+- [x] Student profile CRUD (via /api/users/search/)
+- [x] Violation submission and retrieval
+- [x] Patrol log recording
+- [x] Handbook content retrieval
+- [x] Chatbot query processing (AI Curator)
 
 ---
 

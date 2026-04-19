@@ -6,17 +6,32 @@ import { API_ENDPOINTS } from "../../api/config";
 export default function StudentDashboard() {
   const { user } = useAuth();
   const [violations, setViolations] = useState([]);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const firstName = user?.name ? user.name.split(' ')[0] : 'Student';
 
   useEffect(() => {
     if (user?.email) {
-      fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?email=${user.email}`)
-        .then(res => res.json())
-        .then(data => setViolations(Array.isArray(data) ? data : (data.results || [])))
-        .catch(err => console.error("Error fetching violations:", err))
-        .finally(() => setLoading(false));
+      setLoading(true);
+      const fetchDashboardData = async () => {
+        try {
+          // 1. Fetch Profile
+          const profileResp = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${user.email}`);
+          const profiles = await profileResp.json();
+          if (profiles.length > 0) setProfile(profiles[0]);
+
+          // 2. Fetch Violations
+          const violationsResp = await fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?email=${user.email}`);
+          const violationsData = await violationsResp.json();
+          setViolations(Array.isArray(violationsData) ? violationsData : (violationsData.results || []));
+        } catch (err) {
+          console.error("Dashboard sync error:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchDashboardData();
     }
   }, [user]);
 
@@ -36,9 +51,16 @@ export default function StudentDashboard() {
           <h2 className="text-[1.85rem] font-pjs font-bold text-[#003624] tracking-tight leading-tight">
             Welcome back, {firstName} :)
           </h2>
-          <p className="text-portal-text-muted font-manrope mt-1 font-medium text-[0.95rem]">
-            Explore your academic standing and campus activities.
-          </p>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-2">
+            <div className="flex items-center gap-2 text-portal-text-muted/60 font-manrope font-bold text-[0.85rem] uppercase tracking-widest">
+              <span className="material-symbols-outlined text-[18px]">badge</span>
+              {profile?.student_number || '202XXXXXX'}
+            </div>
+            <div className="flex items-center gap-2 text-portal-text-muted/60 font-manrope font-bold text-[0.85rem] uppercase tracking-widest border-l border-slate-200 pl-6">
+              <span className="material-symbols-outlined text-[18px]">school</span>
+              {profile?.course || 'Academic Scholar'}
+            </div>
+          </div>
         </div>
         <div className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl shadow-sm border ${
           isGoodStanding 
