@@ -40,6 +40,10 @@ class AdminDashboardAPIView(APIView):
                 count=Count('id')
             ).order_by('-count')[:5]
 
+            # 5. Recent Violations
+            recent_violations = Violation.objects.all().order_by('-timestamp')[:6]
+            recent_serializer = ViolationSerializer(recent_violations, many=True)
+
             return Response({
                 "status_distribution": {
                     "total": total_count,
@@ -59,7 +63,7 @@ class AdminDashboardAPIView(APIView):
                 ],
                 "officer_activity": [
                     {
-                        "name": f"Officer {o['officer__first_name']} {o['officer__last_name']}".strip() or o['officer__username'],
+                        "name": f"{o['officer__first_name']} {o['officer__last_name']}".strip() or o['officer__username'],
                         "reports": o['count'],
                         "id": f"OFF-{o['officer__username'][:3].upper()}",
                         "status": "Active"
@@ -68,7 +72,8 @@ class AdminDashboardAPIView(APIView):
                 "temporal": temporal_data,
                 "byCollege": [
                     {"name": c['student__course'] or "General", "count": c['count']} for c in by_college
-                ]
+                ],
+                "recent_violations": recent_serializer.data
             })
         except Exception as e:
             return Response({"error": str(e)}, status=500)
