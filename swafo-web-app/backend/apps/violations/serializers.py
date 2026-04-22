@@ -8,8 +8,13 @@ class ViolationSerializer(serializers.ModelSerializer):
     rule_details = HandbookEntrySerializer(source='rule', read_only=True)
     
     prescribed_sanction = serializers.SerializerMethodField()
+    requires_director_decision = serializers.SerializerMethodField()
     officer_name = serializers.SerializerMethodField()
     assigned_to_details = serializers.SerializerMethodField()
+
+    def get_requires_director_decision(self, obj):
+        sanction = self.get_prescribed_sanction(obj)
+        return "FOR SWAFO DIRECTOR DECISION" in str(sanction)
 
     def get_prescribed_sanction(self, obj):
         if not obj.rule:
@@ -138,7 +143,8 @@ class ViolationSerializer(serializers.ModelSerializer):
             'id', 'student', 'student_details', 'officer', 'officer_name', 
             'assigned_to', 'assigned_to_details', 'rule', 'rule_details', 
             'location', 'description', 'evidence_url', 'status', 
-            'case_summary', 'corrective_action', 'prescribed_sanction', 'timestamp'
+            'case_summary', 'corrective_action', 'prescribed_sanction', 
+            'requires_director_decision', 'timestamp'
         ]
         read_only_fields = ['id', 'officer', 'timestamp']
 

@@ -95,13 +95,14 @@ export default function OfficerDashboard() {
         {/* LEFT COLUMN: QUICK ACTIONS (4-SQUARE GRID) */}
         <div className="col-span-12 lg:col-span-4 grid grid-cols-2 gap-4">
           <QuickActionButton 
-            onClick={() => navigate('/officer/patrol-history')}
+            onClick={() => navigate('/officer/patrols')}
             icon="ads_click"
             label="START PATROL"
           />
           <QuickActionButton 
-            icon="qr_code_scanner"
-            label="SCAN ID"
+            onClick={() => navigate('/officer/patrol-history')}
+            icon="history"
+            label="VIEW HISTORY"
           />
           <QuickActionButton 
             onClick={() => navigate('/officer/violations/new')}

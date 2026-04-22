@@ -63,10 +63,13 @@ function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="cases" element={<CaseManagement role="admin" />} />
+          <Route path="students" element={<StudentRecords role="admin" />} />
+          <Route path="students/:id" element={<StudentProfileDetail role="admin" />} />
+          <Route path="patrols" element={<PatrolHistory role="admin" />} />
+          <Route path="analytics" element={<ReportsAnalytics role="admin" />} />
+          <Route path="handbook" element={<StudentHandbook role="admin" />} />
           <Route path="users" element={<div className="p-12"><h1 className="text-3xl font-black text-[#003624] mb-4">User Management</h1><p className="text-gray-500 font-bold uppercase tracking-widest text-[11px]">Control student and officer access levels.</p><div className="mt-12 p-20 border-2 border-dashed border-emerald-100 rounded-[3rem] text-center text-emerald-200 font-black uppercase tracking-widest">Interface Module Loading...</div></div>} />
-          <Route path="analytics" element={<div className="p-12"><h1 className="text-3xl font-black text-[#003624] mb-4">Institutional Analytics</h1><p className="text-gray-500 font-bold uppercase tracking-widest text-[11px]">Deep dive into campus-wide behavior patterns.</p></div>} />
-          <Route path="logs" element={<div className="p-12"><h1 className="text-3xl font-black text-[#003624] mb-4">System Security Logs</h1><p className="text-gray-500 font-bold uppercase tracking-widest text-[11px]">Audit trail for all administrative actions.</p></div>} />
-          <Route path="handbook" element={<div className="p-12"><h1 className="text-3xl font-black text-[#003624] mb-4">Handbook Master</h1><p className="text-gray-500 font-bold uppercase tracking-widest text-[11px]">Modify rules, categories, and AI context.</p></div>} />
           <Route path="*" element={<div className="p-12 text-2xl font-bold font-pjs">Admin Module Under Construction</div>} />
         </Route>
 

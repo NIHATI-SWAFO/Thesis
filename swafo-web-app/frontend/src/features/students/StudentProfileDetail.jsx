@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
-export default function StudentProfileDetail() {
+export default function StudentProfileDetail({ role = 'officer' }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [studentData, setStudentData] = useState(null);
@@ -99,8 +99,22 @@ export default function StudentProfileDetail() {
           
           {/* Card: Student Profile (RESTORED TO SOLID WHITE) */}
           <div className="bg-white rounded-[3rem] p-12 border border-[#f1f5f9] shadow-[0_20px_60px_rgba(0,0,0,0.02)] relative overflow-hidden group">
-            <div className="flex justify-between items-center mb-16 relative z-10">
-              <h3 className="text-[11px] font-pjs font-black text-[#004d33] opacity-40 uppercase tracking-[0.4em]">STUDENT PROFILE</h3>
+            <div className="flex justify-between items-start mb-16 relative z-10">
+              <div className="flex flex-col gap-2">
+                <h3 className="text-[11px] font-pjs font-black text-[#004d33] opacity-40 uppercase tracking-[0.4em]">STUDENT PROFILE</h3>
+                {role === 'admin' && (
+                  <div className="flex gap-2">
+                    <span className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest border ${student.stats.pending === 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                      §14 {student.stats.pending === 0 ? 'CLEARED' : 'UNCLEARED'}
+                    </span>
+                    {student.stats.total > 0 && (
+                      <span className="px-3 py-1 rounded-full text-[9px] font-black tracking-widest border bg-blue-50 text-blue-600 border-blue-100">
+                        §26.4 FORMATION
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="px-4 py-1.5 bg-[#f0f9f4] border border-[#dcfce7] text-[#10b981] text-[10px] font-black rounded-full tracking-widest shadow-sm uppercase">
                 {student.status}
               </div>

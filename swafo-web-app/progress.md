@@ -266,3 +266,14 @@
 - **TailwindCSS used instead of shadcn/ui or MUI**: Per the "Academic Curator" design system, we built fully custom components rather than pulling from a component library.
 - **No Zustand yet**: Currently using component-level React state. Global state manager will be added when backend integration begins.
 - **Pure white cell rule**: All interactive surfaces must be `bg-white` with ambient shadows — never faint green tints that blend with the `#f2fcf8` background.
+- **Strict 2-Case Threshold**: We explicitly chose a 2-violation threshold for "Non-Compliant" status to ensure immediate institutional intervention for repeat patterns.
+
+---
+
+## 9. INSTITUTIONAL STATUS LOGIC
+
+| Status Label | Database Condition | Administrative Implication |
+|---|---|---|
+| **🟢 COMPLIANT** | `total_violations == 0` OR all violations are `RESOLVED` | Good standing. §14 Clearance is valid. |
+| **⚪ UNDER REVIEW** | `total_violations == 1` AND status is `OPEN/PENDING` | Active investigation. Student is under observation. |
+| **🔴 NON-COMPLIANT** | `total_violations >= 2` | **Habitual Offender Pattern**. Requires immediate SWAFO intervention. |

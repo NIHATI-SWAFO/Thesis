@@ -77,25 +77,28 @@ export default function RecordViolation() {
 
   const [searchResults, setSearchResults] = useState([]);
 
+  // Live Search Effect (Debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.length >= 2) {
+        handleSearch();
+      } else {
+        setSearchResults([]);
+      }
+    }, 400); // 400ms debounce
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const handleSearch = async () => {
     if (!searchQuery) return;
     setIsSearching(true);
-    setFoundStudent(null);
-    setSearchResults([]);
-    setAssessment(null);
-    setPastViolations([]);
     
     try {
       const response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${searchQuery}`);
       if (response.ok) {
         const data = await response.json();
-        if (Array.isArray(data) && data.length > 0) {
-          if (data.length === 1) {
-            setFoundStudent(data[0]);
-            fetchStudentHistory(data[0].user_details?.email);
-          } else {
-            setSearchResults(data);
-          }
+        if (Array.isArray(data)) {
+          setSearchResults(data);
         }
       }
     } catch (error) {
@@ -282,7 +285,7 @@ export default function RecordViolation() {
       </div>
 
       {/* STUDENT IDENTIFICATION - GLASS DESIGN */}
-      <div className="bg-[#003624] rounded-[3rem] p-10 mb-10 text-white relative shadow-[0_30px_100px_rgba(0,54,36,0.25)] overflow-hidden">
+      <div className="bg-[#003624] rounded-[3rem] p-10 mb-10 text-white relative shadow-[0_30px_100px_rgba(0,54,36,0.25)]">
          <div className="absolute -right-20 -bottom-20 opacity-10 pointer-events-none">
             <span className="material-symbols-outlined text-[400px]">history_edu</span>
          </div>
@@ -673,6 +676,19 @@ export default function RecordViolation() {
                 <p className="text-[16px] font-medium text-emerald-100/40">Verified against University Disciplinary Policy v2.4</p>
               </div>
             </div>
+
+            {/* DUPLICATE WARNING BANNER */}
+            {assessment.is_duplicate && (
+              <div className="mb-10 p-8 bg-orange-500/20 border-2 border-orange-500/50 rounded-[2.5rem] flex items-center gap-8 animate-in slide-in-from-left-8 duration-500">
+                <div className="w-14 h-14 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-lg shadow-orange-900/40 shrink-0">
+                  <span className="material-symbols-outlined text-[28px] fill-1">warning</span>
+                </div>
+                <div className="flex-1">
+                   <h4 className="text-[18px] font-black text-orange-200 uppercase tracking-tight mb-1 leading-none">Duplicate Incident Detected</h4>
+                   <p className="text-[14px] text-orange-100/70 font-medium leading-relaxed">This specific violation has already been logged for this student within the current observation period. Please verify if this is a separate occurrence before proceeding.</p>
+                </div>
+              </div>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-12">
               <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-[2.5rem] p-10 flex flex-col justify-between group hover:bg-white/10 transition-all">

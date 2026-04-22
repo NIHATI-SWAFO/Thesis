@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
-from django.db.models import Count, Q, Avg, Sum, F, ExpressionWrapper, DurationField
+from django.db.models import Count, Q, Avg, Sum, F, ExpressionWrapper, DurationField, Max
 from django.utils import timezone
 from apps.violations.models import Violation
 from apps.users.models import StudentProfile
@@ -28,15 +28,14 @@ class AdminDashboardAPIView(APIView):
                 count=Count('id')
             ).order_by('-count')[:5]
 
-            # 3. Temporal Trends (Rolling Last 7 Days)
+            # 3. Temporal Trends (Dynamic Range)
+            range_type = request.query_params.get('range', 'week')
+            days_count = 30 if range_type == 'month' else 7
+            
             temporal_data = []
             day_names = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
             
-            # Django week_day is 1 (Sun) to 7 (Sat)
-            # Standard index for day_names is 0 (Mon) to 6 (Sun)
-            today_idx = timezone.localtime(timezone.now()).weekday() # 0 is Mon
-            
-            for i in range(6, -1, -1): # From 6 days ago to today
+            for i in range(days_count - 1, -1, -1): # From X days ago to today
                 target_date = timezone.localtime(timezone.now()).date() - timezone.timedelta(days=i)
                 day_label = day_names[target_date.weekday()]
                 
@@ -44,31 +43,92 @@ class AdminDashboardAPIView(APIView):
                     timestamp__date=target_date
                 ).count()
                 
-                temporal_data.append({"day": day_label, "value": day_count})
+                # Only include labels for every 5th day if in month view to keep it clean
+                display_label = day_label if (range_type == 'week' or i % 5 == 0) else ""
+                temporal_data.append({"day": display_label, "value": day_count})
 
-            # 4. Violations by College
+            # 4. Policy Breakdown (Handbook Classification)
+            # Minor vs Major (Misconduct/Dishonesty/Violent Acts) vs Traffic
+            policy_breakdown = Violation.objects.values('rule__category').annotate(
+                count=Count('id')
+            ).order_by('-count')
+
+            # 5. Section 27.3.5 - Different Nature Major Offense Detection
+            # Find students with 2+ MAJOR violations where the rules are DIFFERENT.
+            # This requires a subquery or a specific annotation flow.
+            complex_offenders = StudentProfile.objects.filter(
+                violations__rule__category__icontains='Major'
+            ).annotate(
+                distinct_major_rules=Count('violations__rule', distinct=True),
+                latest_violation_date=Max('violations__timestamp')
+            ).filter(distinct_major_rules__gte=2)
+
+            different_nature_students = complex_offenders.values(
+                'user__first_name', 
+                'user__last_name', 
+                'user__username',
+                'student_number', 
+                'course',
+                'latest_violation_date',
+                'distinct_major_rules'
+            ).annotate(
+                first_name=F('user__first_name'),
+                last_name=F('user__last_name'),
+                username=F('user__username'),
+                id=F('student_number'),
+                college=F('course'),
+                latest_date=F('latest_violation_date'),
+                distinct_rules=F('distinct_major_rules')
+            ).order_by('-latest_date')[:5]
+
+            # 6. Real Patrol Data
+            active_patrols_count = PatrolSession.objects.filter(end_time__isnull=True).count()
+
+            # 7. Hotspots and Temporal (Already in logic)
+            
+            # 8. College Distribution
             by_college = Violation.objects.values('student__course').annotate(
                 count=Count('id')
-            ).order_by('-count')[:5]
+            ).order_by('-count')
 
-            # 5. Recent Violations
-            recent_violations = Violation.objects.all().order_by('-timestamp')[:6]
+            # 9. Recent Violations
+            recent_violations = Violation.objects.all().order_by('-timestamp')[:10]
             recent_serializer = ViolationSerializer(recent_violations, many=True)
+
+            # 1. KPIs
+            total_count = Violation.objects.count()
+            closed_count = Violation.objects.filter(status='RESOLVED').count()
+            pending_decision_count = Violation.objects.filter(status='PENDING').count()
+            active_investigation_count = Violation.objects.filter(status__in=['OPEN', 'UNDER_REVIEW']).count()
 
             return Response({
                 "status_distribution": {
                     "total": total_count,
                     "breakdown": [
                         {"status": "RESOLVED", "count": closed_count},
-                        {"status": "PENDING", "count": active_cases}
+                        {"status": "PENDING", "count": pending_decision_count},
+                        {"status": "ACTIVE", "count": active_investigation_count}
                     ]
                 },
                 "stats": {
-                    "active_cases": active_cases,
+                    "active_cases": active_investigation_count + pending_decision_count,
                     "repeat_offenders": StudentProfile.objects.annotate(v_count=Count('violations')).filter(v_count__gt=1).count(),
-                    "active_patrols": 4, # Mock
+                    "active_patrols": active_patrols_count,
                     "violations_today": Violation.objects.filter(timestamp__date=today).count(),
+                    "pending_director_decisions": different_nature_students.count()
                 },
+                "policy_breakdown": [
+                    {"name": p['rule__category'], "count": p['count']} for p in policy_breakdown
+                ],
+                "director_alert_queue": [
+                    {
+                        "name": f"{s['first_name']} {s['last_name']}".strip() or s['username'],
+                        "id": s['id'],
+                        "distinct_rules": s['distinct_rules'],
+                        "college": s['college'],
+                        "date": s['latest_date'].strftime("%b %d, %Y") if s['latest_date'] else "N/A"
+                    } for s in different_nature_students
+                ],
                 "hotspots": [
                     {"name": h['location'], "count": h['count'], "trend": "up" if h['count'] > 5 else "stable"} for h in hotspots
                 ],

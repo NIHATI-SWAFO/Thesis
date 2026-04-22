@@ -3,10 +3,12 @@ import { useAuth } from '../context/AuthContext';
 
 const adminNavItems = [
   { name: 'Director Overview', path: '/admin/dashboard', icon: 'monitoring' },
-  { name: 'User Management', path: '/admin/users', icon: 'manage_accounts' },
+  { name: 'Case Oversight', path: '/admin/cases', icon: 'gavel' },
+  { name: 'Student Records', path: '/admin/students', icon: 'groups' },
+  { name: 'Patrol History', path: '/admin/patrols', icon: 'history' },
   { name: 'Institutional Analytics', path: '/admin/analytics', icon: 'analytics' },
-  { name: 'System Logs', path: '/admin/logs', icon: 'security' },
   { name: 'Handbook Master', path: '/admin/handbook', icon: 'menu_book' },
+  { name: 'User Management', path: '/admin/users', icon: 'manage_accounts' },
 ];
 
 export default function AdminLayout() {

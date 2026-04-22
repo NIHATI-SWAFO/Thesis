@@ -43,7 +43,7 @@ export default function CaseManagement() {
       const matchesSearch = studentName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                            caseId.toLowerCase().includes(searchQuery.toLowerCase());
       
-      const statusMap = { 'Open': 'OPEN', 'Under Review': 'UNDER_REVIEW', 'Resolved': 'RESOLVED' };
+      const statusMap = { 'Open': 'OPEN', 'Under Review': 'UNDER_REVIEW', 'Pending': 'PENDING', 'Resolved': 'RESOLVED' };
       const matchesStatus = statusFilter === 'All Status' || v.status === statusMap[statusFilter];
       
       const severity = getPriority(v);
@@ -101,7 +101,8 @@ export default function CaseManagement() {
     .then(res => res.json())
     .then(updated => {
       setViolations(prev => prev.map(v => v.id === caseId ? { ...v, status: newStatus } : v));
-      setSelectedCase(null);
+      // Sync modal state
+      setSelectedCase(prev => prev ? { ...prev, status: newStatus } : null);
       setIsUpdating(false);
     })
     .catch(err => {
@@ -120,11 +121,14 @@ export default function CaseManagement() {
     .then(res => res.json())
     .then(data => {
       if (data.success) {
+        const assignment = { email: user?.email, full_name: user?.name || 'System Officer' };
         setViolations(prev => prev.map(v => 
           v.id === caseId 
-            ? { ...v, assigned_to_details: { email: user?.email, full_name: user?.full_name }, status: 'UNDER_REVIEW' } 
+            ? { ...v, assigned_to_details: assignment, status: 'UNDER_REVIEW' } 
             : v
         ));
+        // Sync modal state
+        setSelectedCase(prev => prev ? { ...prev, assigned_to_details: assignment, status: 'UNDER_REVIEW' } : null);
       }
       setIsUpdating(false);
     })
@@ -257,6 +261,7 @@ export default function CaseManagement() {
                 <option>All Status</option>
                 <option>Open</option>
                 <option>Under Review</option>
+                <option>Pending</option>
                 <option>Resolved</option>
               </select>
 
@@ -326,6 +331,12 @@ export default function CaseManagement() {
                               {severity}
                             </span>
                             <span className="text-[14px] font-bold text-slate-700 truncate max-w-[200px]">{(v.rule_details?.category || 'General Violation').replace(/^(Major|Minor|General)\s*[—\-]\s*/i, '')}</span>
+                            {v.requires_director_decision && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <span className="material-symbols-outlined text-[14px] text-rose-500 fill-1">gavel</span>
+                                <span className="text-[9px] font-black text-rose-500 uppercase tracking-tighter">Director Decision Required</span>
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="px-10 py-8">
@@ -335,10 +346,11 @@ export default function CaseManagement() {
                            </div>
                         </td>
                         <td className="px-10 py-8">
-                          <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ${
-                            v.status === 'OPEN' ? 'bg-red-50 text-red-500' : 
-                            v.status === 'UNDER_REVIEW' ? 'bg-slate-100 text-slate-500' : 
-                            'bg-emerald-600 text-white shadow-emerald-900/20'
+                          <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm border ${
+                            v.status === 'OPEN' ? 'bg-rose-50 text-rose-600 border-rose-100' : 
+                            v.status === 'UNDER_REVIEW' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 
+                            v.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-100' : 
+                            'bg-emerald-600 text-white border-emerald-700 shadow-emerald-900/20'
                           }`}>
                             {v.status.replace('_', ' ')}
                           </span>
@@ -471,6 +483,18 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, isUpdating, cur
             {caseData.rule_details?.description || caseData.rule_details?.category || 'General Violation'}
           </h2>
 
+          {caseData.requires_director_decision && (
+            <div className="mb-8 p-6 bg-rose-500/10 border border-rose-500/20 rounded-[1.5rem] flex items-center gap-5">
+               <div className="w-12 h-12 rounded-2xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-900/20">
+                  <span className="material-symbols-outlined text-[24px] fill-1">gavel</span>
+               </div>
+               <div>
+                  <h4 className="text-[14px] font-black text-rose-200 uppercase tracking-widest leading-none mb-1">Section 27.3.5 Escalation</h4>
+                  <p className="text-[12px] text-rose-100 font-medium opacity-80">Only the SWAFO Director can render a decision on this case due to multi-nature major offenses.</p>
+               </div>
+            </div>
+          )}
+
           {/* Identity & Time Bar */}
           <div className="flex items-center gap-6 p-4 bg-black/20 rounded-[1.5rem] border border-white/5 backdrop-blur-md">
             <div className="flex items-center gap-4 flex-1">
@@ -541,45 +565,63 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, isUpdating, cur
           <div className="pt-10 border-t border-slate-100 flex items-center justify-between">
             <div className="flex flex-col">
                <h4 className="text-[12px] font-black text-[#003624] uppercase tracking-widest mb-1">
-                 {isUnassigned ? 'Unclaimed Violation' : 'Case Assignment'}
+                 {isResolved ? 'Resolution Recorded' : isUnassigned ? 'Unclaimed Violation' : 'Case Assignment'}
                </h4>
                <p className="text-[13px] text-slate-400 font-medium">
-                 {isUnassigned ? 'Review details and claim to begin resolution.' : `Handled by ${caseData.assigned_to_details?.full_name}`}
+                 {isResolved ? 'This institutional record is closed and archived.' : isUnassigned ? 'Review details and claim to begin resolution.' : `Handled by ${caseData.assigned_to_details?.full_name}`}
                </p>
             </div>
             
             <div className="flex gap-4">
-              {isUnassigned ? (
+              {isResolved ? (
                 <button 
                   disabled={isUpdating}
-                  onClick={() => onClaim(caseData.id)}
-                  className="bg-orange-600 text-white px-10 py-4 rounded-xl text-[14px] font-pjs font-bold hover:bg-orange-700 transition-all shadow-xl shadow-orange-900/10 flex items-center gap-3 disabled:opacity-50"
+                  onClick={() => onUpdate(caseData.id, 'OPEN')}
+                  className="bg-slate-200 text-slate-700 px-10 py-4 rounded-xl text-[14px] font-pjs font-bold hover:bg-slate-300 transition-all flex items-center gap-3 disabled:opacity-50"
                 >
-                  {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[20px]">pan_tool</span>}
-                  HANDLE THIS CASE
+                  {isUpdating ? <div className="w-4 h-4 border-2 border-slate-400/30 border-t-slate-400 rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[20px]">history</span>}
+                  RE-OPEN CASE
                 </button>
-              ) : isAssignedToMe ? (
+              ) : isUnassigned ? (
                 <>
-                  {!isResolved ? (
-                    <button 
-                      disabled={isUpdating}
-                      onClick={() => onUpdate(caseData.id, 'RESOLVED')}
-                      className="bg-[#003624] text-white px-10 py-4 rounded-xl text-[14px] font-pjs font-bold hover:bg-[#004d35] transition-all shadow-xl shadow-emerald-950/10 flex items-center gap-3 disabled:opacity-50"
-                    >
-                      {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[20px]">check_circle</span>}
-                      MARK AS RESOLVED
-                    </button>
+                  {caseData.requires_director_decision && currentUser?.role !== 'ADMIN' ? (
+                    <div className="flex items-center gap-3 px-8 py-4 bg-slate-800/50 border border-white/5 rounded-xl text-slate-400">
+                       <span className="material-symbols-outlined text-[20px]">lock</span>
+                       <span className="text-[13px] font-bold uppercase tracking-widest">Locked for Director</span>
+                    </div>
                   ) : (
                     <button 
                       disabled={isUpdating}
-                      onClick={() => onUpdate(caseData.id, 'OPEN')}
-                      className="bg-slate-200 text-slate-700 px-10 py-4 rounded-xl text-[14px] font-pjs font-bold hover:bg-slate-300 transition-all flex items-center gap-3 disabled:opacity-50"
+                      onClick={() => onClaim(caseData.id)}
+                      className="bg-orange-600 text-white px-10 py-4 rounded-xl text-[14px] font-pjs font-bold hover:bg-orange-700 transition-all shadow-xl shadow-orange-900/10 flex items-center gap-3 disabled:opacity-50"
                     >
-                      {isUpdating ? <div className="w-4 h-4 border-2 border-slate-400/30 border-t-slate-400 rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[20px]">history</span>}
-                      RE-OPEN CASE
+                      {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[20px]">pan_tool</span>}
+                      HANDLE THIS CASE
                     </button>
                   )}
                 </>
+              ) : isAssignedToMe ? (
+                <div className="flex gap-3">
+                  {caseData.status !== 'PENDING' && (
+                    <button 
+                      disabled={isUpdating}
+                      onClick={() => onUpdate(caseData.id, 'PENDING')}
+                      className="bg-amber-100 text-amber-700 px-6 py-4 rounded-xl text-[14px] font-pjs font-bold hover:bg-amber-200 transition-all flex items-center gap-3 disabled:opacity-50 border border-amber-200"
+                    >
+                      {isUpdating ? <div className="w-4 h-4 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[20px]">hourglass_empty</span>}
+                      MOVE TO PENDING
+                    </button>
+                  )}
+                  
+                  <button 
+                    disabled={isUpdating}
+                    onClick={() => onUpdate(caseData.id, 'RESOLVED')}
+                    className="bg-[#003624] text-white px-8 py-4 rounded-xl text-[14px] font-pjs font-bold hover:bg-[#004d35] transition-all shadow-xl shadow-emerald-950/10 flex items-center gap-3 disabled:opacity-50"
+                  >
+                    {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[20px]">check_circle</span>}
+                    MARK AS RESOLVED
+                  </button>
+                </div>
               ) : (
                 <div className="flex items-center gap-2 bg-slate-50 px-6 py-3 rounded-xl border border-slate-100">
                   <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">

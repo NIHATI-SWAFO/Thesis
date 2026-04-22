@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   TrendingUp, 
   Users, 
@@ -14,11 +15,14 @@ import {
 import { API_ENDPOINTS } from '../../api/config';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  const [timeRange, setTimeRange] = useState('week');
 
   useEffect(() => {
-    fetch(API_ENDPOINTS.ADMIN_DASHBOARD)
+    setLoading(true);
+    fetch(`${API_ENDPOINTS.ADMIN_DASHBOARD}?range=${timeRange}`)
       .then(res => {
         if (!res.ok) throw new Error("API UNREACHABLE");
         return res.json();
@@ -28,37 +32,22 @@ export default function AdminDashboard() {
         setLoading(false);
       })
       .catch(err => {
-        console.warn("Using Institutional Mock Data (API Unavailable)");
+        console.warn("API Unavailable: Resetting metrics to zero.");
         setData({
-          status_distribution: { total: 142, breakdown: [{ status: 'RESOLVED', count: 118 }, { status: 'PENDING', count: 24 }] },
-          stats: { active_cases: 24, repeat_offenders: 12, active_patrols: 6, violations_today: 4 },
-          hotspots: [
-            { name: "JFH Corridor", count: 18, trend: "up" },
-            { name: "West Parking", count: 12, trend: "down" },
-            { name: "Library", count: 9, trend: "stable" },
-            { name: "UWear Lab", count: 7, trend: "up" }
-          ],
-          officer_activity: [
-            { name: "Timothy De Guzman", reports: 42, id: "OFF-TIM", status: "On Patrol" },
-            { name: "Julian Cruz", reports: 38, id: "OFF-JUL", status: "Active" },
-            { name: "Elias Velez", reports: 25, id: "OFF-ELI", status: "Active" }
-          ],
-          temporal: [
-            { day: 'TUE', value: 18 }, { day: 'WED', value: 24 }, { day: 'THU', value: 15 }, 
-            { day: 'FRI', value: 21 }, { day: 'SAT', value: 8 }, { day: 'SUN', value: 4 }, 
-            { day: 'MON', value: 12 }
-          ],
-          byCollege: [
-            { name: "Engineering", count: 45 },
-            { name: "Business", count: 32 },
-            { name: "Arts & Sciences", count: 28 },
-            { name: "Tourism", count: 22 }
-          ],
-          recent_violations: []
+            director_alert_queue: [],
+            policy_breakdown: [],
+            status_distribution: { total: 0, breakdown: [] },
+            stats: { active_cases: 0, repeat_offenders: 0, active_patrols: 0, violations_today: 0, pending_director_decisions: 0 },
+            hotspots: [],
+            temporal: [
+                { day: 'MON', value: 0 }, { day: 'TUE', value: 0 }, { day: 'WED', value: 0 }, 
+                { day: 'THU', value: 0 }, { day: 'FRI', value: 0 }, { day: 'SAT', value: 0 }, { day: 'SUN', value: 0 }
+            ],
+            recent_violations: []
         });
         setLoading(false);
       });
-  }, []);
+  }, [timeRange]);
 
   if (loading || !data) {
     return (
@@ -71,220 +60,282 @@ export default function AdminDashboard() {
     );
   }
 
-  const { stats, hotspots, officer_activity, recent_violations, temporal, byCollege } = data;
+  const { stats, hotspots, temporal } = data;
   const resolutionRate = data.status_distribution?.total > 0 
     ? Math.round(((data.status_distribution.breakdown.find(b => b.status === 'RESOLVED')?.count || 0) / data.status_distribution.total) * 100)
     : 0;
 
   return (
-    <div className="animate-fade-in space-y-10">
+    <div className="animate-fade-in space-y-8 pb-16">
       
-      {/* ══════════════════════════════ 1. TOP KPI BENTO GRID ══════════════════════════════ */}
+      {/* ══════════════════════════════ 1. TOP KPI DASHBOARD ══════════════════════════════ */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         
-        {/* Total Academic Infractions */}
-        <div className="bg-white rounded-[2.5rem] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.02)] border border-gray-100 flex flex-col justify-between group hover:shadow-[0_30px_70px_rgba(0,0,0,0.06)] transition-all duration-700">
-           <div className="flex justify-between items-start mb-10">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Gavel size={28} />
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black rounded-full uppercase tracking-widest">
-                <ArrowUpRight size={12} /> 12% Inc.
-              </div>
+        {/* Total Institutional Infractions */}
+        <div 
+          onClick={() => navigate('/admin/cases')}
+          className="bg-white rounded-[1.5rem] p-7 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between cursor-pointer hover:border-emerald-500/20 hover:shadow-xl hover:shadow-emerald-900/5 transition-all group"
+        >
+           <div className="flex justify-between items-start">
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-tight group-hover:text-emerald-600 transition-colors">Institutional<br/>Infractions</span>
+              <ShieldAlert size={20} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
            </div>
-           <div>
-              <h3 className="text-[54px] font-pjs font-black text-[#003624] tracking-tighter leading-none mb-4">{data.status_distribution.total}</h3>
-              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.2em]">Institutional Infractions</p>
+           <div className="flex items-end gap-3 mt-4">
+              <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{data.status_distribution.total}</h3>
+              <div className="flex items-center gap-1 text-rose-500 text-[12px] font-black mb-1">
+                 <TrendingUp size={12} className="rotate-45" /> 12%
+              </div>
            </div>
         </div>
 
-        {/* Resolution Velocity */}
-        <div className="bg-[#003624] rounded-[2.5rem] p-10 shadow-2xl flex flex-col justify-between relative overflow-hidden group">
-           <div className="absolute top-0 right-0 p-8 opacity-5">
-              <BarChart3 size={120} />
+        {/* Pending Director Decisions */}
+        <div 
+          onClick={() => navigate('/admin/cases')}
+          className="bg-white rounded-[1.5rem] p-7 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between cursor-pointer hover:border-amber-500/20 hover:shadow-xl hover:shadow-amber-900/5 transition-all group"
+        >
+           <div className="flex justify-between items-start">
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-tight group-hover:text-amber-600 transition-colors">Pending Decisions</span>
+              <Clock size={20} className="text-slate-300 group-hover:text-amber-500 transition-colors" />
            </div>
-           <div className="flex justify-between items-start mb-10 relative z-10">
-              <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md text-emerald-400 flex items-center justify-center border border-white/10">
-                <Clock size={28} />
-              </div>
-              <div className="px-3 py-1 bg-white/10 text-emerald-400 text-[10px] font-black rounded-full uppercase tracking-widest">
-                Target: 95%
+           <div className="flex items-end gap-3 mt-4">
+              <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{stats.pending_director_decisions.toString().padStart(2, '0')}</h3>
+              <div className="flex items-center gap-1 text-emerald-500 text-[10px] font-black mb-1 opacity-40">
+                 ↘ 05
               </div>
            </div>
-            <div className="relative z-10">
-              <h3 className="text-[54px] font-pjs font-black text-white tracking-tighter leading-none mb-4">
-                {resolutionRate}%
-              </h3>
-              <p className="text-[11px] text-emerald-400/60 font-bold uppercase tracking-[0.2em]">Resolution Velocity</p>
-            </div>
         </div>
 
-        {/* High-Risk Students */}
-        <div className="bg-white rounded-[2.5rem] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.02)] border border-gray-100 flex flex-col justify-between group hover:shadow-[0_30px_70px_rgba(0,0,0,0.06)] transition-all duration-700">
-           <div className="flex justify-between items-start mb-10">
-              <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <ShieldAlert size={28} />
-              </div>
-              <span className="text-[10px] font-black text-rose-300 uppercase tracking-widest">Requires Review</span>
+        {/* Institutional Resolution Rate */}
+        <div className="bg-white rounded-[1.5rem] p-7 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between group">
+           <div className="flex justify-between items-start">
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-tight">Resolution Rate</span>
+              <BarChart3 size={20} className="text-slate-300" />
            </div>
-           <div>
-              <h3 className="text-[54px] font-pjs font-black text-gray-900 tracking-tighter leading-none mb-4">{stats.repeat_offenders.toString().padStart(2, '0')}</h3>
-              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.2em]">Repeat Offenders</p>
+           <div className="flex items-end gap-3 mt-4">
+              <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{resolutionRate}%</h3>
+              <div className="flex items-center gap-1 text-emerald-500 text-[12px] font-black mb-1">
+                 ↑ 4%
+              </div>
            </div>
         </div>
 
         {/* Active Campus Surveillance */}
-        <div className="bg-white rounded-[2.5rem] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.02)] border border-gray-100 flex flex-col justify-between group hover:shadow-[0_30px_70px_rgba(0,0,0,0.06)] transition-all duration-700">
-           <div className="flex justify-between items-start mb-10">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <MapPin size={28} />
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black rounded-full uppercase tracking-widest">
-                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div> Active
-              </div>
+        <div 
+          onClick={() => navigate('/admin/patrols')}
+          className="bg-white rounded-[1.5rem] p-7 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between cursor-pointer hover:border-indigo-500/20 hover:shadow-xl hover:shadow-indigo-900/5 transition-all group"
+        >
+           <div className="flex justify-between items-start">
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-tight group-hover:text-indigo-600 transition-colors">Active Officers</span>
+              <Users size={20} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
            </div>
-           <div>
-              <h3 className="text-[54px] font-pjs font-black text-gray-900 tracking-tighter leading-none mb-4">{stats.active_patrols.toString().padStart(2, '0')}</h3>
-              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.2em]">Active Officers</p>
+           <div className="flex items-center gap-4 mt-4">
+              <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{stats.active_patrols.toString().padStart(2, '0')}</h3>
+              <div className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[9px] font-black rounded uppercase tracking-widest border border-emerald-100">
+                 Operational
+              </div>
            </div>
         </div>
       </div>
 
-      {/* ══════════════════════════════ 2. TRENDS & HOTSPOTS ══════════════════════════════ */}
+      {/* ══════════════════════════════ 2. TRENDS & HOTSPOTS COMPACT SPLIT ══════════════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* Temporal Trends — Time-Series Bar Chart */}
-        <div className="lg:col-span-8 bg-white rounded-[2.5rem] p-12 border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)]">
-          <div className="flex justify-between items-center mb-12">
-            <div>
-              <h3 className="text-[20px] font-pjs font-extrabold text-[#003624] tracking-tight uppercase">Temporal Infraction Trends</h3>
-              <p className="text-[12px] text-gray-400 font-bold uppercase tracking-widest mt-1">Weekly volume analysis</p>
+        {/* Temporal Trends Chart */}
+        <div className="lg:col-span-8 bg-white rounded-[2rem] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.02)] border border-gray-100 flex flex-col group">
+            <div className="flex justify-between items-start mb-6">
+               <div>
+                  <h3 className="text-[18px] font-pjs font-black text-[#003624] tracking-tight uppercase mb-1">Temporal Infraction Trends</h3>
+                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">{timeRange === 'week' ? 'Weekly' : 'Monthly'} volume analysis</p>
+               </div>
+               <div className="flex bg-gray-50 p-1.5 rounded-xl gap-1">
+                  <button 
+                    onClick={() => setTimeRange('week')}
+                    className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${timeRange === 'week' ? 'bg-[#003624] text-white shadow-lg' : 'text-slate-400 hover:text-emerald-600'}`}
+                  >
+                    Week
+                  </button>
+                  <button 
+                    onClick={() => setTimeRange('month')}
+                    className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${timeRange === 'month' ? 'bg-[#003624] text-white shadow-lg' : 'text-slate-400 hover:text-emerald-600'}`}
+                  >
+                    Month
+                  </button>
+               </div>
             </div>
-            <div className="flex gap-2">
-               {['D', 'W', 'M', 'Y'].map(v => (
-                 <button key={v} className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all ${v === 'W' ? 'bg-[#003624] text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>{v}</button>
-               ))}
-            </div>
-          </div>
 
-          <div className="h-[280px] flex items-end justify-between gap-4 px-4">
-             {temporal.map((t, i) => {
-               const max = Math.max(...temporal.map(item => item.value)) || 1;
-               const height = (t.value / max) * 100;
-               return (
-                 <div key={i} className="flex-1 flex flex-col items-center group">
-                    <div className="relative w-full flex flex-col items-center">
-                       {/* Value Tooltip */}
-                       <div className="absolute -top-10 bg-[#003624] text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                         {t.value}
-                       </div>
-                       {/* Bar */}
-                       <div 
-                         className="w-full bg-emerald-50 rounded-t-xl group-hover:bg-[#009b69] transition-all duration-700 relative overflow-hidden"
-                         style={{ height: `${height}%` }}
-                       >
-                         {i === temporal.length - 1 && <div className="absolute inset-x-0 top-0 h-1 bg-emerald-300 animate-pulse"></div>}
-                       </div>
-                    </div>
-                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-6 group-hover:text-[#003624] transition-colors">{t.day}</span>
-                 </div>
-               )
-             })}
-          </div>
+            <div className="flex-1 flex items-stretch justify-between px-4 pb-2 h-[220px] gap-6">
+                {temporal.map((d, i) => {
+                    const realMax = Math.max(...temporal.map(t => t.value), 1);
+                    const chartMax = realMax * 1.2;
+                    const percentage = (d.value / chartMax) * 100;
+                    
+                    return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-4 group/bar cursor-pointer">
+                            <div className="relative w-full flex-1 flex flex-col justify-end">
+                                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#003624] text-white text-[9px] font-black px-2 py-1.5 rounded-lg opacity-0 group-hover/bar:opacity-100 transition-all duration-300 whitespace-nowrap z-20 shadow-xl">
+                                    {d.value} CASES
+                                </div>
+                                <div className="absolute inset-x-0 bottom-0 top-0 bg-slate-50/50 rounded-xl group-hover/bar:bg-slate-100 transition-colors"></div>
+                                {d.value > 0 && (
+                                    <div 
+                                        className="relative w-full bg-[#003624] rounded-xl transition-all duration-700 ease-out shadow-sm"
+                                        style={{ height: `${percentage}%` }}
+                                    >
+                                       <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-400/30 rounded-t-xl"></div>
+                                    </div>
+                                )}
+                            </div>
+                            <span className="text-[10px] font-black text-slate-300 tracking-widest uppercase group-hover/bar:text-[#003624] transition-colors">{d.day}</span>
+                        </div>
+                    );
+                })}
+            </div>
         </div>
 
-        {/* Top Infraction Hotspots */}
-        <div className="lg:col-span-4 bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)]">
-           <h3 className="text-[16px] font-pjs font-extrabold text-[#003624] tracking-tight uppercase mb-8">Building Hotspots</h3>
-           <div className="space-y-6">
-              {hotspots.map((h, i) => (
-                <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-transparent hover:border-emerald-100 hover:bg-white transition-all group">
-                   <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 transition-colors">
-                        <MapPin size={18} />
-                      </div>
-                      <div>
-                        <p className="text-[13px] font-bold text-gray-900 leading-tight">{h.name}</p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{h.count} incidents</p>
-                      </div>
-                   </div>
-                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${h.trend === 'up' ? 'text-rose-500 bg-rose-50' : h.trend === 'down' ? 'text-emerald-500 bg-emerald-50' : 'text-slate-400 bg-slate-100'}`}>
-                      {h.trend === 'up' ? <TrendingUp size={14} /> : h.trend === 'down' ? <TrendingUp size={14} className="rotate-180" /> : <MoreVertical size={14} />}
-                   </div>
-                </div>
-              ))}
-              {hotspots.length === 0 && <p className="text-center text-gray-400 py-10">No hotspots detected yet.</p>}
+        {/* Hotspots Side Panel */}
+        <div className="lg:col-span-4 bg-white rounded-[2rem] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.02)] border border-gray-100 flex flex-col">
+           <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                 <MapPin size={20} />
+              </div>
+              <h3 className="text-[18px] font-pjs font-black text-[#003624] tracking-tight uppercase">Hotspots</h3>
            </div>
+
+           <div className="space-y-4 flex-1 overflow-y-auto max-h-[300px] pr-2 scrollbar-hide">
+              {hotspots.slice(0, 3).map((h, i) => {
+                const badgeColors = [
+                   'bg-rose-50 text-rose-500 border-rose-100',
+                   'bg-amber-50 text-amber-500 border-amber-100',
+                   'bg-indigo-50 text-indigo-500 border-indigo-100',
+                   'bg-slate-50 text-slate-500 border-slate-100'
+                ];
+                const colorClass = badgeColors[i] || badgeColors[3];
+                return (
+                  <div key={i} className="group p-4 bg-white rounded-2xl border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)] transition-all duration-500 flex items-center gap-5 cursor-pointer">
+                     <div className={`w-10 h-10 rounded-full border ${colorClass} text-[11px] font-black flex items-center justify-center shadow-sm`}>
+                        {(i + 1).toString().padStart(2, '0')}
+                     </div>
+                     <div className="flex-1">
+                        <h4 className="text-[14px] font-black text-gray-800 leading-tight mb-0.5">{h.name}</h4>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Campus Hotspot</p>
+                     </div>
+                     <div className="flex items-center gap-3">
+                        <span className="text-[16px] font-black text-[#003624]">{h.count.toString().padStart(2, '0')}</span>
+                        <TrendingUp size={14} className={h.count > 5 ? 'text-rose-500' : 'text-emerald-500'} />
+                     </div>
+                  </div>
+                );
+              })}
+           </div>
+
+           <button 
+             onClick={() => navigate('/admin/analytics')}
+             className="w-full mt-6 py-3.5 rounded-xl border-2 border-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-[#003624] hover:text-white hover:border-[#003624] transition-all"
+           >
+              View All Zones
+           </button>
         </div>
       </div>
 
-      {/* ══════════════════════════════ 3. USER MANAGEMENT & OFFICER PERFORMANCE ══════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-10">
+      {/* ══════════════════════════════ 3. DECISION QUEUE & POLICY (INVESTIGATION VIEW) ══════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* Officer Performance Table */}
-        <div className="bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)]">
-           <div className="flex justify-between items-center mb-8">
-              <h3 className="text-[16px] font-pjs font-extrabold text-[#003624] tracking-tight uppercase">Officer Activity</h3>
-              <button className="text-[11px] font-black text-emerald-600 uppercase tracking-widest hover:underline decoration-2 underline-offset-8">Manage Team</button>
+        {/* Director Decision Queue - Table Layout */}
+        <div className="lg:col-span-8 bg-white rounded-[2.5rem] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.02)] border border-gray-100 flex flex-col">
+           <div className="flex justify-between items-center mb-8 px-2">
+              <div className="flex items-center gap-3">
+                 <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#003624] flex items-center justify-center">
+                    <Gavel size={18} />
+                 </div>
+                 <h3 className="text-[18px] font-pjs font-black text-[#003624] tracking-tight uppercase">Director Decision Queue</h3>
+              </div>
+              <div className="px-3 py-1 bg-rose-600 text-white text-[9px] font-black rounded-lg uppercase tracking-widest shadow-lg shadow-rose-900/20">
+                 Priority
+              </div>
            </div>
            
-           <div className="space-y-4">
-              {officer_activity.map((o, i) => (
-                <div key={i} className="flex items-center justify-between p-5 bg-white border border-gray-50 rounded-2xl hover:border-emerald-100 hover:shadow-sm transition-all">
-                   <div className="flex items-center gap-4">
-                      <div className="w-11 h-11 rounded-full bg-[#003624] flex items-center justify-center text-white text-[12px] font-bold shadow-sm uppercase">
-                        {o.name.split(' ').filter(n => n.length > 0).map(n => n[0]).join('').substring(0, 2)}
-                      </div>
-                      <div>
-                        <p className="text-[14px] font-bold text-gray-900 leading-tight">{o.name}</p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{o.id}</p>
-                      </div>
-                   </div>
-                   <div className="flex items-center gap-10">
-                      <div className="flex flex-col items-end">
-                        <span className="text-[14px] font-bold text-[#003624] leading-none mb-1">{o.reports}</span>
-                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Logs</span>
-                      </div>
-                      <div className="flex flex-col items-end w-[60px]">
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-tighter ${o.status === 'On Patrol' ? 'bg-emerald-500 text-white' : o.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
-                          {o.status}
-                        </span>
-                      </div>
-                   </div>
+           <div className="flex-1 overflow-x-auto">
+              <table className="w-full">
+                 <thead>
+                    <tr className="border-b border-gray-50">
+                       <th className="text-left py-4 px-2 text-[10px] font-black text-slate-300 uppercase tracking-widest">Principal Party</th>
+                       <th className="text-left py-4 px-2 text-[10px] font-black text-slate-300 uppercase tracking-widest">Escalation Date</th>
+                       <th className="text-left py-4 px-2 text-[10px] font-black text-slate-300 uppercase tracking-widest">Severity</th>
+                       <th className="text-right py-4 px-2 text-[10px] font-black text-slate-300 uppercase tracking-widest">Actions</th>
+                    </tr>
+                 </thead>
+                 <tbody className="divide-y divide-gray-50/50">
+                    {data.director_alert_queue?.map((s, i) => (
+                      <tr key={i} className="group hover:bg-slate-50/50 transition-all">
+                         <td className="py-5 px-2">
+                            <div className="flex items-center gap-4">
+                               <div className="w-10 h-10 rounded-full bg-emerald-50 overflow-hidden border-2 border-white shadow-sm flex items-center justify-center">
+                                  <Users size={18} className="text-[#003624]" />
+                               </div>
+                               <div>
+                                  <p className="text-[13px] font-black text-gray-900 leading-none mb-1">{s.name}</p>
+                                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{s.college} • ID: #{s.id?.slice(-5) || '?????'}</p>
+                                </div>
+                             </div>
+                          </td>
+                          <td className="py-5 px-2">
+                             <p className="text-[12px] font-bold text-gray-600">{s.date}</p>
+                          </td>
+                          <td className="py-5 px-2">
+                             <span className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${s.distinct_rules > 2 ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'}`}>
+                                {s.distinct_rules > 2 ? 'Critical' : 'Major'}
+                             </span>
+                          </td>
+                          <td className="py-5 px-2 text-right">
+                             <button 
+                              onClick={() => navigate('/admin/students/' + s.id)}
+                              className="px-5 py-2 rounded-xl bg-[#003624] text-white text-[10px] font-black uppercase tracking-widest shadow-md hover:scale-105 active:scale-95 transition-all"
+                             >
+                                Review
+                             </button>
+                          </td>
+                       </tr>
+                    ))}
+                 </tbody>
+              </table>
+              {(!data.director_alert_queue || data.director_alert_queue.length === 0) && (
+                <div className="py-20 text-center">
+                   <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">No high-priority decisions pending</p>
                 </div>
-              ))}
-              {officer_activity.length === 0 && <p className="text-center text-gray-400 py-10">No officer activity recorded.</p>}
+              )}
            </div>
         </div>
 
-        {/* Student Violation Distribution by College */}
-        <div className="bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)]">
-           <div className="flex justify-between items-center mb-10">
-              <h3 className="text-[16px] font-pjs font-extrabold text-[#003624] tracking-tight uppercase">College Distribution</h3>
-              <Users size={20} className="text-slate-300" />
+        {/* Policy Compliance Distribution */}
+        <div className="lg:col-span-4 bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)]">
+           <div className="flex justify-between items-start mb-10">
+              <div>
+                 <h3 className="text-[18px] font-pjs font-black text-[#003624] tracking-tight uppercase mb-1">Policy Compliance Distribution</h3>
+                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Current quarter categorical analysis</p>
+              </div>
+              <BarChart3 size={20} className="text-emerald-400" />
            </div>
 
            <div className="space-y-8">
-              {byCollege.map((c, i) => {
-                const max = Math.max(...byCollege.map(item => item.count)) || 1;
-                const pct = (c.count / max) * 100;
+              {data.policy_breakdown?.map((p, i) => {
+                const total = data.status_distribution.total || 1;
+                const pct = (p.count / total) * 100;
                 return (
-                  <div key={i}>
-                    <div className="flex justify-between items-end mb-3 px-1">
-                      <span className="text-[12px] font-bold text-gray-700 uppercase tracking-tight">{c.name}</span>
-                      <span className="text-[14px] font-black text-[#003624]">{c.count} Cases</span>
+                  <div key={i} className="group">
+                    <div className="flex justify-between items-end mb-2.5 px-0.5">
+                      <span className="text-[13px] font-black text-gray-700 tracking-tight">{p.name}</span>
+                      <span className="text-[14px] font-black text-[#003624]">{Math.round(pct)}%</span>
                     </div>
-                    <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
-                       <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${pct}%` }}></div>
+                    <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
+                       <div 
+                        className={`h-full rounded-full transition-all duration-1000 ${p.name.includes('Major') ? 'bg-[#003624]' : p.name.includes('Traffic') ? 'bg-slate-300' : 'bg-emerald-600'}`} 
+                        style={{ width: `${pct}%` }}
+                       ></div>
                     </div>
                   </div>
                 )
               })}
            </div>
-
-           <button className="w-full mt-10 py-5 bg-emerald-50 text-emerald-700 rounded-2xl text-[12px] font-black uppercase tracking-[0.2em] hover:bg-emerald-100 transition-all flex items-center justify-center gap-3">
-              Generate Institutional Report <ChevronRight size={16} />
-           </button>
         </div>
       </div>
     </div>

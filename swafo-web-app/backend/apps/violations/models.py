@@ -7,6 +7,7 @@ class Violation(models.Model):
     class Status(models.TextChoices):
         OPEN = 'OPEN', 'Open'
         UNDER_REVIEW = 'UNDER_REVIEW', 'Under Review'
+        PENDING = 'PENDING', 'Pending Decision'
         RESOLVED = 'RESOLVED', 'Resolved'
         APPEALED = 'APPEALED', 'Appealed'
 

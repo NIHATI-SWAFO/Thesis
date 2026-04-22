@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { API_ENDPOINTS } from '../../api/config';
 
-export default function PatrolHistory() {
+export default function PatrolHistory({ role }) {
   const { user } = useAuth();
   const [patrols, setPatrols] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,8 +28,10 @@ export default function PatrolHistory() {
       .then(data => {
         const results = Array.isArray(data) ? data : (data.results || []);
         
-        // Filter by currently logged-in officer
-        const filteredResults = results.filter(p => p.officer_email === user?.email);
+        // Filter logic: Admins see all, Officers see only their own.
+        const filteredResults = role === 'admin' 
+          ? results 
+          : results.filter(p => p.officer_email === user?.email);
 
         const transformed = filteredResults.map(p => ({
           id: `P-${p.id.toString().padStart(4, '0')}`,

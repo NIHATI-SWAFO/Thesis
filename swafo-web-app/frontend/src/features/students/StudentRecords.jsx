@@ -14,7 +14,7 @@ const MOCK_STUDENTS = [
   { id: '2023-09123', name: 'Rhine Castro', college: 'College of Arts and Sciences', dept: 'Communication', year: '2nd', violations: 2, status: 'Active' },
 ];
 
-export default function StudentRecords() {
+export default function StudentRecords({ role = 'officer' }) {
   const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -152,17 +152,38 @@ export default function StudentRecords() {
       </div>
 
       <div className="bg-white rounded-3xl shadow-[0_8px_40px_rgba(0,54,36,0.03)] border border-[#f1f5f9] overflow-hidden">
-        <div className="flex flex-col md:flex-row justify-between items-center p-8 pb-4 gap-4">
-          <h2 className="text-[20px] font-pjs font-extrabold text-[#003624]">All Students</h2>
-          <div className="relative w-full md:w-[400px]">
-            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
-            <input 
-              type="text" 
-              placeholder="Search by name, student ID, or college..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-[52px] bg-[#f8fafc] rounded-2xl pl-12 pr-4 text-[14px] font-manrope font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-emerald-100/50 placeholder:text-gray-400 transition-all"
-            />
+        <div className="p-10 border-b border-slate-50">
+          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8">
+            <div>
+              <h2 className="text-[26px] font-pjs font-black text-[#003624] tracking-tight mb-2">All Students</h2>
+              <div className="flex items-center gap-6 text-[11px] font-bold text-slate-400 uppercase tracking-[0.15em]">
+                <span className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Compliant (0 Pending)
+                </span>
+                <span className="w-px h-3 bg-slate-200"></span>
+                <span className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                  Under Review (1 Active)
+                </span>
+                <span className="w-px h-3 bg-slate-200"></span>
+                <span className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                  Non-Compliant (2+ Total)
+                </span>
+              </div>
+            </div>
+
+            <div className="relative w-full xl:w-[460px]">
+              <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 text-[22px]">search</span>
+              <input 
+                type="text" 
+                placeholder="Search by name, student ID, or college..."
+                className="w-full pl-14 pr-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-[14px] font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all placeholder:text-slate-300"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
         </div>
 
@@ -184,7 +205,9 @@ export default function StudentRecords() {
                     currentData.map((student) => {
                       const name = student.user_details?.full_name || 'N/A';
                       const id = student.student_number;
-                      const status = student.is_repeat_offender ? 'Repeat' : student.violation_count > 0 ? 'Active' : 'Clean';
+                      // Logic: Repeat if flagged, Active if they have UNRESOLVED violations, otherwise Clean.
+                      const hasUnresolved = (student.violation_count || 0) > 0 && student.has_pending_violations; 
+                      const status = student.is_repeat_offender ? 'Repeat' : hasUnresolved ? 'Active' : 'Clean';
                       
                       return (
                         <tr key={student.id} className="group hover:bg-[#f8fcf9] transition-all cursor-pointer">
@@ -210,7 +233,7 @@ export default function StudentRecords() {
                           </td>
                           <td className="py-5 px-6 bg-white border-y border-gray-50 shadow-sm group-hover:border-emerald-100">
                             <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-[13px] font-black border ${
-                              student.violation_count >= 3 ? 'bg-red-100 text-red-600 border-red-200' :
+                              student.violation_count >= 2 ? 'bg-rose-100 text-rose-600 border-rose-200' :
                               student.violation_count > 0 ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-emerald-100 text-emerald-600 border-emerald-200'
                             }`}>
                               {student.violation_count}
@@ -218,12 +241,12 @@ export default function StudentRecords() {
                           </td>
                           <td className="py-5 px-6 bg-white border-y border-gray-50 shadow-sm group-hover:border-emerald-100">
                             <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 shadow-sm border ${
-                              status === 'Repeat' ? 'bg-red-50 text-red-500 border-red-100' :
+                              status === 'Repeat' ? 'bg-rose-50 text-rose-500 border-rose-100' :
                               status === 'Active' ? 'bg-slate-100 text-slate-500 border-slate-200' :
                               'bg-emerald-600 text-white border-emerald-600 shadow-emerald-900/10'
                             }`}>
                               <span className={`w-1.5 h-1.5 rounded-full ${
-                                status === 'Repeat' ? 'bg-red-500 animate-pulse' :
+                                status === 'Repeat' ? 'bg-rose-500 animate-pulse' :
                                 status === 'Active' ? 'bg-slate-400' :
                                 'bg-white'
                               }`}></span>
@@ -232,7 +255,7 @@ export default function StudentRecords() {
                           </td>
                           <td className="py-5 px-6 bg-white border-y border-r border-gray-50 rounded-r-2xl shadow-sm text-right group-hover:border-emerald-100">
                             <button 
-                              onClick={() => navigate(`/officer/students/${id}`)}
+                              onClick={() => navigate(`/${role}/students/${id}`)}
                               className="text-[12px] font-pjs font-black text-[#005e43] px-5 py-2 hover:bg-emerald-50 rounded-xl transition-all"
                             >
                               VIEW PROFILE
