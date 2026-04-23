@@ -27,11 +27,15 @@ export default function StudentViolations() {
             officer: v.officer_name || "Institutional Authority",
             date: new Date(v.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
             time: new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            rawId: v.id,
             location: v.location,
+            directorRemarks: v.director_remarks,
             actionBox: {
               type: (v.status === 'RESOLVED' || v.status === 'APPEALED') ? "resolved" : "action_required",
-              title: (v.status === 'RESOLVED' || v.status === 'APPEALED') ? "Resolution Details" : "Prescribed Action & Next Steps",
-              description: v.prescribed_sanction || v.corrective_action || "Pending review by SWAFO officer",
+              title: (v.status === 'RESOLVED' || v.status === 'APPEALED') 
+                ? (v.director_sanction ? "Director's Adjudication" : "Resolution Details") 
+                : "Prescribed Action & Next Steps",
+              description: v.director_sanction || v.prescribed_sanction || v.corrective_action || "Pending review by SWAFO officer",
               icon: (v.status === 'RESOLVED' || v.status === 'APPEALED') ? "check_circle" : "error"
             }
           }));
@@ -87,20 +91,33 @@ export default function StudentViolations() {
   };
 
   const handleAcknowledge = async () => {
-    setViolations(prev => prev.map(v => 
-      v.id === selectedViolation.id ? { 
-        ...v, 
-        status: 'CLOSED', 
-        actionBox: { 
-          ...v.actionBox, 
-          type: 'resolved', 
-          title: 'Resolution Details', 
-          description: 'Case Acknowledged & Formally Closed by Student',
-          icon: 'check_circle' 
-        } 
-      } : v
-    ));
-    setShowModal(false);
+    try {
+      const response = await fetch(API_ENDPOINTS.VIOLATIONS_UPDATE_STATUS(selectedViolation.rawId), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'RESOLVED' })
+      });
+      
+      if (response.ok) {
+        const updated = await response.json();
+        setViolations(prev => prev.map(v => 
+          v.rawId === selectedViolation.rawId ? { 
+            ...v, 
+            status: 'CLOSED', 
+            actionBox: { 
+              ...v.actionBox, 
+              type: 'resolved', 
+              title: 'Resolution Details', 
+              description: 'Case Acknowledged & Formally Closed by Student',
+              icon: 'check_circle' 
+            } 
+          } : v
+        ));
+        setShowModal(false);
+      }
+    } catch (err) {
+      console.error("Acknowledgment error:", err);
+    }
   };
 
   if (loading) return <div className="p-20 text-center font-pjs font-bold text-[#003624] animate-pulse">Synchronizing Records...</div>;
@@ -270,6 +287,12 @@ export default function StudentViolations() {
                   <div className="flex-grow text-center sm:text-left">
                     <h4 className={`text-[11px] font-pjs font-black uppercase tracking-[0.2em] mb-1 ${violation.actionBox.type === 'action_required' ? 'text-amber-700' : 'text-emerald-700'}`}>{violation.actionBox.title}</h4>
                     <p className={`text-[16px] font-pjs font-bold leading-tight ${violation.actionBox.type === 'action_required' ? 'text-amber-900' : 'text-[#003624]'}`}>{violation.actionBox.description}</p>
+                    {violation.directorRemarks && (
+                      <div className="mt-4 p-4 bg-white/40 rounded-xl border border-emerald-100/30">
+                        <p className="text-[10px] font-pjs font-black text-emerald-800/40 uppercase tracking-widest mb-1">Institutional Justification</p>
+                        <p className="text-[13px] font-manrope font-medium text-emerald-900/70 italic leading-relaxed">"{violation.directorRemarks}"</p>
+                      </div>
+                    )}
                   </div>
                   {violation.status === 'PENDING' && (
                     <button 

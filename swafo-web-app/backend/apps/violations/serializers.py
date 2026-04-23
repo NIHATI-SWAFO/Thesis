@@ -144,7 +144,7 @@ class ViolationSerializer(serializers.ModelSerializer):
             'assigned_to', 'assigned_to_details', 'rule', 'rule_details', 
             'location', 'description', 'evidence_url', 'status', 
             'case_summary', 'corrective_action', 'prescribed_sanction', 
-            'requires_director_decision', 'timestamp'
+            'requires_director_decision', 'director_sanction', 'director_remarks', 'timestamp'
         ]
         read_only_fields = ['id', 'officer', 'timestamp']
 

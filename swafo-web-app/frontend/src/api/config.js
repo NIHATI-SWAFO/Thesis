@@ -14,6 +14,7 @@ export const API_ENDPOINTS = {
   // Users
   SEARCH_USERS: `${API_BASE_URL}/api/users/search/`,
   USERS_LIST: `${API_BASE_URL}/api/users/list/`,
+  USERS_BY_ROLE: (role) => `${API_BASE_URL}/api/users/users/?role=${role}`,
   PROFILE_BY_EMAIL: `${API_BASE_URL}/api/users/profile-by-email/`,
   
   // Violations

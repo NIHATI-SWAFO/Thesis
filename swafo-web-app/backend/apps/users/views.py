@@ -2,8 +2,8 @@ from rest_framework import permissions, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import StudentProfile
-from .serializers import StudentProfileSerializer
+from .models import StudentProfile, User
+from .serializers import StudentProfileSerializer, UserSerializer
 
 class StudentSearchView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -45,3 +45,14 @@ class StudentListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
     queryset = StudentProfile.objects.all().order_by('user__full_name')
     serializer_class = StudentProfileSerializer
+
+class UserListView(generics.ListAPIView):
+    permission_classes = [permissions.AllowAny]
+    serializer_class = UserSerializer
+
+    def get_queryset(self):
+        role = self.request.query_params.get('role')
+        queryset = User.objects.all().order_by('full_name')
+        if role:
+            queryset = queryset.filter(role=role)
+        return queryset

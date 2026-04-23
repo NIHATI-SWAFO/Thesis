@@ -54,32 +54,28 @@ class AdminDashboardAPIView(APIView):
             ).order_by('-count')
 
             # 5. Section 27.3.5 - Different Nature Major Offense Detection
-            # Find students with 2+ MAJOR violations where the rules are DIFFERENT.
-            # This requires a subquery or a specific annotation flow.
-            complex_offenders = StudentProfile.objects.filter(
-                violations__rule__category__icontains='Major'
-            ).annotate(
-                distinct_major_rules=Count('violations__rule', distinct=True),
-                latest_violation_date=Max('violations__timestamp')
-            ).filter(distinct_major_rules__gte=2)
+            # Use the proven Audit Logic to find priority students
+            active_vs = Violation.objects.filter(status__in=['OPEN', 'UNDER_REVIEW', 'PENDING']).select_related('student', 'student__user', 'rule')
+            priority_students_map = {}
+            
+            for v in active_vs:
+                # Use the serializer to check priority status (this is the source of truth)
+                serializer = ViolationSerializer(v)
+                if serializer.data.get('requires_director_decision'):
+                    s_id = v.student.student_number
+                    if s_id not in priority_students_map:
+                        priority_students_map[s_id] = {
+                            "name": v.student.user.full_name or f"{v.student.user.first_name} {v.student.user.last_name}",
+                            "id": s_id,
+                            "college": v.student.course,
+                            "latest_date": v.timestamp,
+                            "distinct_rules": 2 # Flagged
+                        }
+                    elif v.timestamp > priority_students_map[s_id]["latest_date"]:
+                        priority_students_map[s_id]["latest_date"] = v.timestamp
 
-            different_nature_students = complex_offenders.values(
-                'user__first_name', 
-                'user__last_name', 
-                'user__username',
-                'student_number', 
-                'course',
-                'latest_violation_date',
-                'distinct_major_rules'
-            ).annotate(
-                first_name=F('user__first_name'),
-                last_name=F('user__last_name'),
-                username=F('user__username'),
-                id=F('student_number'),
-                college=F('course'),
-                latest_date=F('latest_violation_date'),
-                distinct_rules=F('distinct_major_rules')
-            ).order_by('-latest_date')[:5]
+            different_nature_students = list(priority_students_map.values())[:5]
+            pending_decision_count = len(priority_students_map)
 
             # 6. Real Patrol Data
             active_patrols_count = PatrolSession.objects.filter(end_time__isnull=True).count()
@@ -98,31 +94,31 @@ class AdminDashboardAPIView(APIView):
             # 1. KPIs
             total_count = Violation.objects.count()
             closed_count = Violation.objects.filter(status='RESOLVED').count()
-            pending_decision_count = Violation.objects.filter(status='PENDING').count()
-            active_investigation_count = Violation.objects.filter(status__in=['OPEN', 'UNDER_REVIEW']).count()
+            pending_status_count = Violation.objects.filter(status='PENDING').count()
+            active_status_count = Violation.objects.filter(status__in=['OPEN', 'UNDER_REVIEW']).count()
 
             return Response({
                 "status_distribution": {
                     "total": total_count,
                     "breakdown": [
                         {"status": "RESOLVED", "count": closed_count},
-                        {"status": "PENDING", "count": pending_decision_count},
-                        {"status": "ACTIVE", "count": active_investigation_count}
+                        {"status": "PENDING", "count": pending_status_count},
+                        {"status": "ACTIVE", "count": active_status_count}
                     ]
                 },
                 "stats": {
-                    "active_cases": active_investigation_count + pending_decision_count,
+                    "active_cases": active_status_count + pending_status_count,
                     "repeat_offenders": StudentProfile.objects.annotate(v_count=Count('violations')).filter(v_count__gt=1).count(),
                     "active_patrols": active_patrols_count,
                     "violations_today": Violation.objects.filter(timestamp__date=today).count(),
-                    "pending_director_decisions": different_nature_students.count()
+                    "pending_director_decisions": pending_decision_count
                 },
                 "policy_breakdown": [
                     {"name": p['rule__category'], "count": p['count']} for p in policy_breakdown
                 ],
                 "director_alert_queue": [
                     {
-                        "name": f"{s['first_name']} {s['last_name']}".strip() or s['username'],
+                        "name": s['name'],
                         "id": s['id'],
                         "distinct_rules": s['distinct_rules'],
                         "college": s['college'],

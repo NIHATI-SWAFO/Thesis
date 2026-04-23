@@ -1,10 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../api/config';
 
-export default function CaseManagement() {
+export default function CaseManagement({ role }) {
   const { user } = useAuth();
   const [violations, setViolations] = useState([]);
+  const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterTab, setFilterTab] = useState('all'); // 'all' or 'mine'
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,6 +30,15 @@ export default function CaseManagement() {
       });
   }, []);
 
+  useEffect(() => {
+    if (role === 'admin') {
+      fetch(API_ENDPOINTS.USERS_BY_ROLE('OFFICER'))
+        .then(res => res.json())
+        .then(data => setOfficers(data))
+        .catch(err => console.error("Error fetching officers:", err));
+    }
+  }, [role]);
+
   const getPriority = (v) => {
     const category = v.rule_details?.category || '';
     if (category.toLowerCase().includes('major')) return 'Major';
@@ -41,7 +52,8 @@ export default function CaseManagement() {
       const caseId = `#CS-${v.id.toString().padStart(5, '0')}`;
       
       const matchesSearch = studentName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           caseId.toLowerCase().includes(searchQuery.toLowerCase());
+                           caseId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           v.student_details?.student_number?.includes(searchQuery);
       
       const statusMap = { 'Open': 'OPEN', 'Under Review': 'UNDER_REVIEW', 'Pending': 'PENDING', 'Resolved': 'RESOLVED' };
       const matchesStatus = statusFilter === 'All Status' || v.status === statusMap[statusFilter];
@@ -111,6 +123,29 @@ export default function CaseManagement() {
     });
   };
 
+  const handleRenderDecision = (caseId, sanction, remarks) => {
+    setIsUpdating(true);
+    fetch(API_ENDPOINTS.VIOLATIONS_UPDATE_STATUS(caseId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        status: 'RESOLVED',
+        director_sanction: sanction,
+        director_remarks: remarks
+      })
+    })
+    .then(res => res.json())
+    .then(updated => {
+      setViolations(prev => prev.map(v => v.id === caseId ? updated : v));
+      setSelectedCase(updated);
+      setIsUpdating(false);
+    })
+    .catch(err => {
+      console.error("Adjudication error:", err);
+      setIsUpdating(false);
+    });
+  };
+
   const handleClaimCase = (caseId) => {
     setIsUpdating(true);
     fetch(API_ENDPOINTS.VIOLATIONS_ASSIGN(caseId), {
@@ -122,6 +157,34 @@ export default function CaseManagement() {
     .then(data => {
       if (data.success) {
         const assignment = { email: user?.email, full_name: user?.name || 'System Officer' };
+        setViolations(prev => prev.map(v => 
+          v.id === caseId 
+            ? { ...v, assigned_to_details: assignment, status: 'UNDER_REVIEW' } 
+            : v
+        ));
+        // Sync modal state
+        setSelectedCase(prev => prev ? { ...prev, assigned_to_details: assignment, status: 'UNDER_REVIEW' } : null);
+      }
+      setIsUpdating(false);
+    })
+    .catch(err => {
+      console.error("Assignment error:", err);
+      setIsUpdating(false);
+    });
+  };
+
+  const handleAssignCase = (caseId, officerEmail) => {
+    setIsUpdating(true);
+    fetch(API_ENDPOINTS.VIOLATIONS_ASSIGN(caseId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: officerEmail })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        const officer = officers.find(o => o.email === officerEmail);
+        const assignment = { email: officerEmail, full_name: officer?.full_name || 'System Officer' };
         setViolations(prev => prev.map(v => 
           v.id === caseId 
             ? { ...v, assigned_to_details: assignment, status: 'UNDER_REVIEW' } 
@@ -182,11 +245,38 @@ export default function CaseManagement() {
           </h1>
           
           <div className="flex p-1.5 bg-emerald-50/50 rounded-2xl border border-emerald-100/50 shadow-sm">
-            <button onClick={() => setFilterTab('all')} className={`px-8 py-2.5 rounded-xl text-[14px] font-bold transition-all ${filterTab === 'all' ? 'bg-[#003624] text-white shadow-lg' : 'text-emerald-700'}`}>All Cases</button>
-            <button onClick={() => setFilterTab('mine')} className={`px-8 py-2.5 rounded-xl text-[14px] font-bold transition-all ${filterTab === 'mine' ? 'bg-[#003624] text-white shadow-lg' : 'text-emerald-700'}`}>My Assignments</button>
+            <button onClick={() => setFilterTab('all')} className={`px-8 py-2.5 rounded-xl text-[14px] font-bold transition-all ${filterTab === 'all' ? 'bg-[#003624] text-white shadow-lg' : 'text-emerald-700'}`}>
+              {role === 'admin' ? 'All Institutional Cases' : 'All Cases'}
+            </button>
+            <button onClick={() => setFilterTab('mine')} className={`px-8 py-2.5 rounded-xl text-[14px] font-bold transition-all ${filterTab === 'mine' ? 'bg-[#003624] text-white shadow-lg' : 'text-emerald-700'}`}>
+              {role === 'admin' ? 'My Adjudications' : 'My Assignments'}
+            </button>
           </div>
         </div>
       </div>
+      
+      {role === 'admin' && violations.some(v => v.requires_director_decision && v.status !== 'RESOLVED') && (
+        <div className="mb-12 animate-in slide-in-from-top-4 duration-500">
+          <div className="bg-rose-50 border border-rose-100 rounded-[2.5rem] p-10 flex flex-col md:flex-row items-center gap-10 shadow-xl shadow-rose-900/5">
+            <div className="w-20 h-20 rounded-3xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-200">
+              <span className="material-symbols-outlined text-[40px] fill-1">gavel</span>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-[24px] font-pjs font-bold text-rose-900 mb-2">Institutional Adjudication Required</h3>
+              <p className="text-[15px] text-rose-700/80 font-medium leading-relaxed max-w-[700px]">
+                There are active cases flagged under <strong>Section 27.3.5 (Multi-Nature Major Offenses)</strong>. 
+                These require a formal Director's decision to determine final sanctions.
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <span className="text-[42px] font-pjs font-black text-rose-500 leading-none">
+                {new Set(violations.filter(v => v.requires_director_decision && v.status !== 'RESOLVED').map(v => v.student)).size}
+              </span>
+              <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Priority Students</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── DYNAMIC METRIC CALCULATIONS ── */}
       {(() => {
@@ -297,6 +387,9 @@ export default function CaseManagement() {
                     <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Case ID</th>
                     <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Student</th>
                     <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Type & Severity</th>
+                    {role === 'admin' && (
+                      <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Handling Officer</th>
+                    )}
                     <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date Logged</th>
                     <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                     <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
@@ -339,6 +432,24 @@ export default function CaseManagement() {
                             )}
                           </div>
                         </td>
+                        {role === 'admin' && (
+                          <td className="px-10 py-8">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 shadow-inner">
+                                <span className="material-symbols-outlined text-[16px] text-slate-400">person</span>
+                              </div>
+                              <span className="text-[13px] font-bold text-slate-600">
+                                {v.assigned_to_details?.full_name || (
+                                  v.requires_director_decision ? (
+                                    <span className="text-[#003624] font-black uppercase tracking-tighter text-[11px]">SWAFO Director</span>
+                                  ) : (
+                                    <span className="text-slate-400 italic font-medium">Unassigned</span>
+                                  )
+                                )}
+                              </span>
+                            </div>
+                          </td>
+                        )}
                         <td className="px-10 py-8">
                            <div className="flex flex-col">
                               <span className="text-[14px] font-bold text-slate-700">{date}</span>
@@ -427,21 +538,26 @@ export default function CaseManagement() {
           </div>
         </div>
       </div>
-      {selectedCase && (
+      {selectedCase && ReactDOM.createPortal(
         <CaseDetailModal 
           caseData={selectedCase} 
           onClose={() => setSelectedCase(null)} 
           onUpdate={handleStatusUpdate}
           onClaim={handleClaimCase}
+          onAssign={handleAssignCase}
+          onAdjudicate={handleRenderDecision}
           isUpdating={isUpdating}
           currentUser={user}
-        />
+          officers={officers}
+          role={role}
+        />,
+        document.body
       )}
     </div>
   );
 }
 
-function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, isUpdating, currentUser }) {
+function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdjudicate, isUpdating, currentUser, officers, role }) {
   const caseId = `CAS-${new Date(caseData.timestamp).getFullYear()}-${caseData.id.toString().padStart(3, '0')}`;
   const date = new Date(caseData.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   const time = new Date(caseData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -449,14 +565,19 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, isUpdating, cur
   const isUnassigned = !caseData.assigned_to_details;
   const isAssignedToMe = caseData.assigned_to_details?.email === currentUser?.email;
   const isResolved = caseData.status === 'RESOLVED';
+  
+  const [selectedOfficer, setSelectedOfficer] = useState('');
+  const [selectedSanction, setSelectedSanction] = useState('');
+  const [isAdjudicationOpen, setIsAdjudicationOpen] = useState(caseData.requires_director_decision);
+  const [isDelegationOpen, setIsDelegationOpen] = useState(!caseData.assigned_to_details && !caseData.requires_director_decision);
 
   return (
     <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-emerald-950/60 backdrop-blur-sm animate-in fade-in duration-300"
+      className="fixed inset-0 z-[100] flex justify-center p-6 bg-emerald-950/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-300"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-[2.5rem] w-full max-w-[800px] overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.3)] border border-white/20 animate-in zoom-in-95 duration-300"
+        className="bg-white rounded-[2.5rem] w-full max-w-[800px] h-fit my-auto overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.3)] border border-white/20 animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header Section */}
@@ -534,6 +655,108 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, isUpdating, cur
              </p>
           </div>
 
+          {/* Director Decision Section */}
+          {role === 'admin' && caseData.requires_director_decision && !isResolved && (
+            <div className={`border-2 rounded-[2rem] transition-all duration-300 ${isAdjudicationOpen ? 'bg-rose-50/50 border-rose-100 p-8' : 'bg-rose-50/20 border-rose-50 p-4'}`}>
+              <button 
+                onClick={() => setIsAdjudicationOpen(!isAdjudicationOpen)}
+                className="w-full flex items-center justify-between outline-none"
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`material-symbols-outlined ${isAdjudicationOpen ? 'text-rose-500' : 'text-rose-300'}`}>gavel</span>
+                  <h3 className={`text-[16px] font-black uppercase tracking-widest ${isAdjudicationOpen ? 'text-rose-900' : 'text-rose-400'}`}>Director's Adjudication</h3>
+                </div>
+                <span className={`material-symbols-outlined transition-transform duration-300 ${isAdjudicationOpen ? 'rotate-180' : ''}`}>expand_more</span>
+              </button>
+              
+              {isAdjudicationOpen && (
+                <div className="mt-8 flex gap-4 animate-in slide-in-from-top-2 duration-300">
+                  <select 
+                    value={selectedSanction}
+                    onChange={(e) => setSelectedSanction(e.target.value)}
+                    className="flex-1 bg-white border-2 border-rose-200 rounded-xl px-5 py-3 text-[14px] font-bold text-rose-900 outline-none focus:border-rose-500 transition-all"
+                  >
+                    <option value="">Select Formal Sanction...</option>
+                    <option value="Sanction 1: Written Reprimand & Community Service">Sanction 1: Written Reprimand & Community Service</option>
+                    <option value="Sanction 2: Disciplinary Probation (1 Semester)">Sanction 2: Disciplinary Probation (1 Semester)</option>
+                    <option value="Sanction 3: Suspension (1 Year)">Sanction 3: Suspension (1 Year)</option>
+                    <option value="Sanction 4: Dismissal / Expulsion Recommendation">Sanction 4: Dismissal / Expulsion Recommendation</option>
+                  </select>
+                  <button 
+                    disabled={!selectedSanction || isUpdating}
+                    onClick={() => onAdjudicate(caseData.id, selectedSanction, 'Institutional decision rendered by SWAFO Director.')}
+                    className="bg-rose-600 text-white px-8 py-3 rounded-xl text-[14px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all disabled:opacity-30 shadow-lg shadow-rose-900/10"
+                  >
+                    Render Decision
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {isResolved && caseData.director_sanction && (
+            <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[2rem] p-8">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="material-symbols-outlined text-emerald-600 fill-1">verified</span>
+                <h3 className="text-[16px] font-black text-emerald-900 uppercase tracking-widest">Institutional Verdict</h3>
+              </div>
+              <div className="p-6 bg-white rounded-2xl border border-emerald-100 shadow-sm">
+                <p className="text-[11px] font-black text-emerald-600 uppercase tracking-widest mb-1">Prescribed Sanction</p>
+                <p className="text-[18px] font-bold text-slate-800 mb-4">{caseData.director_sanction}</p>
+                <p className="text-[13px] font-medium text-slate-500 bg-slate-50 p-4 rounded-xl italic">
+                  "{caseData.director_remarks}"
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Officer Delegation Section */}
+          {role === 'admin' && !isResolved && (
+            <div className={`border-2 rounded-[2rem] transition-all duration-300 ${isDelegationOpen ? 'bg-indigo-50/50 border-indigo-200 p-8' : 'bg-indigo-50/30 border-indigo-100 p-4'}`}>
+              <button 
+                onClick={() => setIsDelegationOpen(!isDelegationOpen)}
+                className="w-full flex items-center justify-between outline-none"
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`material-symbols-outlined ${isDelegationOpen ? 'text-indigo-600' : 'text-indigo-400'}`}>assignment_ind</span>
+                  <h3 className={`text-[16px] font-black uppercase tracking-widest ${isDelegationOpen ? 'text-indigo-900' : 'text-indigo-800/60'}`}>Staff Delegation</h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  {caseData.assigned_to_details && !isDelegationOpen && (
+                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full border border-indigo-100">
+                      {caseData.assigned_to_details.full_name}
+                    </span>
+                  )}
+                  <span className={`material-symbols-outlined transition-transform duration-300 ${isDelegationOpen ? 'rotate-180' : 'text-slate-400'}`}>expand_more</span>
+                </div>
+              </button>
+
+              {isDelegationOpen && (
+                <div className="mt-8 animate-in slide-in-from-top-2 duration-300">
+                  <div className="flex gap-4">
+                    <select 
+                      value={selectedOfficer}
+                      onChange={(e) => setSelectedOfficer(e.target.value)}
+                      className="flex-1 bg-white border-2 border-indigo-100 rounded-xl px-5 py-3 text-[14px] font-bold text-slate-700 outline-none focus:border-indigo-600 transition-all"
+                    >
+                      <option value="">Choose Officer to Delegate...</option>
+                      {officers.map(off => (
+                        <option key={off.email} value={off.email}>{off.full_name}</option>
+                      ))}
+                    </select>
+                    <button 
+                      disabled={!selectedOfficer || isUpdating}
+                      onClick={() => onAssign(caseData.id, selectedOfficer)}
+                      className="bg-indigo-600 text-white px-8 py-3 rounded-xl text-[14px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all disabled:opacity-30 shadow-lg shadow-indigo-900/10"
+                    >
+                      Delegate Case
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-3 gap-10">
             <div>
               <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Handbook Rule</p>
@@ -553,7 +776,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, isUpdating, cur
               </div>
             </div>
             <div>
-              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Officer</p>
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Logging Officer</p>
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-emerald-600">verified_user</span>
                 <p className="text-[15px] font-bold text-slate-900">{caseData.officer_name || 'System Admin'}</p>
@@ -565,10 +788,10 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, isUpdating, cur
           <div className="pt-10 border-t border-slate-100 flex items-center justify-between">
             <div className="flex flex-col">
                <h4 className="text-[12px] font-black text-[#003624] uppercase tracking-widest mb-1">
-                 {isResolved ? 'Resolution Recorded' : isUnassigned ? 'Unclaimed Violation' : 'Case Assignment'}
+                 {isResolved ? (caseData.director_sanction ? 'Institutional Verdict Locked' : 'Resolution Recorded') : (caseData.requires_director_decision ? 'Pending Institutional Decision' : (isUnassigned ? 'Unclaimed Violation' : 'Case Status'))}
                </h4>
                <p className="text-[13px] text-slate-400 font-medium">
-                 {isResolved ? 'This institutional record is closed and archived.' : isUnassigned ? 'Review details and claim to begin resolution.' : `Handled by ${caseData.assigned_to_details?.full_name}`}
+                 {isResolved ? (caseData.director_sanction ? 'This case has been formally adjudicated and archived.' : 'This institutional record is closed and archived.') : (caseData.requires_director_decision ? 'Awaiting formal sanction from the SWAFO Director.' : (isUnassigned ? 'Review details and take action to begin resolution.' : `Currently assigned to ${caseData.assigned_to_details?.full_name}`))}
                </p>
             </div>
             
@@ -584,7 +807,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, isUpdating, cur
                 </button>
               ) : isUnassigned ? (
                 <>
-                  {caseData.requires_director_decision && currentUser?.role !== 'ADMIN' ? (
+                  {caseData.requires_director_decision && role !== 'admin' ? (
                     <div className="flex items-center gap-3 px-8 py-4 bg-slate-800/50 border border-white/5 rounded-xl text-slate-400">
                        <span className="material-symbols-outlined text-[20px]">lock</span>
                        <span className="text-[13px] font-bold uppercase tracking-widest">Locked for Director</span>
@@ -596,7 +819,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, isUpdating, cur
                       className="bg-orange-600 text-white px-10 py-4 rounded-xl text-[14px] font-pjs font-bold hover:bg-orange-700 transition-all shadow-xl shadow-orange-900/10 flex items-center gap-3 disabled:opacity-50"
                     >
                       {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[20px]">pan_tool</span>}
-                      HANDLE THIS CASE
+                      SELF-CLAIM CASE
                     </button>
                   )}
                 </>
@@ -627,7 +850,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, isUpdating, cur
                   <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">
                     <img src={`https://ui-avatars.com/api/?name=${caseData.assigned_to_details?.full_name}&background=cbd5e1&color=64748b`} alt="officer" />
                   </div>
-                  <span className="text-[13px] font-bold text-slate-500 uppercase tracking-wide">Locked for Review</span>
+                  <span className="text-[13px] font-bold text-slate-500 uppercase tracking-wide">Handled by staff</span>
                 </div>
               )}
             </div>

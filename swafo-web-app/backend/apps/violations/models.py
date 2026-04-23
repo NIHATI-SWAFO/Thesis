@@ -25,6 +25,10 @@ class Violation(models.Model):
     case_summary = models.TextField(blank=True, help_text="Auto-generated concise summary of the case.")
     corrective_action = models.CharField(max_length=255, blank=True, help_text="System-recommended penalty based on history.")
     
+    # Director Decision Fields
+    director_sanction = models.CharField(max_length=255, blank=True, null=True, help_text="Formal sanction rendered by the Director.")
+    director_remarks = models.TextField(blank=True, null=True, help_text="Justification/remarks for the Director's decision.")
+    
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

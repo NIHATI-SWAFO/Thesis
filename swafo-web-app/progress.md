@@ -70,6 +70,8 @@
 - [x] Fixed contrast/blending issues with `#f2fcf8` background
 - [x] Connect to backend to fetch actual per-student violation history
 - [x] Display case summaries and corrective action per violation
+- [x] **Institutional Verdict Visibility:** Students can now view official Director remarks and sanctions in their resolution history.
+- [x] **Persistent Acknowledgment:** Connected "Acknowledge & Close" action to backend API for permanent record closure.
 
 ### Campus Handbook — *"Download or access university handbook"*
 - [x] State-driven accordion system (expand/collapse)
@@ -113,7 +115,11 @@
 - [x] Incorporate Priority Breakdown Card with 33% scales
 - [x] Incorporate Recent Activity Timeline Card
 - [x] **Visual Refinement:** ACHIEVED 1:1 parity with target Figma design (Pill badges, borderless clean cards, Teal labels).
-- [ ] Map mock data to `DRF` API responses once backend is built.
+- [x] Map mock data to `DRF` API responses once backend is built.
+- [x] **Adjudication Engine:** Implemented institutional sanction controls (Sanctions 1-4) for §27.3.5 escalations.
+- [x] **Portal-Based Modal:** Overhauled `CaseDetailModal` using `ReactDOM.createPortal` for viewport-centered, scrollable oversight.
+- [x] **Staff Delegation:** Built-in officer assignment logic with automated 'SWAFO Director' labeling for escalated cases.
+- [x] **Persistent Decisions:** Connected "Render Decision" logic to backend storage for formal institutional verdicts.
 > **Approach & Findings:** Used an asymmetric grid layout (`flex-col xl:flex-row`) pitting the Case Table against utility widgets (Priority Breakdown, Recent Activity). Refined the KPI system to use status pills and removed bottom borders to align with the "Academic Curator" minimal-line rule.
 
 ### Reports & Analytics — *"View violation statistics and officer activity"*
@@ -165,17 +171,16 @@
 
 ---
 
-## 4. ADMIN DASHBOARD (Not Started)
+## 4. ADMIN DASHBOARD (In Progress)
 
 > Requirement source: `research.md` §7 — Reporting Dashboard (Admin)
 
--- [ ] Summary of all reported violations
--- [ ] Violation statistics and trends (charts via Recharts or Chart.js)
--- [ ] Patrol log summary and officer activity
--- [ ] User management interface (Students, Officers, Admins)
-+- [ ] Summary of reported violations (Section 27 breakdown)
-+- [ ] Enrollment/Violation proportionality analytics
-+- [ ] Officer performance heatmaps
+- [x] **Director Command Center:** Fully synchronized dashboard with real-time §27.3.5 escalation monitoring.
+- [x] **Institutional Audit Logic:** Backend-verified priority counting (bypassing historical cached data for live integrity).
+- [x] **Case Oversight Integration:** Direct link between Dashboard KPI metrics and the Case Adjudication workflow.
+- [ ] Enrollment/Violation proportionality analytics
+- [ ] Officer performance heatmaps
+- [ ] User management interface (Students, Officers, Admins)
 
 ---
 
@@ -225,7 +230,7 @@
 ### Database Tables (from `plan.md` §6)
 - [x] `Users` — fully functional
 - [x] `Students` — fully functional with profile resolution
-- [x] `Violations` — fully functional with escalation logic
+- [x] `Violations` — fully functional with escalation logic + **Director Sanction fields**.
 - [x] `HandbookEntries` — seeded with 82 rules
 - [x] **Database Seeding:** 51 students (including Timothy De Castro) and historical data.
 
