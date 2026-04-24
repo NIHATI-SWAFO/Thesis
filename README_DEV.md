@@ -27,7 +27,16 @@ Welcome group mates! Follow these steps to get the SWAFO system running on your 
    python seed_patrols.py
    python bulk_seed_full_handbook.py
    ```
-8. Start server: `python manage.py runserver`
+
+8. **Alternative: Load Full System Snapshot** (Recommended):
+   To load the master system data and violations:
+   ```bash
+   python manage.py flush --no-input
+   python manage.py loaddata master_system_snapshot.json
+   python manage.py loaddata violations_snapshot.json
+   ```
+
+9. **Start server**: `python manage.py runserver`
 
 ## 3. Frontend Setup (React)
 1. Open a **NEW terminal window** (Keep the backend running!).
