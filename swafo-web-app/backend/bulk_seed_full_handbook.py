@@ -82,7 +82,7 @@ def parse_handbook(filepath):
     return rules
 
 def seed_full_handbook():
-    filepath = r'C:\Users\timde\Downloads\ThesisFiles\additional context\handbook_reference.md'
+    filepath = os.path.join(os.path.dirname(__file__), '..', '..', 'additional context', 'handbook_reference.md')
     all_rules = parse_handbook(filepath)
     
     print(f"📖 Found {len(all_rules)} rules in handbook_reference.md")
