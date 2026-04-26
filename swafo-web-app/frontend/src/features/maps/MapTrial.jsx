@@ -4,9 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import campusData from '../../assets/dlsud-campus.json';
 import { API_ENDPOINTS } from '../../api/config';
 
-const MAPBOX_TOKEN =
-  import.meta.env.VITE_MAPBOX_TOKEN ||
-  'pk.eyJ1IjoidGltb3RoeWRldmNhc3RybyIsImEiOiJjbW9kMjdiNjYwMW5yMnFvc3hpanJjdXE1In0.3l1oCD-Krj4UFm2tMYQYug';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const DLSUD_CENTER = [120.9600, 14.3228];
 const CAMPUS_BOUNDS = [[120.9540, 14.3175], [120.9660, 14.3310]];
