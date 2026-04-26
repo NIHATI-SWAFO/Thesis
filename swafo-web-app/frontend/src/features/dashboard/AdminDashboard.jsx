@@ -13,6 +13,7 @@ import {
   Gavel
 } from 'lucide-react';
 import { API_ENDPOINTS } from '../../api/config';
+import ViolationsOverTimeChart from '../analytics/ViolationsOverTimeChart';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -62,7 +63,7 @@ export default function AdminDashboard() {
 
   const { stats, hotspots, temporal } = data;
   const resolutionRate = data.status_distribution?.total > 0 
-    ? Math.round(((data.status_distribution.breakdown.find(b => b.status === 'RESOLVED')?.count || 0) / data.status_distribution.total) * 100)
+    ? Math.round(((data.status_distribution.breakdown.filter(b => ['CLOSED', 'DISMISSED'].includes(b.status)).reduce((acc, curr) => acc + curr.count, 0)) / data.status_distribution.total) * 100)
     : 0;
 
   return (
@@ -141,55 +142,26 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Temporal Trends Chart */}
-        <div className="lg:col-span-8 bg-white rounded-[2rem] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.02)] border border-gray-100 flex flex-col group">
-            <div className="flex justify-between items-start mb-6">
-               <div>
-                  <h3 className="text-[18px] font-pjs font-black text-[#003624] tracking-tight uppercase mb-1">Temporal Infraction Trends</h3>
-                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">{timeRange === 'week' ? 'Weekly' : 'Monthly'} volume analysis</p>
-               </div>
-               <div className="flex bg-gray-50 p-1.5 rounded-xl gap-1">
+        <div className="lg:col-span-8 flex flex-col group h-full relative">
+           <ViolationsOverTimeChart 
+             analytics={data} 
+             headerActions={
+                <div className="flex bg-slate-50 p-1 rounded-xl gap-1 mr-2">
                   <button 
                     onClick={() => setTimeRange('week')}
-                    className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${timeRange === 'week' ? 'bg-[#003624] text-white shadow-lg' : 'text-slate-400 hover:text-emerald-600'}`}
+                    className={`px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${timeRange === 'week' ? 'bg-white text-[#003624] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                   >
                     Week
                   </button>
                   <button 
                     onClick={() => setTimeRange('month')}
-                    className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${timeRange === 'month' ? 'bg-[#003624] text-white shadow-lg' : 'text-slate-400 hover:text-emerald-600'}`}
+                    className={`px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${timeRange === 'month' ? 'bg-white text-[#003624] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                   >
                     Month
                   </button>
-               </div>
-            </div>
-
-            <div className="flex-1 flex items-stretch justify-between px-4 pb-2 h-[220px] gap-6">
-                {temporal.map((d, i) => {
-                    const realMax = Math.max(...temporal.map(t => t.value), 1);
-                    const chartMax = realMax * 1.2;
-                    const percentage = (d.value / chartMax) * 100;
-                    
-                    return (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-4 group/bar cursor-pointer">
-                            <div className="relative w-full flex-1 flex flex-col justify-end">
-                                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#003624] text-white text-[9px] font-black px-2 py-1.5 rounded-lg opacity-0 group-hover/bar:opacity-100 transition-all duration-300 whitespace-nowrap z-20 shadow-xl">
-                                    {d.value} CASES
-                                </div>
-                                <div className="absolute inset-x-0 bottom-0 top-0 bg-slate-50/50 rounded-xl group-hover/bar:bg-slate-100 transition-colors"></div>
-                                {d.value > 0 && (
-                                    <div 
-                                        className="relative w-full bg-[#003624] rounded-xl transition-all duration-700 ease-out shadow-sm"
-                                        style={{ height: `${percentage}%` }}
-                                    >
-                                       <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-400/30 rounded-t-xl"></div>
-                                    </div>
-                                )}
-                            </div>
-                            <span className="text-[10px] font-black text-slate-300 tracking-widest uppercase group-hover/bar:text-[#003624] transition-colors">{d.day}</span>
-                        </div>
-                    );
-                })}
-            </div>
+                </div>
+             } 
+           />
         </div>
 
         {/* Hotspots Side Panel */}

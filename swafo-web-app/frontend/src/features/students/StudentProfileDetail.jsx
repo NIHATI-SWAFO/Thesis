@@ -66,8 +66,8 @@ export default function StudentProfileDetail({ role = 'officer' }) {
     initials: (studentData.user_details?.full_name || 'S').split(' ').map(n => n[0]).join('').toUpperCase(),
     stats: {
       total: studentData.violation_count || 0,
-      pending: history.filter(h => h.status !== 'RESOLVED').length,
-      resolved: history.filter(h => h.status === 'RESOLVED').length
+      active: history.filter(h => !['CLOSED', 'DISMISSED'].includes(h.status)).length,
+      closed: history.filter(h => ['CLOSED', 'DISMISSED'].includes(h.status)).length
     },
     isRepeatOffender: studentData.is_repeat_offender
   };
@@ -104,8 +104,8 @@ export default function StudentProfileDetail({ role = 'officer' }) {
                 <h3 className="text-[11px] font-pjs font-black text-[#004d33] opacity-40 uppercase tracking-[0.4em]">STUDENT PROFILE</h3>
                 {role === 'admin' && (
                   <div className="flex gap-2">
-                    <span className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest border ${student.stats.pending === 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
-                      §14 {student.stats.pending === 0 ? 'CLEARED' : 'UNCLEARED'}
+                    <span className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest border ${student.stats.active === 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                      §14 {student.stats.active === 0 ? 'CLEARED' : 'UNCLEARED'}
                     </span>
                     {student.stats.total > 0 && (
                       <span className="px-3 py-1 rounded-full text-[9px] font-black tracking-widest border bg-blue-50 text-blue-600 border-blue-100">
@@ -154,8 +154,8 @@ export default function StudentProfileDetail({ role = 'officer' }) {
 
             <div className="grid grid-cols-3 gap-3">
               <SummaryGridBox label="TOTAL" value={student.stats.total} highlight />
-              <SummaryGridBox label="PENDING" value={student.stats.pending} orange />
-              <SummaryGridBox label="RESOLVED" value={student.stats.resolved} green />
+              <SummaryGridBox label="ONGOING" value={student.stats.active} orange />
+              <SummaryGridBox label="CLOSED" value={student.stats.closed} green />
             </div>
           </div>
 
@@ -176,18 +176,18 @@ export default function StudentProfileDetail({ role = 'officer' }) {
                 const date = new Date(item.timestamp);
                 const formattedDate = date.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
                 const formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                const isResolved = item.status === 'RESOLVED';
+                const isTerminal = ['CLOSED', 'DISMISSED'].includes(item.status);
                 
                 return (
                   <div key={item.id} className="relative">
                     {/* Timeline Indicator */}
-                    <div className={`absolute -left-[71px] top-10 w-10 h-10 rounded-full border-[8px] border-white shadow-xl transition-all z-10 ${!isResolved ? 'bg-[#10b981]' : 'bg-slate-200'}`}>
-                       {!isResolved && <div className="absolute inset-0 rounded-full bg-[#10b981] animate-ping opacity-20"></div>}
+                    <div className={`absolute -left-[71px] top-10 w-10 h-10 rounded-full border-[8px] border-white shadow-xl transition-all z-10 ${!isTerminal ? 'bg-rose-500' : 'bg-slate-200'}`}>
+                       {!isTerminal && <div className="absolute inset-0 rounded-full bg-rose-500 animate-ping opacity-20"></div>}
                     </div>
                     
                     {/* Case Card */}
                     <div className="bg-white rounded-[3rem] p-12 border border-[#f1f5f9] shadow-[0_10px_40px_rgba(0,0,0,0.01)] hover:shadow-[0_20px_60px_rgba(0,0,0,0.03)] transition-all duration-500 group relative overflow-hidden">
-                      <div className={`absolute top-0 left-0 w-2 h-full ${!isResolved ? 'bg-[#10b981]' : 'bg-slate-200'}`}></div>
+                      <div className={`absolute top-0 left-0 w-2 h-full ${!isTerminal ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
                       
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-8">
                         <div>
@@ -202,9 +202,9 @@ export default function StudentProfileDetail({ role = 'officer' }) {
                         </div>
                         <div className="flex gap-2.5">
                           <span className={`px-5 py-2.5 rounded-2xl text-[10px] font-black tracking-widest shadow-sm uppercase ${
-                            isResolved ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-[#ef6c00]'
+                            isTerminal ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
                           }`}>
-                            {item.status}
+                            {item.status.replace(/_/g, ' ')}
                           </span>
                           {item.corrective_action?.includes('Probation') && (
                             <span className="px-5 py-2.5 rounded-2xl text-[10px] font-black tracking-widest shadow-sm uppercase bg-red-50 text-[#c62828]">

@@ -13,9 +13,12 @@ class AdminDashboardAPIView(APIView):
 
     def get(self, request):
         try:
-            today = timezone.now().date()
+            # Use local time for correct date matching (Asia/Manila)
+            local_now = timezone.localtime(timezone.now())
+            today = local_now.date()
+            now = local_now # For trend calculations
             total_count = Violation.objects.count()
-            closed_count = Violation.objects.filter(status='RESOLVED').count()
+            closed_count = Violation.objects.filter(status__in=['CLOSED', 'DISMISSED']).count()
             active_cases = total_count - closed_count
 
             # 1. Hotspots (Aggregation by Location)
@@ -35,17 +38,79 @@ class AdminDashboardAPIView(APIView):
             temporal_data = []
             day_names = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
             
-            for i in range(days_count - 1, -1, -1): # From X days ago to today
-                target_date = timezone.localtime(timezone.now()).date() - timezone.timedelta(days=i)
-                day_label = day_names[target_date.weekday()]
+            # Efficiently fetch data with a 6-day lookback for accurate SMA
+            window = 7
+            lookback_days = window - 1
+            total_days_to_fetch = days_count + lookback_days
+            
+            start_date = local_now.date() - timezone.timedelta(days=total_days_to_fetch - 1)
+            violations_by_date = {}
+            vs = Violation.objects.filter(timestamp__date__gte=start_date, timestamp__date__lte=local_now.date()).values('timestamp__date').annotate(count=Count('id'))
+            for v in vs:
+                violations_by_date[v['timestamp__date']] = v['count']
+
+            counts_window = []
+            sma_history = []
+            
+            for i in range(total_days_to_fetch - 1, -1, -1):
+                target_date = local_now.date() - timezone.timedelta(days=i)
+                day_count = violations_by_date.get(target_date, 0)
                 
-                day_count = Violation.objects.filter(
-                    timestamp__date=target_date
-                ).count()
+                counts_window.append(day_count)
+                if len(counts_window) > window:
+                    counts_window.pop(0)
                 
-                # Only include labels for every 5th day if in month view to keep it clean
-                display_label = day_label if (range_type == 'week' or i % 5 == 0) else ""
-                temporal_data.append({"day": display_label, "value": day_count})
+                sma_value = round(sum(counts_window) / len(counts_window), 2)
+                sma_history.append(sma_value)
+                
+                if i < days_count:
+                    day_label = day_names[target_date.weekday()]
+                    date_num = target_date.strftime('%d')
+                    display_label = f"{date_num} {day_label}" if (range_type == 'week' or i % 5 == 0) else ""
+                    short_label = target_date.strftime('%b %d')
+                    full_date = target_date.strftime('%A, %B %d')
+
+                    temporal_data.append({
+                        "day": display_label,
+                        "short_label": short_label,
+                        "full_date": full_date,
+                        "value": day_count,
+                        "ma": sma_value,
+                        "is_weekday": target_date.weekday() < 6,
+                        "date": target_date.isoformat()
+                    })
+
+            # Spike Detection: flag days where count > 1.5x SMA
+            for d in temporal_data:
+                if d['ma'] > 0 and d['value'] > 1.5 * d['ma']:
+                    d['is_spike'] = True
+                    d['spike_ratio'] = round(d['value'] / d['ma'], 2)
+                else:
+                    d['is_spike'] = False
+
+            # Seasonality Trend Detection (Comparing last 7 days vs previous 7 days)
+            if len(sma_history) >= 14:
+                previous_week_avg = sum(sma_history[-14:-7]) / 7
+                current_week_avg = sum(sma_history[-7:]) / 7
+                if previous_week_avg > 0:
+                    ma_change = ((current_week_avg - previous_week_avg) / previous_week_avg) * 100
+                else:
+                    ma_change = 0
+            else:
+                ma_change = 0
+
+            if ma_change > 10:
+                seasonality_direction = "RISING"
+            elif ma_change < -10:
+                seasonality_direction = "DECLINING"
+            else:
+                seasonality_direction = "STABLE"
+
+            seasonality_trend = {
+                "direction": seasonality_direction,
+                "change": round(abs(ma_change), 1),
+                "label": f"{seasonality_direction} {'↑' if seasonality_direction == 'RISING' else '↓' if seasonality_direction == 'DECLINING' else '→'} {round(abs(ma_change), 1)}% RECENT TREND"
+            }
 
             # 4. Policy Breakdown (Handbook Classification)
             # Minor vs Major (Misconduct/Dishonesty/Violent Acts) vs Traffic
@@ -55,7 +120,7 @@ class AdminDashboardAPIView(APIView):
 
             # 5. Section 27.3.5 - Different Nature Major Offense Detection
             # Use the proven Audit Logic to find priority students
-            active_vs = Violation.objects.filter(status__in=['OPEN', 'UNDER_REVIEW', 'PENDING']).select_related('student', 'student__user', 'rule')
+            active_vs = Violation.objects.filter(status__in=['OPEN', 'AWAITING_DECISION', 'DECISION_RENDERED']).select_related('student', 'student__user', 'rule')
             priority_students_map = {}
             
             for v in active_vs:
@@ -91,30 +156,122 @@ class AdminDashboardAPIView(APIView):
             recent_violations = Violation.objects.all().order_by('-timestamp')[:10]
             recent_serializer = ViolationSerializer(recent_violations, many=True)
 
+            # 10. Risk Score Leaderboard (Top 10)
+            # Use the StudentProfileSerializer to get the risk score for all students with violations
+            students_with_violations = StudentProfile.objects.annotate(v_count=Count('violations')).filter(v_count__gt=0)
+            leaderboard = []
+            from apps.users.serializers import StudentProfileSerializer
+            for s in students_with_violations:
+                s_ser = StudentProfileSerializer(s)
+                leaderboard.append({
+                    "name": s.user.full_name,
+                    "id": s.student_number,
+                    "score": s_ser.data.get('risk_score', 0),
+                    "college": s.course
+                })
+            leaderboard = sorted(leaderboard, key=lambda x: x['score'], reverse=True)[:10]
+
+            # 11. Institutional Resolution Speed (Avg hours to CLOSE)
+            resolved_cases_with_time = Violation.objects.filter(status='CLOSED').annotate(
+                duration=ExpressionWrapper(F('updated_at') - F('timestamp'), output_field=DurationField())
+            ).filter(duration__gt=timezone.timedelta(seconds=1))
+            
+            avg_duration = resolved_cases_with_time.aggregate(avg_dur=Avg('duration'))['avg_dur']
+            avg_resolution_hours = round(avg_duration.total_seconds() / 3600, 1) if avg_duration else 0
+
+            # 12. Recidivism Pattern Detection (Simplified Apriori)
+            # Find common pairs of (Violation A -\u003e Violation B)
+            repeaters = StudentProfile.objects.annotate(v_count=Count('violations')).filter(v_count__gt=1)
+            patterns_map = {}
+            for s in repeaters:
+                v_list = s.violations.all().order_by('timestamp')
+                for i in range(len(v_list) - 1):
+                    pair = (v_list[i].rule.category, v_list[i+1].rule.category)
+                    patterns_map[pair] = patterns_map.get(pair, 0) + 1
+            
+            patterns = []
+            for (v_a, v_b), count in patterns_map.items():
+                # Simple confidence: Count(A,B) / Count(A)
+                count_a = Violation.objects.filter(rule__category=v_a).count()
+                confidence = round((count / count_a * 100), 1) if count_a > 0 else 0
+                if confidence > 10: # Only significant patterns
+                    patterns.append({
+                        "from": v_a,
+                        "to": v_b,
+                        "confidence": confidence,
+                        "count": count
+                    })
+            patterns = sorted(patterns, key=lambda x: x['confidence'], reverse=True)[:5]
+
+            # 13. Comparative Trends (vs Previous Period)
+            prev_start = now - timezone.timedelta(days=days_count * 2)
+            prev_end = now - timezone.timedelta(days=days_count)
+            prev_period_violations = Violation.objects.filter(timestamp__range=[prev_start, prev_end])
+            prev_total = prev_period_violations.count()
+            
+            total_trend = round(((total_count - prev_total) / prev_total * 100), 1) if prev_total > 0 else 0
+            
+            # Resolution Trend
+            prev_res = prev_period_violations.filter(status__in=['CLOSED', 'DISMISSED']).annotate(
+                duration=ExpressionWrapper(F('updated_at') - F('timestamp'), output_field=DurationField())
+            ).aggregate(avg_dur=Avg('duration'))['avg_dur']
+            
+            prev_avg_hours = round(prev_res.total_seconds() / 3600, 1) if prev_res else 0
+            res_trend = round(((avg_resolution_hours - prev_avg_hours) / prev_avg_hours * 100), 1) if prev_avg_hours > 0 else 0
+
+            # 14. Live Pulse Feed
+            live_pulse = []
+            for v in Violation.objects.all().order_by('-timestamp')[:3]:
+                live_pulse.append({
+                    "id": f"VIO-{v.id}",
+                    "type": v.rule.category,
+                    "location": v.location,
+                    "time": v.timestamp.strftime("%I:%M %p")
+                })
+
             # 1. KPIs
             total_count = Violation.objects.count()
-            closed_count = Violation.objects.filter(status='RESOLVED').count()
-            pending_status_count = Violation.objects.filter(status='PENDING').count()
-            active_status_count = Violation.objects.filter(status__in=['OPEN', 'UNDER_REVIEW']).count()
+            closed_count = Violation.objects.filter(status__in=['CLOSED', 'DISMISSED', 'DECISION_RENDERED']).count()
+            active_status_count = Violation.objects.filter(status__in=['OPEN', 'AWAITING_DECISION']).count()
 
             return Response({
                 "status_distribution": {
                     "total": total_count,
                     "breakdown": [
-                        {"status": "RESOLVED", "count": closed_count},
-                        {"status": "PENDING", "count": pending_status_count},
-                        {"status": "ACTIVE", "count": active_status_count}
+                        {"status": "CLOSED", "count": closed_count},
+                        {"status": "AWAITING_DECISION", "count": Violation.objects.filter(status='AWAITING_DECISION').count()},
+                        {"status": "OPEN", "count": Violation.objects.filter(status='OPEN').count()}
                     ]
                 },
                 "stats": {
-                    "active_cases": active_status_count + pending_status_count,
+                    "active_cases": active_status_count,
                     "repeat_offenders": StudentProfile.objects.annotate(v_count=Count('violations')).filter(v_count__gt=1).count(),
                     "active_patrols": active_patrols_count,
                     "violations_today": Violation.objects.filter(timestamp__date=today).count(),
-                    "pending_director_decisions": pending_decision_count
+                    "pending_director_decisions": pending_decision_count,
+                    "avg_resolution_hours": avg_resolution_hours,
+                    "total_trend": total_trend,
+                    "resolution_trend": res_trend
                 },
+                "risk_leaderboard": leaderboard,
+                "live_pulse": live_pulse,
+
+                "kpis": [
+                    {"label": "TOTAL VIOLATIONS", "value": str(total_count), "trend": f"{'+' if total_trend > 0 else ''}{total_trend}%", "trendUp": total_trend > 0, "icon": "warning"},
+                    {"label": "ACTIVE CASES", "value": str(active_status_count), "trend": "Ongoing", "trendUp": False, "icon": "calendar"},
+                    {"label": "CLOSED CASES", "value": str(closed_count), "trend": f"{round(closed_count/total_count*100, 1) if total_count > 0 else 0}%", "trendUp": True, "icon": "verified"},
+                    {"label": "REPEAT OFFENDERS", "value": str(StudentProfile.objects.annotate(v_count=Count('violations')).filter(v_count__gt=1).count()), "trend": "Monitored", "trendUp": False, "icon": "people"},
+                ],
+
                 "policy_breakdown": [
                     {"name": p['rule__category'], "count": p['count']} for p in policy_breakdown
+                ],
+                "byType": [
+                    {
+                        "type": p['rule__category'], 
+                        "count": p['count'], 
+                        "percentage": round((p['count'] / total_count * 100), 1) if total_count > 0 else 0
+                    } for p in policy_breakdown
                 ],
                 "director_alert_queue": [
                     {
@@ -137,9 +294,23 @@ class AdminDashboardAPIView(APIView):
                     } for o in officer_activity
                 ],
                 "temporal": temporal_data,
+                "seasonality_trend": seasonality_trend,
+                "distribution": [
+                    {
+                        "label": "CLOSED",
+                        "percentage": round((closed_count / total_count * 100), 1) if total_count > 0 else 0,
+                        "color": "#004d33"
+                    },
+                    {
+                        "label": "ONGOING",
+                        "percentage": round((active_status_count / total_count * 100), 1) if total_count > 0 else 0,
+                        "color": "#10b981"
+                    }
+                ],
                 "byCollege": [
                     {"name": c['student__course'] or "General", "count": c['count']} for c in by_college
                 ],
+                "recidivism_patterns": patterns,
                 "recent_violations": recent_serializer.data
             })
         except Exception as e:
@@ -156,8 +327,9 @@ class OfficerDashboardAPIView(APIView):
             
             # 1. KPI Stats
             total_count = Violation.objects.count()
-            closed_count = Violation.objects.filter(status='RESOLVED').count()
-            active_cases = total_count - closed_count
+            # RESOLVED now includes DECISION_RENDERED for dashboard workload purposes
+            closed_count = Violation.objects.filter(status__in=['CLOSED', 'DISMISSED', 'DECISION_RENDERED']).count()
+            active_cases = Violation.objects.filter(status__in=['OPEN', 'AWAITING_DECISION']).count()
             resolved_cases = closed_count
             
             resolution_rate = (resolved_cases / total_count * 100) if total_count > 0 else 0
@@ -168,7 +340,7 @@ class OfficerDashboardAPIView(APIView):
             if officer_email:
                 my_cases_count = Violation.objects.filter(
                     assigned_to__email__iexact=officer_email,
-                    status__in=['OPEN', 'UNDER_REVIEW']
+                    status__in=['OPEN', 'AWAITING_DECISION']
                 ).count()
 
             repeat_offenders_count = StudentProfile.objects.annotate(
@@ -179,13 +351,17 @@ class OfficerDashboardAPIView(APIView):
             temporal_data = []
             day_names = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
             
+            start_date = local_now.date() - timezone.timedelta(days=6)
+            violations_by_date = {}
+            vs = Violation.objects.filter(timestamp__date__gte=start_date, timestamp__date__lte=local_now.date()).values('timestamp__date').annotate(count=Count('id'))
+            for v in vs:
+                violations_by_date[v['timestamp__date']] = v['count']
+            
             for i in range(6, -1, -1): # From 6 days ago to today
                 target_date = local_now.date() - timezone.timedelta(days=i)
                 day_label = day_names[target_date.weekday()]
                 
-                day_count = Violation.objects.filter(
-                    timestamp__date=target_date
-                ).count()
+                day_count = violations_by_date.get(target_date, 0)
                 
                 temporal_data.append({"day": day_label, "value": day_count})
 
@@ -208,14 +384,14 @@ class OfficerDashboardAPIView(APIView):
             # 5. Case Status Distribution (Simplified to CLOSED vs PENDING)
             distribution = [
                 {
-                    "label": "RESOLVED",
+                    "label": "CLOSED",
                     "percentage": round((closed_count / total_count * 100), 1) if total_count > 0 else 0,
-                    "color": "#004d33" # Deep SWAFO Green
+                    "color": "#004d33"
                 },
                 {
-                    "label": "PENDING",
+                    "label": "ACTIVE",
                     "percentage": round((active_cases / total_count * 100), 1) if total_count > 0 else 0,
-                    "color": "#10b981" # Emerald
+                    "color": "#10b981"
                 }
             ]
 
@@ -266,7 +442,7 @@ class OfficerDashboardAPIView(APIView):
                     "total": total_count,
                     "breakdown": [
                         {"status": "CLOSED", "count": closed_count},
-                        {"status": "PENDING", "count": active_cases}
+                        {"status": "ACTIVE", "count": active_cases}
                     ]
                 },
                 "recent_violations": recent_serializer.data,

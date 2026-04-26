@@ -35,6 +35,14 @@ class StudentProfile(models.Model):
     course = models.CharField(max_length=100)
     year_level = models.IntegerField(default=1)
     
+    # Director Oversight Fields
+    clearance_status = models.CharField(
+        max_length=20, 
+        choices=[('CLEARED', 'Cleared'), ('HOLD', 'Hold')], 
+        default='CLEARED'
+    )
+    risk_score = models.FloatField(default=0.0) # Temporal Decay Score
+    
     # Future barcode mapping
     barcode_value = models.CharField(max_length=255, blank=True, null=True)
 

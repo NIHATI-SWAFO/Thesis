@@ -155,9 +155,9 @@ export default function OfficerDashboard() {
                 {(() => {
                   const total = status_distribution.total;
                   // Handle inconsistent backend labels (RESOLVED vs CLOSED)
-                  const closed = status_distribution.breakdown.find(s => 
-                    s.status.toUpperCase() === 'RESOLVED' || s.status.toUpperCase() === 'CLOSED'
-                  )?.count || 0;
+                  const closed = status_distribution.breakdown.filter(s => 
+                    ['CLOSED', 'DISMISSED', 'DECISION_RENDERED'].includes(s.status.toUpperCase())
+                  ).reduce((acc, curr) => acc + curr.count, 0);
                   const pending = total - closed;
                   const circumference = 2 * Math.PI * 75;
                   
@@ -204,9 +204,9 @@ export default function OfficerDashboard() {
           <div className="grid grid-cols-2 gap-4 mt-auto">
               {(() => {
                 const total = status_distribution.total;
-                const closed = status_distribution.breakdown.find(s => 
-                  s.status.toUpperCase() === 'RESOLVED' || s.status.toUpperCase() === 'CLOSED'
-                )?.count || 0;
+                const closed = status_distribution.breakdown.filter(s => 
+                  ['CLOSED', 'DISMISSED'].includes(s.status.toUpperCase())
+                ).reduce((acc, curr) => acc + curr.count, 0);
                 const pending = total - closed;
                 const closedPct = Math.round((closed / total) * 100);
                 const pendingPct = Math.round((pending / total) * 100);
@@ -264,9 +264,11 @@ export default function OfficerDashboard() {
                 const fullName = v.student_details?.user_details?.full_name || 'System Student';
                 const initials = fullName.split(' ').map(n => n[0]).join('').substring(0, 2);
                 const statusColors = {
-                  'RESOLVED': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                  'OPEN': 'bg-red-50 text-red-700 border-red-100',
-                  'UNDER_REVIEW': 'bg-amber-50 text-amber-700 border-amber-100'
+                  'CLOSED': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                  'DISMISSED': 'bg-slate-100 text-slate-600 border-slate-200',
+                  'OPEN': 'bg-rose-50 text-rose-700 border-rose-100',
+                  'AWAITING_DECISION': 'bg-amber-50 text-amber-700 border-amber-100',
+                  'DECISION_RENDERED': 'bg-indigo-50 text-indigo-700 border-indigo-100'
                 };
                 const time = new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 
@@ -285,7 +287,7 @@ export default function OfficerDashboard() {
                     <div className="col-span-1 text-[13px] font-bold text-slate-400">{time}</div>
                     <div className="col-span-1 text-right">
                         <span className={`inline-block px-4 py-2 text-[10px] font-black rounded-xl border uppercase tracking-wider ${statusColors[v.status] || 'bg-slate-100 text-slate-600'}`}>
-                          {v.status === 'RESOLVED' ? 'Closed' : 'Pending'}
+                          {v.status === 'CLOSED' ? 'Closed' : v.status === 'DISMISSED' ? 'Dismissed' : v.status.replace(/_/g, ' ')}
                         </span>
                     </div>
                   </div>

@@ -277,7 +277,7 @@ function DirectorQuickLogin() {
     <button 
       type="button"
       onClick={() => {
-        loginAsAdmin("Director Ruel Elias", "director@dlsud.edu.ph");
+        loginAsAdmin("Director Ruel Elias", "admin@dlsud.edu.ph");
         navigate('/admin/dashboard');
       }}
       className="w-full px-5 py-4 bg-[#0f3422] border border-emerald-900 rounded-xl text-[14px] font-pjs font-bold text-white flex items-center justify-between hover:bg-[#15462e] transition-all"

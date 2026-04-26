@@ -5,10 +5,11 @@ const adminNavItems = [
   { name: 'Director Overview', path: '/admin/dashboard', icon: 'monitoring' },
   { name: 'Case Oversight', path: '/admin/cases', icon: 'gavel' },
   { name: 'Student Records', path: '/admin/students', icon: 'groups' },
-  { name: 'Patrol History', path: '/admin/patrols', icon: 'history' },
+  { name: 'Patrol Oversight', path: '/admin/patrols', icon: 'history', isInProgress: true },
   { name: 'Institutional Analytics', path: '/admin/analytics', icon: 'analytics' },
   { name: 'Handbook Master', path: '/admin/handbook', icon: 'menu_book' },
   { name: 'User Management', path: '/admin/users', icon: 'manage_accounts' },
+  { name: 'Campus Map', path: '/admin/campus-map', icon: 'map' },
 ];
 
 export default function AdminLayout() {
@@ -55,7 +56,12 @@ export default function AdminLayout() {
                 <span className={`material-symbols-outlined text-[22px] ${isActive ? 'fill-1' : ''}`}>
                   {item.icon}
                 </span>
-                <span className={`text-[14px] ${isActive ? 'font-bold' : 'font-semibold'}`}>{item.name}</span>
+                <div className="flex flex-col">
+                  <span className={`text-[14px] ${isActive ? 'font-bold' : 'font-semibold'}`}>{item.name}</span>
+                  {item.isInProgress && (
+                    <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mt-0.5">In Progress</span>
+                  )}
+                </div>
               </Link>
             )
           })}

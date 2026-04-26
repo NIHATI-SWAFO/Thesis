@@ -41,27 +41,10 @@ export default function StudentDashboard() {
     setShowModal(true);
   };
 
-  const handleAcknowledge = async () => {
-    if (!selectedViolation) return;
-    
-    try {
-      const resp = await fetch(API_ENDPOINTS.VIOLATIONS_UPDATE_STATUS(selectedViolation.id), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'RESOLVED' })
-      });
 
-      if (resp.ok) {
-        setShowModal(false);
-        fetchData(); // Refresh dashboard
-      }
-    } catch (err) {
-      console.error("Acknowledge error:", err);
-    }
-  };
 
   const totalCount = violations.length;
-  const closedCount = violations.filter(v => v.status === 'RESOLVED' || v.status === 'APPEALED').length;
+  const closedCount = violations.filter(v => ['CLOSED', 'DISMISSED'].includes(v.status)).count || violations.filter(v => ['CLOSED', 'DISMISSED'].includes(v.status)).length;
   const pendingCount = totalCount - closedCount;
 
   const isProbation = totalCount >= 5;
@@ -91,17 +74,32 @@ export default function StudentDashboard() {
           </div>
         </div>
         
-        <div className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl shadow-sm border transition-all duration-500 ${
-          isGoodStanding ? 'bg-[#d1fadf] text-[#006b5d] border-emerald-200/50' : 
-          isProbation ? 'bg-red-50 text-red-600 border-red-100' :
-          hasObligation ? 'bg-amber-50 text-amber-700 border-amber-200/50' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-        }`}>
-          <span className="material-symbols-outlined text-[18px] fill-1">
-            {isGoodStanding ? 'verified' : isProbation ? 'gavel' : 'info'}
-          </span>
-          <span className="font-pjs font-bold text-[13px] tracking-wide uppercase">
-            {isGoodStanding ? 'Good Standing' : isProbation ? 'Disciplinary Probation' : hasObligation ? 'Outstanding Obligation' : 'Cleared Record'}
-          </span>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl shadow-sm border transition-all duration-500 ${
+            isGoodStanding ? 'bg-[#d1fadf] text-[#006b5d] border-emerald-200/50' : 
+            isProbation ? 'bg-red-50 text-red-600 border-red-100' :
+            hasObligation ? 'bg-amber-50 text-amber-700 border-amber-200/50' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+          }`}>
+            <span className="material-symbols-outlined text-[18px] fill-1">
+              {isGoodStanding ? 'verified' : isProbation ? 'gavel' : 'info'}
+            </span>
+            <span className="font-pjs font-bold text-[13px] tracking-wide uppercase">
+              {isGoodStanding ? 'Good Standing' : isProbation ? 'Disciplinary Probation' : hasObligation ? 'Outstanding Obligation' : 'Cleared Record'}
+            </span>
+          </div>
+
+          {profile && profile.clearance_status && (
+            <div className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl shadow-sm border transition-all duration-500 ${
+              profile.clearance_status === 'HOLD' ? 'bg-rose-50 text-rose-700 border-rose-200 shadow-rose-500/10' : 'bg-[#f8fafc] text-slate-600 border-slate-200'
+            }`}>
+              <span className="material-symbols-outlined text-[18px]">
+                {profile.clearance_status === 'HOLD' ? 'block' : 'verified_user'}
+              </span>
+              <span className="font-pjs font-bold text-[13px] tracking-wide uppercase">
+                {profile.clearance_status === 'HOLD' ? 'Clearance on Hold' : 'Clearance: Cleared'}
+              </span>
+            </div>
+          )}
         </div>
       </section>
 
@@ -167,14 +165,21 @@ export default function StudentDashboard() {
               <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-6">
                 <span className="material-symbols-outlined text-[32px] font-bold">gavel</span>
               </div>
-              <h2 className="text-[24px] font-pjs font-extrabold text-[#003624] mb-2 tracking-tight">Case Resolution</h2>
+              <h2 className="text-[24px] font-pjs font-extrabold text-[#003624] mb-2 tracking-tight">Case Information</h2>
               <p className="text-[14px] text-slate-500 font-manrope leading-relaxed mb-8 max-w-[340px]">
-                Acknowledge the record for <span className="font-bold text-slate-900">{selectedViolation?.rule_details?.title || 'this policy'}</span> to formally close the case.
+                This case is currently under <span className="font-bold text-[#003624]">Institutional Review</span>. You may monitor the status or contact SWAFO for clarification.
               </p>
               <div className="w-full space-y-3">
-                <button onClick={handleAcknowledge} className="w-full h-[65px] bg-[#003624] text-white rounded-2xl font-pjs font-black text-[13px] uppercase tracking-[0.2em] hover:bg-[#004d33] transition-all shadow-lg active:scale-[0.98]">Acknowledge & Close</button>
-                <button onClick={() => { window.open(`mailto:swafo@dlsud.edu.ph?subject=Appeal Request: ${selectedViolation?.id}`); setShowModal(false); }} className="w-full h-[65px] border-2 border-slate-100 text-slate-600 rounded-2xl font-pjs font-bold text-[13px] uppercase tracking-[0.2em] hover:bg-slate-50 transition-all active:scale-[0.98]">Initiate Appeal</button>
-                <button onClick={() => setShowModal(false)} className="mt-4 text-slate-400 font-pjs font-bold text-[11px] uppercase tracking-widest hover:text-[#003624] transition-all outline-none">Return to Dashboard</button>
+                <button 
+                  onClick={() => { 
+                    window.open(`mailto:swafo@dlsud.edu.ph?subject=Appeal Request: Case ${selectedViolation?.id}&body=Name: ${displayName}%0D%0AStudent Number: ${profile?.student_number}%0D%0AViolation: ${selectedViolation?.rule_details?.title || selectedViolation?.rule_details?.category}%0D%0AReason for Appeal: `); 
+                    setShowModal(false); 
+                  }} 
+                  className="w-full h-[65px] bg-[#003624] text-white rounded-2xl font-pjs font-black text-[13px] uppercase tracking-[0.2em] hover:bg-[#004d33] transition-all shadow-lg active:scale-[0.98]"
+                >
+                  Initiate Appeal (Email)
+                </button>
+                <button onClick={() => setShowModal(false)} className="w-full h-[65px] border-2 border-slate-100 text-slate-600 rounded-2xl font-pjs font-bold text-[13px] uppercase tracking-[0.2em] hover:bg-slate-50 transition-all active:scale-[0.98]">Close Details</button>
               </div>
             </div>
           </div>
@@ -216,7 +221,7 @@ function LinkCard({ icon, title, description, linkText, linkIcon }) {
 }
 
 function ViolationEntry({ violation, onTakeAction }) {
-  const isClosed = violation.status === 'RESOLVED' || violation.status === 'APPEALED';
+  const isClosed = ['CLOSED', 'DISMISSED'].includes(violation.status);
   const title = violation.rule_details?.title || violation.rule_details?.category || "Policy Violation";
 
   return (
@@ -226,8 +231,8 @@ function ViolationEntry({ violation, onTakeAction }) {
       <div className="flex-grow w-full">
         <div className="flex items-center gap-4 mb-5">
           <h4 className="text-[1.25rem] font-bold text-[#003624] font-pjs tracking-tight">{title}</h4>
-          <span className={`px-5 py-1.5 text-[9px] font-black rounded-full uppercase tracking-widest ${isClosed ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-            {isClosed ? 'Closed' : 'Pending'}
+          <span className={`px-5 py-1.5 text-[9px] font-black rounded-full uppercase tracking-widest ${isClosed ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+            {isClosed ? 'Archived' : violation.status.replace(/_/g, ' ')}
           </span>
         </div>
         
@@ -246,15 +251,15 @@ function ViolationEntry({ violation, onTakeAction }) {
         {!isClosed ? (
           <button 
             onClick={() => onTakeAction(violation)}
-            className="w-full flex items-center justify-center gap-3 bg-[#111827] text-white px-8 py-5 rounded-2xl font-pjs text-[13px] font-black uppercase tracking-widest shadow-xl hover:bg-emerald-900 transition-all active:scale-95"
+            className="w-full flex items-center justify-center gap-3 bg-[#003624] text-white px-8 py-5 rounded-2xl font-pjs text-[13px] font-black uppercase tracking-widest shadow-xl hover:bg-emerald-900 transition-all active:scale-95"
           >
-            Acknowledge
-            <span className="material-symbols-outlined text-[20px]">drafts</span>
+            View Details
+            <span className="material-symbols-outlined text-[20px]">visibility</span>
           </button>
         ) : (
           <div className="w-full flex items-center justify-center gap-2 py-4 text-[#006b5d] font-bold text-[13px] bg-emerald-50 rounded-2xl">
-            <span className="material-symbols-outlined text-[20px]">check_circle</span>
-            Resolved
+            <span className="material-symbols-outlined text-[20px]">verified</span>
+            Case Finalized
           </div>
         )}
       </div>

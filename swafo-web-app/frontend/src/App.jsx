@@ -19,8 +19,7 @@ import ReportsAnalytics from './features/analytics/ReportsAnalytics';
 import PatrolHistory from './features/patrols/PatrolHistory';
 import AdminLayout from './layouts/AdminLayout';
 import AdminDashboard from './features/dashboard/AdminDashboard';
-
-
+import MapTrial from './features/maps/MapTrial';
 
 import { AuthProvider } from './context/AuthContext';
 
@@ -62,6 +61,7 @@ function App() {
           <Route path="cases" element={<CaseManagement />} />
           <Route path="students" element={<StudentRecords />} />
           <Route path="students/:id" element={<StudentProfileDetail />} />
+          <Route path="campus-map" element={<MapTrial />} />
           {/* Fallback for unfinished pages */}
           <Route path="*" element={<div className="p-8 text-2xl font-bold font-pjs">Under Construction</div>} />
         </Route>
@@ -76,6 +76,7 @@ function App() {
           <Route path="patrols" element={<PatrolHistory role="admin" />} />
           <Route path="analytics" element={<ReportsAnalytics role="admin" />} />
           <Route path="handbook" element={<StudentHandbook role="admin" />} />
+          <Route path="campus-map" element={<MapTrial />} />
           <Route path="users" element={<div className="p-12"><h1 className="text-3xl font-black text-[#003624] mb-4">User Management</h1><p className="text-gray-500 font-bold uppercase tracking-widest text-[11px]">Control student and officer access levels.</p><div className="mt-12 p-20 border-2 border-dashed border-emerald-100 rounded-[3rem] text-center text-emerald-200 font-black uppercase tracking-widest">Interface Module Loading...</div></div>} />
           <Route path="*" element={<div className="p-12 text-2xl font-bold font-pjs">Admin Module Under Construction</div>} />
         </Route>
