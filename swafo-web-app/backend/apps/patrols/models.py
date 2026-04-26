@@ -16,6 +16,10 @@ class PatrolSession(models.Model):
     # Checkpoints stored as JSON for flexibility in the prototype
     checkpoints_data = models.JSONField(default=list, blank=True)
     
+    # Form data from mobile
+    shift_type = models.CharField(max_length=50, null=True, blank=True)
+    notes = models.TextField(null=True, blank=True)
+    
     # Performance metrics
     photos_count = models.IntegerField(default=0)
     

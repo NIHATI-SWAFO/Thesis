@@ -1,6 +1,11 @@
-from django.urls import path
-from .views import PatrolSessionListView
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import PatrolSessionViewSet
+
+router = DefaultRouter()
+router.register(r'', PatrolSessionViewSet)
 
 urlpatterns = [
-    path('list/', PatrolSessionListView.as_view(), name='patrol-list'),
+    path('list/', PatrolSessionViewSet.as_view({'get': 'list'})), # Keep backward compatibility
+    path('', include(router.urls)),
 ]

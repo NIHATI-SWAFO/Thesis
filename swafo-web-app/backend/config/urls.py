@@ -17,7 +17,27 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from django.http import HttpResponse
+
+def home_view(request):
+    html_content = """
+    <html>
+        <head><title>SWAFO Backend</title></head>
+        <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #F5F5F5; margin: 0;">
+            <div style="background: white; padding: 40px; border-radius: 24px; shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; border: 1px solid #E0E0E0;">
+                <h1 style="color: #1A5C3A; margin-bottom: 10px;">SWAFO Backend is Running</h1>
+                <p style="color: #666; font-size: 18px;">All API systems are operational.</p>
+                <div style="margin-top: 20px; padding: 10px; background: #F1F8F1; border-radius: 8px; color: #1A5C3A; font-weight: bold;">
+                    Status: Healthy
+                </div>
+            </div>
+        </body>
+    </html>
+    """
+    return HttpResponse(html_content)
+
 urlpatterns = [
+    path('', home_view),
     path('admin/', admin.site.urls),
     path('api/users/', include('apps.users.urls')),
     path('api/violations/', include('apps.violations.urls')),

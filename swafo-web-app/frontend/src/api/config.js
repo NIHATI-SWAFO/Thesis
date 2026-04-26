@@ -5,7 +5,7 @@
  * local development and production (Vercel/Railway).
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const API_ENDPOINTS = {
   // Auth
@@ -26,6 +26,8 @@ export const API_ENDPOINTS = {
   
   // Patrols
   PATROLS_LIST: `${API_BASE_URL}/api/patrols/list/`,
+  PATROLS_CREATE: `${API_BASE_URL}/api/patrols/`,
+  PATROLS_END: (id) => `${API_BASE_URL}/api/patrols/${id}/end_session/`,
   
   // Analytics
   OFFICER_DASHBOARD: `${API_BASE_URL}/api/analytics/officer-dashboard/`,

@@ -10,6 +10,7 @@ import ChatBot from './features/chatbot/ChatBot';
 import OfficerLayout from './layouts/OfficerLayout';
 import OfficerDashboard from './features/dashboard/OfficerDashboard';
 import PatrolMonitoring from './features/patrols/PatrolMonitoring';
+import MobilePatrolFlow from './features/patrols/mobile/MobilePatrolFlow';
 import RecordViolation from './features/violations/RecordViolation';
 import CaseManagement from './features/cases/CaseManagement';
 import StudentRecords from './features/students/StudentRecords';
@@ -48,6 +49,12 @@ function App() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<OfficerDashboard />} />
           <Route path="patrols" element={<PatrolMonitoring />} />
+          <Route path="patrols/select" element={<MobilePatrolFlow initialScreen="selectArea" />} />
+          <Route path="patrols/live" element={<MobilePatrolFlow initialScreen="liveMap" />} />
+          <Route path="patrols/expanded-map" element={<MobilePatrolFlow initialScreen="fullMap" />} />
+          <Route path="patrols/summary" element={<MobilePatrolFlow initialScreen="dynamicSummary" />} />
+          <Route path="patrols/history/:id" element={<MobilePatrolFlow initialScreen="archive" />} />
+          
           <Route path="reports" element={<ReportsAnalytics />} />
           <Route path="patrol-history" element={<PatrolHistory />} />
 

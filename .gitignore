@@ -4,17 +4,20 @@
 .DS_Store
 
 # Frontend
-swafo-web-app/frontend/node_modules/
-swafo-web-app/frontend/dist/
-swafo-web-app/frontend/dist-ssr/
-swafo-web-app/frontend/*.local
+node_modules/
+dist/
+dist-ssr/
+*.local
 
 # Backend
-swafo-web-app/backend/venv/
-swafo-web-app/backend/__pycache__/
-swafo-web-app/backend/*.pyc
-swafo-web-app/backend/.env
-swafo-web-app/backend/db.sqlite3
+venv/
+.venv/
+**/__pycache__/
+**/*.pyc
+.env
+db.sqlite3
 
 # Other
-*.log
+**/*.log
+.gemini/
+
