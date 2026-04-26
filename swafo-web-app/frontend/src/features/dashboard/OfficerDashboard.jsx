@@ -153,45 +153,42 @@ export default function OfficerDashboard() {
             <svg width="190" height="190" viewBox="0 0 190 190" className="transform -rotate-90">
                 <circle cx="95" cy="95" r="75" fill="none" stroke="#f1f5f9" strokeWidth="22" />
                 {(() => {
-                  const total = status_distribution.total;
-                  // Handle inconsistent backend labels (RESOLVED vs CLOSED)
-                  const closed = status_distribution.breakdown.filter(s => 
+                  const total = status_distribution.total || 1;
+                  // Count all non-active statuses as "closed/resolved"
+                  const closed = status_distribution.breakdown.filter(s =>
                     ['CLOSED', 'DISMISSED', 'DECISION_RENDERED'].includes(s.status.toUpperCase())
                   ).reduce((acc, curr) => acc + curr.count, 0);
                   const pending = total - closed;
                   const circumference = 2 * Math.PI * 75;
-                  
-                  const closedPct = (closed / total) * 100;
-                  const pendingPct = (pending / total) * 100;
-                  
-                  const closedDash = `${(closedPct / 100) * circumference} ${circumference}`;
-                  const pendingDash = `${(pendingPct / 100) * circumference} ${circumference}`;
-                  const pendingOffset = `-${(closedPct / 100) * circumference}`;
+
+                  // Always sum to 100% — no gaps
+                  const closedFrac = closed / total;
+                  const pendingFrac = pending / total;
+
+                  const closedDash = `${closedFrac * circumference} ${circumference}`;
+                  const pendingDash = `${pendingFrac * circumference} ${circumference}`;
+                  const pendingOffset = -(closedFrac * circumference);
 
                   return (
                     <>
-                      {/* Pending Segment (Light Red) */}
-                      {pending > 0 && (
-                        <circle cx="95" cy="95" r="75" fill="none" 
-                          stroke="#fca5a5" 
-                          strokeWidth="22"
-                          strokeDasharray={pendingDash}
-                          strokeDashoffset={pendingOffset}
-                          strokeLinecap="round"
-                          className="transition-all duration-1000"
-                        />
-                      )}
-                      {/* Closed Segment (Emerald) */}
-                      {closed > 0 && (
-                        <circle cx="95" cy="95" r="75" fill="none" 
-                          stroke="#10b981" 
-                          strokeWidth="22"
-                          strokeDasharray={closedDash}
-                          strokeDashoffset="0"
-                          strokeLinecap="round"
-                          className="transition-all duration-1000"
-                        />
-                      )}
+                      {/* Closed/Resolved Segment (Emerald) — starts at 0 */}
+                      <circle cx="95" cy="95" r="75" fill="none"
+                        stroke="#10b981"
+                        strokeWidth="22"
+                        strokeDasharray={closedDash}
+                        strokeDashoffset="0"
+                        strokeLinecap="butt"
+                        className="transition-all duration-1000"
+                      />
+                      {/* Pending Segment (Light Red) — starts right after closed */}
+                      <circle cx="95" cy="95" r="75" fill="none"
+                        stroke="#fca5a5"
+                        strokeWidth="22"
+                        strokeDasharray={pendingDash}
+                        strokeDashoffset={pendingOffset}
+                        strokeLinecap="butt"
+                        className="transition-all duration-1000"
+                      />
                     </>
                   );
                 })()}
@@ -203,13 +200,13 @@ export default function OfficerDashboard() {
           </div>
           <div className="grid grid-cols-2 gap-4 mt-auto">
               {(() => {
-                const total = status_distribution.total;
-                const closed = status_distribution.breakdown.filter(s => 
-                  ['CLOSED', 'DISMISSED'].includes(s.status.toUpperCase())
+                const total = status_distribution.total || 1;
+                const closed = status_distribution.breakdown.filter(s =>
+                  ['CLOSED', 'DISMISSED', 'DECISION_RENDERED'].includes(s.status.toUpperCase())
                 ).reduce((acc, curr) => acc + curr.count, 0);
                 const pending = total - closed;
                 const closedPct = Math.round((closed / total) * 100);
-                const pendingPct = Math.round((pending / total) * 100);
+                const pendingPct = 100 - closedPct;
 
                 return (
                   <>
@@ -231,6 +228,7 @@ export default function OfficerDashboard() {
                 );
               })()}
           </div>
+
         </div>
       </div>
 
@@ -303,16 +301,16 @@ export default function OfficerDashboard() {
 
 function StatCard({ label, value, subtitle, icon, iconBg, iconColor }) {
   return (
-    <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative flex flex-col justify-between overflow-hidden">
-      <div className="flex justify-between items-start mb-6">
-        <span className="text-[10px] font-black text-slate-400 tracking-[0.15em] uppercase">{label}</span>
-        <div className={`w-9 h-9 rounded-full ${iconBg} flex items-center justify-center ${iconColor} shadow-sm`}>
-          <span className="material-symbols-outlined text-[18px] font-bold">{icon}</span>
+    <div className="bg-white rounded-[1.5rem] p-6 border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative flex flex-col justify-between overflow-hidden group hover:shadow-lg transition-all">
+      <div className="flex justify-between items-start mb-4">
+        <span className="text-[10px] font-black text-slate-400 tracking-[0.15em] uppercase truncate pr-2">{label}</span>
+        <div className={`w-8 h-8 rounded-full ${iconBg} flex flex-shrink-0 items-center justify-center ${iconColor} shadow-sm group-hover:scale-110 transition-transform`}>
+          <span className="material-symbols-outlined text-[16px] font-bold">{icon}</span>
         </div>
       </div>
       <div>
-        <h3 className="text-[44px] font-pjs font-black text-slate-900 tracking-tighter leading-none mb-1">{value.toString().padStart(2, '0')}</h3>
-        <p className="text-[13px] font-bold text-slate-800 tracking-tight">{subtitle}</p>
+        <h3 className="text-[36px] font-pjs font-black text-slate-900 tracking-tighter leading-none mb-1">{value.toString().padStart(2, '0')}</h3>
+        <p className="text-[12px] font-bold text-slate-500 tracking-tight leading-tight">{subtitle}</p>
       </div>
     </div>
   );

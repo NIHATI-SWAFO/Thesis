@@ -150,7 +150,7 @@ export default function ReportsAnalytics() {
       </div>
 
       {/* ══════════════════════════════ KPI GRID ══════════════════════════════ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-10">
         {[
           ...(analytics.kpis || []),
           {
@@ -181,24 +181,24 @@ export default function ReportsAnalytics() {
           };
           
           return (
-            <div key={idx} className="bg-white rounded-[2.5rem] p-10 border border-[#f1f5f9] shadow-[0_10px_40px_rgba(0,0,0,0.02)] relative overflow-hidden group hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-500 ring-1 ring-transparent hover:ring-[#f1f5f9]">
-              <div className="flex justify-between items-start mb-10 relative z-10">
-                <span className="text-[12px] font-pjs font-bold text-slate-600 tracking-[0.1em] uppercase">{kpi.label}</span>
-                <div className={`w-11 h-11 flex items-center justify-center rounded-2xl border ${kpiColor} shadow-sm group-hover:scale-110 transition-transform duration-500`}>
-                  <Icon size={22} strokeWidth={2.5} />
+            <div key={idx} className="bg-white rounded-[2rem] p-6 border border-[#f1f5f9] shadow-[0_10px_40px_rgba(0,0,0,0.02)] relative overflow-hidden group hover:shadow-[0_20px_60px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-500 ring-1 ring-transparent hover:ring-[#f1f5f9]">
+              <div className="flex justify-between items-start mb-6 relative z-10">
+                <span className="text-[10px] font-pjs font-bold text-slate-500 tracking-[0.1em] uppercase truncate pr-2">{kpi.label}</span>
+                <div className={`w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-xl border ${kpiColor} shadow-sm group-hover:scale-110 transition-transform duration-500`}>
+                  <Icon size={18} strokeWidth={2.5} />
                 </div>
               </div>
               
-              <div className="flex flex-col gap-2 relative z-10">
-                <span className="text-[48px] font-pjs font-black text-[#003624] tracking-tighter leading-none mb-2">{kpi.value}</span>
-                <div className="flex items-center gap-2">
-                  <span className={`flex items-center text-[11px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${
+              <div className="flex flex-col gap-1 relative z-10">
+                <span className="text-[36px] font-pjs font-black text-[#003624] tracking-tighter leading-none mb-1">{kpi.value}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`flex items-center text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
                     (kpi.isResolution ? kpi.trendUp : (kpi.trendUp && kpi.label.includes('TOTAL'))) ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'
                   }`}>
-                    {kpi.trendUp ? <TrendingUp size={12} className="mr-1.5" /> : <TrendingDown size={12} className="mr-1.5" />}
+                    {kpi.trendUp ? <TrendingUp size={10} className="mr-1" /> : <TrendingDown size={10} className="mr-1" />}
                     {kpi.trend} {kpi.isResolution ? (kpi.trendUp ? 'Slower' : 'Faster') : ''}
                   </span>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none ml-1">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none truncate max-w-full">
                     {kpi.isResolution ? (kpi.value.includes('d') ? '• Delayed' : '• Optimal') : getInsight()}
                   </span>
                 </div>
@@ -254,25 +254,31 @@ export default function ReportsAnalytics() {
             <div className="relative w-[240px] h-[240px]">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="40" stroke="#f8fafc" strokeWidth="16" fill="transparent" />
-                {/* Segment 1: CLOSED (CLOSED/DISMISSED) */}
-                <circle 
-                  cx="50" cy="50" r="40" 
-                  stroke="#004d33" strokeWidth="16" 
-                  strokeDasharray="251.2" 
-                  strokeDashoffset={251.2 * (1 - (analytics.distribution?.find(d => d.label === 'CLOSED')?.percentage / 100 || 0))} 
-                  fill="transparent"
-                  className="transition-all duration-1000 ease-in-out"
-                />
-                {/* Segment 2: ONGOING (OPEN/AWAITING/RENDERED) */}
-                <circle 
-                  cx="50" cy="50" r="40" 
-                  stroke="#10b981" strokeWidth="16" 
-                  strokeDasharray="251.2" 
-                  strokeDashoffset={251.2 * (1 - (analytics.distribution?.find(d => d.label === 'ONGOING')?.percentage / 100 || 0))} 
-                  style={{ transform: `rotate(${360 * (analytics.distribution?.find(d => d.label === 'CLOSED')?.percentage / 100 || 0)}deg)`, transformOrigin: '50% 50%' }}
-                  fill="transparent"
-                  className="transition-all duration-1000 delay-200 ease-in-out"
-                />
+                {(() => {
+                  const dist = analytics.distribution || [];
+                  // Normalize so segments always fill 100% — no gaps
+                  const rawTotal = dist.reduce((sum, d) => sum + (d.percentage || 0), 0) || 100;
+                  const circumference = 2 * Math.PI * 40;
+                  let cumulativeFrac = 0;
+                  return dist.map((d, i) => {
+                    const frac = (d.percentage || 0) / rawTotal;
+                    const strokeDasharray = `${frac * circumference} ${circumference}`;
+                    const strokeDashoffset = -(cumulativeFrac * circumference);
+                    cumulativeFrac += frac;
+                    return (
+                      <circle 
+                        key={i}
+                        cx="50" cy="50" r="40" 
+                        stroke={d.color} strokeWidth="16" 
+                        strokeDasharray={strokeDasharray} 
+                        strokeDashoffset={strokeDashoffset}
+                        fill="transparent"
+                        strokeLinecap="butt"
+                        className="transition-all duration-1000 ease-in-out"
+                      />
+                    );
+                  });
+                })()}
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center pt-2">
                 <span className="text-[48px] font-pjs font-black text-[#003624] tracking-tighter leading-none">
@@ -293,36 +299,41 @@ export default function ReportsAnalytics() {
               ))}
             </div>
           </div>
+
         </div>
 
         {/* Violations by College - Polished Horizontal Bars */}
         <div className="bg-white rounded-[3rem] p-12 border border-[#f1f5f9] shadow-[0_20px_60px_rgba(0,0,0,0.02)]">
           <h3 className="text-[22px] font-pjs font-black text-[#003624] tracking-tight mb-12">Violations by College</h3>
-          <div className="flex flex-col gap-9">
+          <div className="flex flex-col gap-7">
             {(analytics.byCollege || []).map((col, i) => {
               const maxCollegeVal = Math.max(...analytics.byCollege.map(c => c.count), 1);
               const acronym = COLLEGE_ACRONYMS[col.name] || col.name.split(' ').map(w => w[0]).join('');
+              const pct = (col.count / maxCollegeVal) * 100;
               return (
-                <div key={i} className="flex items-center gap-8 group">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <span className="text-[15px] font-bold text-[#475569] group-hover:text-[#003624] transition-colors">{acronym}</span>
-                    {i < 3 && <TrendingUp size={14} className="text-rose-500" />}
+                <div key={i} className="flex items-center gap-4 group">
+                  {/* Fixed-width label column — acronym + trending icon */}
+                  <div className="flex items-center gap-2 w-[80px] shrink-0">
+                    <span className="text-[14px] font-bold text-[#475569] group-hover:text-[#003624] transition-colors">{acronym}</span>
+                    {i < 3 && <TrendingUp size={13} className="text-rose-500 shrink-0" />}
                   </div>
-                  <span className="text-[13px] font-black text-[#003624]">{col.count}</span>
-                </div>
-                  <div className="flex-1 h-9 bg-slate-50 rounded-xl overflow-hidden relative border border-slate-100/50">
-                    <div 
-                      className="h-full bg-emerald-950/80 rounded-xl transition-all duration-1000 ease-out group-hover:bg-[#004d33] group-hover:shadow-[0_0_20px_rgba(0,77,51,0.2)]" 
-                      style={{ width: `${(col.count / maxCollegeVal) * 100}%` }}
-                    >
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[12px] font-black text-white/90 drop-shadow-sm">{col.count}</div>
+
+                  {/* Bar track + count */}
+                  <div className="flex-1 flex items-center gap-3">
+                    <div className="flex-1 h-9 bg-slate-50 rounded-xl overflow-hidden border border-slate-100/50">
+                      <div
+                        className="h-full bg-emerald-950/80 rounded-xl transition-all duration-1000 ease-out group-hover:bg-[#004d33] group-hover:shadow-[0_0_20px_rgba(0,77,51,0.2)]"
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
+                    {/* Count always outside the bar — always readable */}
+                    <span className="text-[13px] font-black text-[#003624] w-6 text-right shrink-0">{col.count}</span>
                   </div>
                 </div>
               );
             })}
           </div>
+
         </div>
 
       </div>
@@ -377,30 +388,36 @@ export default function ReportsAnalytics() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-8 relative z-10">
+          <div className="flex flex-col gap-5 relative z-10">
             {(analytics.recidivism_patterns || []).map((pattern, i) => (
-              <div key={i} className="flex items-center gap-8 bg-white/5 p-6 rounded-[2rem] border border-white/10 hover:bg-white/10 transition-all group/item">
-                <div className="flex-1 flex flex-col gap-1">
-                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Gateway Offense</span>
-                  <span className="text-[16px] font-bold text-white leading-tight">{pattern.from}</span>
-                </div>
-                
-                <div className="flex flex-col items-center">
-                  <div className="flex items-center gap-2 mb-1">
-                     <div className="w-12 h-[2px] bg-emerald-500/30 relative">
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]"></div>
-                     </div>
-                  </div>
-                  <span className="text-[14px] font-black text-emerald-400">{pattern.confidence}%</span>
-                  <span className="text-[9px] font-bold text-white/40 uppercase">Confidence</span>
+              <div key={i} className="flex items-center gap-4 bg-white/5 p-5 rounded-[1.5rem] border border-white/10 hover:bg-white/10 transition-all group/item">
+                {/* Gateway Offense */}
+                <div className="flex-1 flex flex-col gap-1 min-w-0">
+                  <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Gateway Offense</span>
+                  <span className="text-[11px] font-bold text-white leading-snug line-clamp-2">{pattern.from}</span>
+                  <span className="text-[9px] font-black text-white/30 uppercase tracking-wider truncate">{pattern.from_category || pattern.from}</span>
                 </div>
 
-                <div className="flex-1 flex flex-col gap-1 text-right">
-                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Subsequent Risk</span>
-                  <span className="text-[16px] font-bold text-white leading-tight">{pattern.to}</span>
+                {/* Arrow + Confidence */}
+                <div className="flex flex-col items-center flex-shrink-0 gap-1">
+                  <div className="flex items-center gap-1">
+                    <div className="w-8 h-[2px] bg-emerald-500/30 relative">
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></div>
+                    </div>
+                  </div>
+                  <span className="text-[13px] font-black text-emerald-400">{pattern.confidence}%</span>
+                  <span className="text-[8px] font-bold text-white/40 uppercase">Confidence</span>
+                </div>
+
+                {/* Subsequent Risk */}
+                <div className="flex-1 flex flex-col gap-1 text-right min-w-0">
+                  <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Subsequent Risk</span>
+                  <span className="text-[11px] font-bold text-white leading-snug line-clamp-2">{pattern.to}</span>
+                  <span className="text-[9px] font-black text-white/30 uppercase tracking-wider truncate">{pattern.to_category || pattern.to}</span>
                 </div>
               </div>
             ))}
+
             {(!analytics.recidivism_patterns || analytics.recidivism_patterns.length === 0) && (
               <div className="text-center py-10 opacity-30">
                  <p className="text-white font-bold italic">Collecting behavioral association data...</p>

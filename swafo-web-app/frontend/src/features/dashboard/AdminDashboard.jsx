@@ -82,7 +82,7 @@ export default function AdminDashboard() {
               <ShieldAlert size={20} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
            </div>
            <div className="flex items-end gap-3 mt-4">
-              <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{data.status_distribution.total}</h3>
+              <h3 className="text-[36px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{data.status_distribution.total}</h3>
               <div className="flex items-center gap-1 text-rose-500 text-[12px] font-black mb-1">
                  <TrendingUp size={12} className="rotate-45" /> 12%
               </div>
@@ -99,7 +99,7 @@ export default function AdminDashboard() {
               <Clock size={20} className="text-slate-300 group-hover:text-amber-500 transition-colors" />
            </div>
            <div className="flex items-end gap-3 mt-4">
-              <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{stats.pending_director_decisions.toString().padStart(2, '0')}</h3>
+              <h3 className="text-[36px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{stats.pending_director_decisions.toString().padStart(2, '0')}</h3>
               <div className="flex items-center gap-1 text-emerald-500 text-[10px] font-black mb-1 opacity-40">
                  ↘ 05
               </div>
@@ -113,7 +113,7 @@ export default function AdminDashboard() {
               <BarChart3 size={20} className="text-slate-300" />
            </div>
            <div className="flex items-end gap-3 mt-4">
-              <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{resolutionRate}%</h3>
+              <h3 className="text-[36px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{resolutionRate}%</h3>
               <div className="flex items-center gap-1 text-emerald-500 text-[12px] font-black mb-1">
                  ↑ 4%
               </div>
@@ -130,7 +130,7 @@ export default function AdminDashboard() {
               <Users size={20} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
            </div>
            <div className="flex items-center gap-4 mt-4">
-              <h3 className="text-[44px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{stats.active_patrols.toString().padStart(2, '0')}</h3>
+              <h3 className="text-[36px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{stats.active_patrols.toString().padStart(2, '0')}</h3>
               <div className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[9px] font-black rounded uppercase tracking-widest border border-emerald-100">
                  Operational
               </div>

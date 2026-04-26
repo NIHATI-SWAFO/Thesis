@@ -180,24 +180,30 @@ class AdminDashboardAPIView(APIView):
             avg_resolution_hours = round(avg_duration.total_seconds() / 3600, 1) if avg_duration else 0
 
             # 12. Recidivism Pattern Detection (Simplified Apriori)
-            # Find common pairs of (Violation A -\u003e Violation B)
+            # Find common pairs using specific rule descriptions
             repeaters = StudentProfile.objects.annotate(v_count=Count('violations')).filter(v_count__gt=1)
             patterns_map = {}
             for s in repeaters:
-                v_list = s.violations.all().order_by('timestamp')
+                v_list = list(s.violations.select_related('rule').order_by('timestamp'))
                 for i in range(len(v_list) - 1):
-                    pair = (v_list[i].rule.category, v_list[i+1].rule.category)
-                    patterns_map[pair] = patterns_map.get(pair, 0) + 1
-            
+                    key = (
+                        v_list[i].rule.description,
+                        v_list[i].rule.category,
+                        v_list[i+1].rule.description,
+                        v_list[i+1].rule.category,
+                    )
+                    patterns_map[key] = patterns_map.get(key, 0) + 1
+
             patterns = []
-            for (v_a, v_b), count in patterns_map.items():
-                # Simple confidence: Count(A,B) / Count(A)
-                count_a = Violation.objects.filter(rule__category=v_a).count()
+            for (desc_a, cat_a, desc_b, cat_b), count in patterns_map.items():
+                count_a = Violation.objects.filter(rule__description=desc_a).count()
                 confidence = round((count / count_a * 100), 1) if count_a > 0 else 0
-                if confidence > 10: # Only significant patterns
+                if confidence > 10:
                     patterns.append({
-                        "from": v_a,
-                        "to": v_b,
+                        "from": desc_a,
+                        "from_category": cat_a,
+                        "to": desc_b,
+                        "to_category": cat_b,
                         "confidence": confidence,
                         "count": count
                     })
