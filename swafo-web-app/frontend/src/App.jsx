@@ -56,6 +56,7 @@ function App() {
           
           <Route path="reports" element={<ReportsAnalytics />} />
           <Route path="patrol-history" element={<PatrolHistory />} />
+          <Route path="patrol-history/:id" element={<MobilePatrolFlow initialScreen="archive" />} />
 
           <Route path="violations/new" element={<RecordViolation />} />
           <Route path="cases" element={<CaseManagement />} />

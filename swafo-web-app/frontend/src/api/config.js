@@ -29,6 +29,7 @@ export const API_ENDPOINTS = {
   // Patrols
   PATROLS_LIST: `${API_BASE_URL}/api/patrols/list/`,
   PATROLS_CREATE: `${API_BASE_URL}/api/patrols/`,
+  PATROLS_HISTORY: `${API_BASE_URL}/api/patrols/list/`,
   PATROLS_END: (id) => `${API_BASE_URL}/api/patrols/${id}/end_session/`,
   
   // Analytics

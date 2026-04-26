@@ -128,9 +128,9 @@ export default function OfficerLayout() {
               <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-black text-[#1A5C3A] uppercase tracking-widest">PATROL</span>
             </div>
 
-            <button className="flex flex-col items-center gap-1.5 px-4 opacity-40">
-              <span className="material-symbols-outlined text-[26px] text-gray-300">warning</span>
-              <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">VIOLATION</span>
+            <button onClick={() => navigate('/officer/violations/new')} className="flex flex-col items-center gap-1.5 px-4 group active:scale-95 transition-all">
+              <span className={`material-symbols-outlined text-[26px] ${location.pathname.includes('violations/new') ? 'text-[#1A5C3A] font-black' : 'text-gray-300'}`}>warning</span>
+              <span className={`text-[9px] font-black uppercase tracking-widest ${location.pathname.includes('violations/new') ? 'text-[#1A5C3A]' : 'text-gray-300'}`}>VIOLATION</span>
             </button>
 
             <button className="flex flex-col items-center gap-1.5 px-4 opacity-40">
