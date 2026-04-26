@@ -19,7 +19,7 @@ export default function StudentViolations() {
           const results = Array.isArray(data) ? data : (data.results || []);
           const transformed = results.map(v => ({
             id: `VR-${new Date(v.timestamp).getFullYear()}-${v.id.toString().padStart(3, '0')}`,
-            status: (v.status === 'RESOLVED' || v.status === 'APPEALED') ? "CLOSED" : "PENDING",
+            status: ['CLOSED', 'DISMISSED'].includes(v.status) ? "CLOSED" : "PENDING",
             title: v.rule_details?.description || v.rule_details?.title || v.rule_details?.rule_code || "Policy Violation",
             category: v.rule_details?.category || "General Regulation",
             ruleDescription: v.rule_details?.description || "Refer to Student Handbook for complete policy text.",
@@ -31,12 +31,12 @@ export default function StudentViolations() {
             location: v.location,
             directorRemarks: v.director_remarks,
             actionBox: {
-              type: (v.status === 'RESOLVED' || v.status === 'APPEALED') ? "resolved" : "action_required",
-              title: (v.status === 'RESOLVED' || v.status === 'APPEALED') 
+              type: ['CLOSED', 'DISMISSED'].includes(v.status) ? "resolved" : "action_required",
+              title: ['CLOSED', 'DISMISSED'].includes(v.status) 
                 ? (v.director_sanction ? "Director's Adjudication" : "Resolution Details") 
-                : "Prescribed Action & Next Steps",
-              description: v.director_sanction || v.prescribed_sanction || v.corrective_action || "Pending review by SWAFO officer",
-              icon: (v.status === 'RESOLVED' || v.status === 'APPEALED') ? "check_circle" : "error"
+                : (v.status === 'DECISION_RENDERED' ? "Sanction Rendered" : "Institutional Review"),
+              description: v.director_sanction || v.prescribed_sanction || v.corrective_action || "Case is being investigated by SWAFO staff.",
+              icon: ['CLOSED', 'DISMISSED'].includes(v.status) ? "check_circle" : (v.status === 'DECISION_RENDERED' ? "gavel" : "hourglass_empty")
             }
           }));
           setViolations(transformed);
@@ -90,35 +90,7 @@ export default function StudentViolations() {
     setShowModal(true);
   };
 
-  const handleAcknowledge = async () => {
-    try {
-      const response = await fetch(API_ENDPOINTS.VIOLATIONS_UPDATE_STATUS(selectedViolation.rawId), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'RESOLVED' })
-      });
-      
-      if (response.ok) {
-        const updated = await response.json();
-        setViolations(prev => prev.map(v => 
-          v.rawId === selectedViolation.rawId ? { 
-            ...v, 
-            status: 'CLOSED', 
-            actionBox: { 
-              ...v.actionBox, 
-              type: 'resolved', 
-              title: 'Resolution Details', 
-              description: 'Case Acknowledged & Formally Closed by Student',
-              icon: 'check_circle' 
-            } 
-          } : v
-        ));
-        setShowModal(false);
-      }
-    } catch (err) {
-      console.error("Acknowledgment error:", err);
-    }
-  };
+
 
   if (loading) return <div className="p-20 text-center font-pjs font-bold text-[#003624] animate-pulse">Synchronizing Records...</div>;
 
@@ -297,9 +269,9 @@ export default function StudentViolations() {
                   {violation.status === 'PENDING' && (
                     <button 
                       onClick={() => handleTakeAction(violation)}
-                      className="px-8 py-3 bg-amber-600 text-white rounded-xl font-pjs font-bold text-[12px] uppercase tracking-widest hover:bg-amber-700 transition-all shadow-lg active:scale-95 shrink-0"
+                      className="px-8 py-3 bg-[#003624] text-white rounded-xl font-pjs font-bold text-[12px] uppercase tracking-widest hover:bg-emerald-900 transition-all shadow-lg active:scale-95 shrink-0"
                     >
-                      Take Action
+                      View Info
                     </button>
                   )}
                 </div>
@@ -329,14 +301,21 @@ export default function StudentViolations() {
               <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-6">
                 <span className="material-symbols-outlined text-[32px] font-bold">gavel</span>
               </div>
-              <h2 className="text-[24px] font-pjs font-extrabold text-[#003624] mb-2 tracking-tight">Case Resolution</h2>
+              <h2 className="text-[24px] font-pjs font-extrabold text-[#003624] mb-2 tracking-tight">Case Details</h2>
               <p className="text-[14px] text-slate-500 font-manrope leading-relaxed mb-8 max-w-[340px]">
-                You are acknowledging the incident record for <span className="font-bold text-slate-900">{selectedViolation?.title}</span>. This will formally index the case as CLOSED.
+                This record is currently in the <span className="font-bold text-[#003624]">Institutional Workflow</span>. You may request an appeal or monitor for updates.
               </p>
               <div className="w-full space-y-3">
-                <button onClick={handleAcknowledge} className="w-full h-[65px] bg-[#003624] text-white rounded-2xl font-pjs font-black text-[13px] uppercase tracking-[0.2em] hover:bg-[#004d33] transition-all shadow-lg shadow-emerald-950/20 active:scale-[0.98]">Acknowledge & Close</button>
-                <button onClick={() => { window.open('mailto:swafo@dlsud.edu.ph?subject=Appeal Request: ' + selectedViolation?.id); setShowModal(false); }} className="w-full h-[65px] border-2 border-slate-100 text-slate-600 rounded-2xl font-pjs font-bold text-[13px] uppercase tracking-[0.2em] hover:bg-slate-50 transition-all active:scale-[0.98]">Initiate Appeal</button>
-                <button onClick={() => setShowModal(false)} className="mt-4 text-slate-400 font-pjs font-bold text-[11px] uppercase tracking-widest hover:text-[#003624] transition-all">Return to Dashboard</button>
+                <button 
+                  onClick={() => { 
+                    window.open(`mailto:swafo@dlsud.edu.ph?subject=Appeal Request: Case ${selectedViolation?.id}&body=Violation: ${selectedViolation?.title}%0D%0AReason for Appeal: `); 
+                    setShowModal(false); 
+                  }} 
+                  className="w-full h-[65px] bg-[#003624] text-white rounded-2xl font-pjs font-black text-[13px] uppercase tracking-[0.2em] hover:bg-[#004d33] transition-all shadow-lg shadow-emerald-950/20 active:scale-[0.98]"
+                >
+                  Initiate Appeal (Email)
+                </button>
+                <button onClick={() => setShowModal(false)} className="w-full h-[65px] border-2 border-slate-100 text-slate-600 rounded-2xl font-pjs font-bold text-[13px] uppercase tracking-[0.2em] hover:bg-slate-50 transition-all active:scale-[0.98]">Close Details</button>
               </div>
             </div>
           </div>

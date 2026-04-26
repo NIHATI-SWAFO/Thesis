@@ -2,6 +2,10 @@ from rest_framework import serializers
 from .models import Violation
 from apps.users.serializers import StudentProfileSerializer
 from apps.handbook.serializers import HandbookEntrySerializer
+try:
+    from constants.locations import get_coordinates
+except ImportError:
+    def get_coordinates(name): return {"lat": 14.3228, "lng": 120.9600}
 
 class ViolationSerializer(serializers.ModelSerializer):
     student_details = StudentProfileSerializer(source='student', read_only=True)
@@ -142,11 +146,12 @@ class ViolationSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'student', 'student_details', 'officer', 'officer_name', 
             'assigned_to', 'assigned_to_details', 'rule', 'rule_details', 
-            'location', 'description', 'evidence_url', 'status', 
+            'location', 'location_name', 'latitude', 'longitude',
+            'description', 'evidence_url', 'status', 
             'case_summary', 'corrective_action', 'prescribed_sanction', 
             'requires_director_decision', 'director_sanction', 'director_remarks', 'timestamp'
         ]
-        read_only_fields = ['id', 'officer', 'timestamp']
+        read_only_fields = ['id', 'officer', 'timestamp', 'latitude', 'longitude']
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -164,5 +169,14 @@ class ViolationSerializer(serializers.ModelSerializer):
         # Priority 2: Use session user if still not set
         if not validated_data.get('officer') and request and request.user.is_authenticated:
             validated_data['officer'] = request.user
+
+        # Auto-populate coordinates from location_name lookup table
+        location_name = validated_data.get('location_name', '') or validated_data.get('location', '')
+        if location_name:
+            if not validated_data.get('location_name'):
+                validated_data['location_name'] = location_name
+            coords = get_coordinates(location_name)
+            validated_data['latitude']  = coords['lat']
+            validated_data['longitude'] = coords['lng']
             
         return super().create(validated_data)

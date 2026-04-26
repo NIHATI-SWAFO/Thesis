@@ -25,8 +25,8 @@
 ### Access Control Matrix (from `research.md` §7)
 | Feature | Student | Officer | Admin | Status |
 |---|---|---|---|---|
-| View own profile | ✅ | ✅ | ✅ | 🟡 Frontend only |
-| View own violations | ✅ | ❌ | ✅ | 🟡 Frontend only |
+| View own profile | ✅ | ✅ | ✅ | ✅ Verified |
+| View own violations | ✅ | ❌ | ✅ | ✅ Verified |
 | Scan student ID | ❌ | ✅ | ✅ | ❌ Not started |
 | Record violation | ❌ | ✅ | ✅ | ❌ Not started |
 | View all violations | ❌ | ✅ | ✅ | ❌ Not started |
@@ -71,7 +71,7 @@
 - [x] Connect to backend to fetch actual per-student violation history
 - [x] Display case summaries and corrective action per violation
 - [x] **Institutional Verdict Visibility:** Students can now view official Director remarks and sanctions in their resolution history.
-- [x] **Persistent Acknowledgment:** Connected "Acknowledge & Close" action to backend API for permanent record closure.
+- [x] **Formal Appeal Logic:** Replaced student "Self-Resolution" with a Director-led workflow and email-based appeal system for institutional integrity.
 
 ### Campus Handbook — *"Download or access university handbook"*
 - [x] State-driven accordion system (expand/collapse)
@@ -117,6 +117,7 @@
 - [x] **Visual Refinement:** ACHIEVED 1:1 parity with target Figma design (Pill badges, borderless clean cards, Teal labels).
 - [x] Map mock data to `DRF` API responses once backend is built.
 - [x] **Adjudication Engine:** Implemented institutional sanction controls (Sanctions 1-4) for §27.3.5 escalations.
+- [x] **5-Status Workflow:** Transitioned cases from binary Pending/Closed to the institutional lifecycle (Open, Awaiting Decision, Decision Rendered, Closed, Dismissed).
 - [x] **Portal-Based Modal:** Overhauled `CaseDetailModal` using `ReactDOM.createPortal` for viewport-centered, scrollable oversight.
 - [x] **Staff Delegation:** Built-in officer assignment logic with automated 'SWAFO Director' labeling for escalated cases.
 - [x] **Persistent Decisions:** Connected "Render Decision" logic to backend storage for formal institutional verdicts.
@@ -124,14 +125,16 @@
 
 ### Reports & Analytics — *"View violation statistics and officer activity"*
 - [x] Implement `ReportsAnalytics.jsx`
-- [x] KPI Bento Grid (Total Violations, Resolved Rate, Patrol Coverage, Response Time)
--- [x] temporal bar charts showing violation trends over time
-+- [x] **Rolling Analytics Window:** Implemented dynamic 7-day temporal window for offense trends (Frontend/Backend Sync).
+- [x] KPI Bento Grid (Total Violations, Active Cases, Closed Cases, Repeat Offenders, Resolution Speed)
+- [x] **Professional Data Visualization:** Replaced hand-drawn SVG charts with `recharts` for defense-grade analytics.
+- [x] **Moving Average Trendline:** Added dynamic 7-Day SMA calculation and rendering to identify true violation patterns.
+- [x] **Chart Annotations:** Implemented 1.5x SMA spike detection, weekend shading, and interactive hover tooltips.
+- [x] **Rolling Analytics Window:** Implemented dynamic 7-day temporal window for offense trends (Frontend/Backend Sync).
 - [x] Multi-segment SVG Donut Charts for status distribution
 - [x] "Officer Intelligence" detail cards with activity heatmaps
 - [x] High-fidelity visual parity (Plus Jakarta Sans, brand green palette)
-- [ ] Connect to backend analytics endpoints for live data visualization
-> **Approach:** Leveraged custom SVG and CSS-based charting for pixel-perfect control over the "Academic Curator" aesthetic.
+- [x] Connect to backend analytics endpoints for live data visualization
+> **Approach:** Leveraged `recharts` for the main temporal trend chart and custom CSS for donut charts to maintain pixel-perfect control over the "Academic Curator" aesthetic.
 
 ### Patrol History & Monitoring — *"Replace SWAFO's current third-party timestamp app"*
 - [x] Implement `PatrolHistory.jsx` with 2-column list/detail layout
@@ -275,10 +278,22 @@
 
 ---
 
-## 9. INSTITUTIONAL STATUS LOGIC
+## 9. INSTITUTIONAL STATUS LOGIC (Updated 5-Status Model)
 
-| Status Label | Database Condition | Administrative Implication |
+### A. Violation Record Lifecycle (Per-Case)
+| Status | Phase | Institutional Meaning |
 |---|---|---|
-| **🟢 COMPLIANT** | `total_violations == 0` OR all violations are `RESOLVED` | Good standing. §14 Clearance is valid. |
-| **⚪ UNDER REVIEW** | `total_violations == 1` AND status is `OPEN/PENDING` | Active investigation. Student is under observation. |
-| **🔴 NON-COMPLIANT** | `total_violations >= 2` | **Habitual Offender Pattern**. Requires immediate SWAFO intervention. |
+| **OPEN** | Investigation | Officer is actively gathering facts and evidence. |
+| **AWAITING_DECISION** | Escalation | Case escalated; waiting for Director's adjudication. |
+| **DECISION_RENDERED** | Fulfillment | Director has issued sanctions; student must fulfill them. |
+| **CLOSED** | Archived (Terminal) | Sanctions fulfilled; record formally closed. |
+| **DISMISSED** | Archived (Terminal) | Case dropped or voided by Director. |
+
+### B. Student Compliance Standing (Per-Student)
+| Status Label | Database Mapping | Administrative Implication |
+|---|---|---|
+| **🟢 GOOD STANDING** | `total_violations == 0` | Student has perfectly clean record. |
+| **🟢 CLEARED RECORD** | `active_violations == 0` & `total > 0`| Student had previous cases, but all are now CLOSED/DISMISSED. |
+| **🟡 HAS OBLIGATION** | `active_violations > 0` | Student has an ongoing case blocking §14 Clearance. |
+| **🔴 REPEAT OFFENDER**| `total_violations >= 2` | Behavioral pattern flagged in backend risk scoring. |
+| **⛔ PROBATION**      | `total_violations >= 5` | Habitual Offender Pattern. Requires immediate SWAFO intervention. |

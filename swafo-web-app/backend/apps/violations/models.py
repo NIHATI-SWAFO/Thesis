@@ -5,11 +5,11 @@ from apps.handbook.models import HandbookEntry
 
 class Violation(models.Model):
     class Status(models.TextChoices):
-        OPEN = 'OPEN', 'Open'
-        UNDER_REVIEW = 'UNDER_REVIEW', 'Under Review'
-        PENDING = 'PENDING', 'Pending Decision'
-        RESOLVED = 'RESOLVED', 'Resolved'
-        APPEALED = 'APPEALED', 'Appealed'
+        OPEN               = 'OPEN',               'Open'
+        AWAITING_DECISION  = 'AWAITING_DECISION',  'Awaiting Decision'
+        DECISION_RENDERED  = 'DECISION_RENDERED',  'Decision Rendered'
+        DISMISSED          = 'DISMISSED',          'Dismissed'
+        CLOSED             = 'CLOSED',             'Closed'
 
     student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name='violations')
     officer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='recorded_violations')
@@ -17,6 +17,9 @@ class Violation(models.Model):
     rule = models.ForeignKey(HandbookEntry, on_delete=models.PROTECT, related_name='violations')
     
     location = models.CharField(max_length=255)
+    location_name = models.CharField(max_length=255, blank=True, help_text="Normalized location key matching the DLSUD_LOCATIONS lookup table")
+    latitude  = models.FloatField(null=True, blank=True, help_text="Auto-populated from location_name lookup")
+    longitude = models.FloatField(null=True, blank=True, help_text="Auto-populated from location_name lookup")
     description = models.TextField()
     evidence_url = models.URLField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
@@ -30,6 +33,7 @@ class Violation(models.Model):
     director_remarks = models.TextField(blank=True, null=True, help_text="Justification/remarks for the Director's decision.")
     
     timestamp = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.student.student_number} - {self.rule.rule_code} ({self.timestamp.date()})"

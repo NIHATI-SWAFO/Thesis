@@ -11,9 +11,20 @@ import {
   MoreHorizontal,
   ShieldAlert,
   BarChart3,
-  Loader2
+  Loader2,
+  X,
+  Search,
+  Clock,
+  Filter,
+  RefreshCw
 } from 'lucide-react';
 import { API_ENDPOINTS } from '../../api/config';
+import {
+  ComposedChart, Area, Line, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer,
+  ReferenceArea, ReferenceLine
+} from 'recharts';
+import ViolationsOverTimeChart from './ViolationsOverTimeChart';
 
 const ICON_MAP = {
   warning: AlertTriangle,
@@ -33,33 +44,38 @@ const COLLEGE_ACRONYMS = {
   "College of Tourism and Hospitality Management": "CTHM"
 };
 
+
+
 export default function ReportsAnalytics() {
   const [timeFilter, setTimeFilter] = useState('Month');
-  const [data, setData] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showPulse, setShowPulse] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   useEffect(() => {
-    fetch(API_ENDPOINTS.OFFICER_DASHBOARD)
+    const range = timeFilter.toLowerCase();
+    setLoading(true);
+    fetch(`${API_ENDPOINTS.ADMIN_DASHBOARD}?range=${range}`)
       .then(res => res.json())
       .then(json => {
-        setData(json);
+        setAnalytics(json);
         setLoading(false);
       })
       .catch(err => {
         console.error("Error fetching analytics:", err);
         setLoading(false);
       });
-  }, []);
+  }, [timeFilter]);
 
   const handleExport = () => {
-    if (!data) return;
+    if (!analytics) return;
     const csvRows = [];
     csvRows.push("KPI,Value,Trend");
-    (data.kpis || []).forEach(k => csvRows.push(`${k.label},${k.value},${k.trend}`));
+    (analytics.kpis || []).forEach(k => csvRows.push(`${k.label},${k.value},${k.trend}`));
     
     csvRows.push("\nCollege,Violation Count");
-    (data.byCollege || []).forEach(c => csvRows.push(`${c.name},${c.count}`));
+    (analytics.byCollege || []).forEach(c => csvRows.push(`${c.name},${c.count}`));
 
     const blob = new Blob([csvRows.join("\n")], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -76,7 +92,6 @@ export default function ReportsAnalytics() {
     setTimeFilter(filter);
     setIsFilterOpen(false);
     setLoading(true);
-    setTimeout(() => setLoading(false), 800); // Simulate re-fetch
   };
 
   if (loading) {
@@ -88,7 +103,7 @@ export default function ReportsAnalytics() {
     );
   }
 
-  const analytics = data || {};
+  if (!analytics && !loading) return <div className="p-20 text-center font-bold">Failed to load compliance intelligence.</div>;
 
   return (
     <div className="max-w-[1400px] mx-auto pb-24 px-8 animate-fade-in font-manrope">
@@ -135,20 +150,33 @@ export default function ReportsAnalytics() {
       </div>
 
       {/* ══════════════════════════════ KPI GRID ══════════════════════════════ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        {(analytics.kpis || []).map((kpi, idx) => {
-          const Icon = ICON_MAP[kpi.icon] || AlertTriangle;
-          const kpiColor = kpi.label.includes('TOTAL') ? 'text-red-600 bg-red-50/50 border-red-100' : 
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
+        {[
+          ...(analytics.kpis || []),
+          {
+            label: 'Resolution Speed',
+            value: analytics.stats?.avg_resolution_hours > 24 
+              ? `${Math.floor(analytics.stats.avg_resolution_hours / 24)}d ${Math.round(analytics.stats.avg_resolution_hours % 24)}h`
+              : `${Math.floor(analytics.stats.avg_resolution_hours)}h ${Math.round((analytics.stats.avg_resolution_hours % 1) * 60)}m`,
+            trend: `${Math.abs(analytics.stats?.resolution_trend || 0)}%`,
+            trendUp: (analytics.stats?.resolution_trend || 0) > 0,
+            icon: 'Clock',
+            isResolution: true
+          }
+        ].map((kpi, idx) => {
+          const Icon = kpi.isResolution ? Clock : (ICON_MAP[kpi.icon] || AlertTriangle);
+          const kpiColor = kpi.label.includes('TOTAL') ? 'text-rose-600 bg-rose-50/50 border-rose-100' : 
                          kpi.label.includes('PENDING') || kpi.label.includes('ACTIVE') ? 'text-amber-600 bg-amber-50/50 border-amber-100' :
-                         kpi.label.includes('RESOLUTION') ? 'text-blue-600 bg-blue-50/50 border-blue-100' : 
+                         kpi.isResolution ? 'text-indigo-600 bg-indigo-50/50 border-indigo-100' : 
                          'text-emerald-600 bg-emerald-50/50 border-emerald-100';
 
           const getInsight = () => {
             const label = kpi.label.toUpperCase();
             if (label.includes('TOTAL')) return kpi.trendUp ? 'Volume Increasing' : 'Compliance Improving';
-            if (label.includes('PENDING') || label.includes('ACTIVE')) return 'Operational Workload';
-            if (label.includes('RESOLUTION')) return kpi.trendUp ? 'Efficiency Rising' : 'Action Required';
+            if (label.includes('PENDING') || label.includes('ACTIVE') || label.includes('ONGOING')) return 'Operational Workload';
+            if (label.includes('CLOSED')) return kpi.trendUp ? 'Efficiency Rising' : 'Action Required';
             if (label.includes('REPEAT')) return kpi.trendUp ? 'Recidivism Risk' : 'Intervention Success';
+            if (label.includes('SPEED') || label.includes('RESOLUTION')) return 'Institutional Efficiency';
             return 'Institutional Trend';
           };
           
@@ -164,11 +192,15 @@ export default function ReportsAnalytics() {
               <div className="flex flex-col gap-2 relative z-10">
                 <span className="text-[48px] font-pjs font-black text-[#003624] tracking-tighter leading-none mb-2">{kpi.value}</span>
                 <div className="flex items-center gap-2">
-                  <span className={`flex items-center text-[11px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${kpi.trendUp && kpi.label.includes('TOTAL') ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                  <span className={`flex items-center text-[11px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${
+                    (kpi.isResolution ? kpi.trendUp : (kpi.trendUp && kpi.label.includes('TOTAL'))) ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'
+                  }`}>
                     {kpi.trendUp ? <TrendingUp size={12} className="mr-1.5" /> : <TrendingDown size={12} className="mr-1.5" />}
-                    {kpi.trend}
+                    {kpi.trend} {kpi.isResolution ? (kpi.trendUp ? 'Slower' : 'Faster') : ''}
                   </span>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none ml-1">{getInsight()}</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none ml-1">
+                    {kpi.isResolution ? (kpi.value.includes('d') ? '• Delayed' : '• Optimal') : getInsight()}
+                  </span>
                 </div>
               </div>
               
@@ -181,36 +213,8 @@ export default function ReportsAnalytics() {
       {/* ══════════════════════════════ MAIN CHARTS ══════════════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
         
-        {/* Violations Over Time - High-Fidelity Bar Chart */}
-        <div className="bg-white rounded-[3rem] p-12 border border-[#f1f5f9] shadow-[0_20px_60px_rgba(0,0,0,0.02)]">
-          <div className="flex justify-between items-center mb-12">
-            <div className="flex items-center gap-3">
-              <BarChart3 className="text-[#004d33] opacity-40" />
-              <h3 className="text-[22px] font-pjs font-black text-[#003624] tracking-tight">Violations Over Time</h3>
-            </div>
-            <button className="text-[13px] font-black text-[#10b981] uppercase tracking-widest hover:underline transition-all">View Detailed View</button>
-          </div>
-          <div className="h-[300px] flex items-end justify-between px-4 gap-4 relative">
-            <div className="absolute top-1/2 left-0 w-full border-t border-slate-100 z-0"></div>
-            { (analytics.temporal || []).map((d, i) => {
-              const maxVal = Math.max(...analytics.temporal.map(t => t.value), 1);
-              const height = (d.value / maxVal) * 100;
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-6 z-10 group cursor-pointer h-[240px] justify-end">
-                  <div className="w-full max-w-[60px] bg-slate-50 rounded-2xl relative overflow-hidden h-full flex items-end">
-                    <div 
-                      className={`w-full rounded-2xl transition-all duration-1000 shadow-sm ease-out origin-bottom ${d.value === maxVal ? 'bg-[#004d33]' : 'bg-[#004d33]/40 group-hover:bg-[#004d33]/60'}`}
-                      style={{ height: `${height}%` }}
-                    >
-                      {d.value === maxVal && <div className="absolute top-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white/30 animate-pulse"></div>}
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-pjs font-black text-slate-400 tracking-wider whitespace-nowrap">{d.day}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {/* Violations Over Time — Seasonality Analysis (7-Day SMA) */}
+        <ViolationsOverTimeChart analytics={analytics} />
 
         {/* Violations by Type - Refined Ranking */}
         <div className="bg-white rounded-[3rem] p-12 border border-[#f1f5f9] shadow-[0_20px_60px_rgba(0,0,0,0.02)]">
@@ -249,23 +253,23 @@ export default function ReportsAnalytics() {
           <div className="flex items-center justify-center gap-20 pt-6">
             <div className="relative w-[240px] h-[240px]">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="40" stroke="#f8fafc" strokeWidth="12" fill="transparent" />
-                {/* Segment 1: CLOSED */}
+                <circle cx="50" cy="50" r="40" stroke="#f8fafc" strokeWidth="16" fill="transparent" />
+                {/* Segment 1: CLOSED (CLOSED/DISMISSED) */}
                 <circle 
                   cx="50" cy="50" r="40" 
-                  stroke="#004d33" strokeWidth="12" 
+                  stroke="#004d33" strokeWidth="16" 
                   strokeDasharray="251.2" 
-                  strokeDashoffset={251.2 * (1 - (analytics.distribution?.[0]?.percentage / 100 || 0))} 
+                  strokeDashoffset={251.2 * (1 - (analytics.distribution?.find(d => d.label === 'CLOSED')?.percentage / 100 || 0))} 
                   fill="transparent"
                   className="transition-all duration-1000 ease-in-out"
                 />
-                {/* Segment 2: PENDING */}
+                {/* Segment 2: ONGOING (OPEN/AWAITING/RENDERED) */}
                 <circle 
                   cx="50" cy="50" r="40" 
-                  stroke="#10b981" strokeWidth="12" 
+                  stroke="#10b981" strokeWidth="16" 
                   strokeDasharray="251.2" 
-                  strokeDashoffset={251.2 * (1 - (analytics.distribution?.[1]?.percentage / 100 || 0))} 
-                  style={{ transform: `rotate(${360 * (analytics.distribution?.[0]?.percentage / 100 || 0)}deg)`, transformOrigin: '50% 50%' }}
+                  strokeDashoffset={251.2 * (1 - (analytics.distribution?.find(d => d.label === 'ONGOING')?.percentage / 100 || 0))} 
+                  style={{ transform: `rotate(${360 * (analytics.distribution?.find(d => d.label === 'CLOSED')?.percentage / 100 || 0)}deg)`, transformOrigin: '50% 50%' }}
                   fill="transparent"
                   className="transition-all duration-1000 delay-200 ease-in-out"
                 />
@@ -274,7 +278,7 @@ export default function ReportsAnalytics() {
                 <span className="text-[48px] font-pjs font-black text-[#003624] tracking-tighter leading-none">
                   {analytics.stats?.active_cases || 0}
                 </span>
-                <span className="text-[12px] font-black text-slate-500 uppercase tracking-widest text-center mt-2">PENDING CASES</span>
+                <span className="text-[12px] font-black text-slate-500 uppercase tracking-widest text-center mt-2">ACTIVE CASES</span>
               </div>
             </div>
             <div className="flex flex-col gap-8">
@@ -300,9 +304,13 @@ export default function ReportsAnalytics() {
               const acronym = COLLEGE_ACRONYMS[col.name] || col.name.split(' ').map(w => w[0]).join('');
               return (
                 <div key={i} className="flex items-center gap-8 group">
-                  <span className="w-16 text-[10px] font-black text-slate-400 tracking-wider group-hover:text-[#003624] transition-colors truncate" title={col.name}>
-                    {acronym}
-                  </span>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[15px] font-bold text-[#475569] group-hover:text-[#003624] transition-colors">{acronym}</span>
+                    {i < 3 && <TrendingUp size={14} className="text-rose-500" />}
+                  </div>
+                  <span className="text-[13px] font-black text-[#003624]">{col.count}</span>
+                </div>
                   <div className="flex-1 h-9 bg-slate-50 rounded-xl overflow-hidden relative border border-slate-100/50">
                     <div 
                       className="h-full bg-emerald-950/80 rounded-xl transition-all duration-1000 ease-out group-hover:bg-[#004d33] group-hover:shadow-[0_0_20px_rgba(0,77,51,0.2)]" 
@@ -322,29 +330,41 @@ export default function ReportsAnalytics() {
       {/* ══════════════════════════════ FIELD intelligence ══════════════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* Top Violation Types List */}
+        {/* Risk Score Leaderboard - Top 10 */}
         <div className="lg:col-span-5 bg-white rounded-[3rem] p-12 border border-[#f1f5f9] shadow-[0_20px_60px_rgba(0,0,0,0.02)]">
-          <h3 className="text-[22px] font-pjs font-black text-[#003624] tracking-tight mb-12">Top Violation Types</h3>
-          <div className="flex flex-col gap-10">
-            {(analytics.topAlerts || []).map((alert, i) => (
+          <div className="flex justify-between items-center mb-12">
+            <div>
+              <h3 className="text-[22px] font-pjs font-black text-[#003624] tracking-tight mb-1">Risk Score Leaderboard</h3>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Top 10 Institutional Risks</p>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
+               <ShieldAlert size={20} />
+            </div>
+          </div>
+          <div className="flex flex-col gap-8">
+            {(analytics.risk_leaderboard || []).map((student, i) => (
               <div key={i} className="flex items-center justify-between group cursor-pointer">
                 <div className="flex items-center gap-6">
-                  <span className="text-[28px] font-pjs font-black text-emerald-100 group-hover:text-emerald-500/20 transition-all duration-500 scale-90 group-hover:scale-100">{alert.rank}</span>
+                  <span className="text-[24px] font-pjs font-black text-slate-100 group-hover:text-rose-500/20 transition-all duration-500 w-8">{i + 1}</span>
                   <div>
-                    <h5 className="text-[17px] font-black text-[#003624] mb-1 group-hover:translate-x-1 transition-transform">{alert.type}</h5>
-                    <p className="text-[13px] font-bold text-slate-400">{alert.location}</p>
+                    <h5 className="text-[15px] font-black text-[#003624] mb-1 group-hover:translate-x-1 transition-transform">{student.name}</h5>
+                    <p className="text-[11px] font-bold text-slate-400">{student.college}</p>
                   </div>
                 </div>
-                <div className={`px-5 py-2.5 border rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${alert.statusColor} group-hover:shadow-sm`}>
-                  {alert.status}
+                <div className={`px-4 py-2 rounded-xl text-[13px] font-black shadow-sm border transition-all duration-300 ${
+                  student.score > 75 ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                  student.score > 50 ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                  'bg-emerald-50 text-emerald-600 border-emerald-100'
+                }`}>
+                  {student.score}
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Patrol Statistics - High Contrast Dark Card */}
-        <div className="lg:col-span-7 bg-[#004d33] rounded-[3rem] p-12 shadow-[0_30px_70px_rgba(0,45,30,0.15)] relative overflow-hidden group">
+        {/* Recidivism Pattern Detection (Behavioral Association Map) */}
+        <div className="lg:col-span-7 bg-[#003624] rounded-[3rem] p-12 shadow-[0_30px_70px_rgba(0,45,30,0.15)] relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl pointer-events-none group-hover:bg-white/10 transition-colors duration-1000"></div>
           
           <div className="flex items-center gap-5 mb-16 relative z-10">
@@ -352,20 +372,106 @@ export default function ReportsAnalytics() {
               <ShieldAlert className="text-white scale-110" size={26} />
             </div>
             <div>
-              <h3 className="text-[26px] font-pjs font-black text-white tracking-tight leading-none mb-1">Patrol Statistics</h3>
-              <p className="text-[13px] font-bold text-emerald-300/40 uppercase tracking-widest">Global Fleet Health</p>
+              <h3 className="text-[26px] font-pjs font-black text-white tracking-tight leading-none mb-1">Recidivism Pattern Detection</h3>
+              <p className="text-[13px] font-bold text-emerald-300/40 uppercase tracking-widest">Behavioral Association Clusters</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-y-16 relative z-10">
-            <PatrolStat label="TOTAL PATROLS" value={analytics.patrol_stats?.total || '0'} subValue="This Semester" />
-            <PatrolStat label="ACTIVE PATROLS" value={analytics.active_patrols || '0'} subValue="Currently on site" glow />
-            <PatrolStat label="PHOTOS CAPTURED" value={analytics.patrol_stats?.photos || '0'} subValue="Evidence stored safely" />
-            <PatrolStat label="AVG DURATION" value={analytics.patrol_stats?.duration || '0m'} subValue="Per sector patrol" />
+          <div className="flex flex-col gap-8 relative z-10">
+            {(analytics.recidivism_patterns || []).map((pattern, i) => (
+              <div key={i} className="flex items-center gap-8 bg-white/5 p-6 rounded-[2rem] border border-white/10 hover:bg-white/10 transition-all group/item">
+                <div className="flex-1 flex flex-col gap-1">
+                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Gateway Offense</span>
+                  <span className="text-[16px] font-bold text-white leading-tight">{pattern.from}</span>
+                </div>
+                
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center gap-2 mb-1">
+                     <div className="w-12 h-[2px] bg-emerald-500/30 relative">
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]"></div>
+                     </div>
+                  </div>
+                  <span className="text-[14px] font-black text-emerald-400">{pattern.confidence}%</span>
+                  <span className="text-[9px] font-bold text-white/40 uppercase">Confidence</span>
+                </div>
+
+                <div className="flex-1 flex flex-col gap-1 text-right">
+                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Subsequent Risk</span>
+                  <span className="text-[16px] font-bold text-white leading-tight">{pattern.to}</span>
+                </div>
+              </div>
+            ))}
+            {(!analytics.recidivism_patterns || analytics.recidivism_patterns.length === 0) && (
+              <div className="text-center py-10 opacity-30">
+                 <p className="text-white font-bold italic">Collecting behavioral association data...</p>
+              </div>
+            )}
           </div>
         </div>
 
+      {/* ══════════════════════════════ COLLAPSIBLE LIVE PULSE BAR ══════════════════════════════ */}
+      <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 transition-all duration-700 ease-in-out z-[100] ${
+        showPulse ? 'w-[90%] max-w-[1400px]' : 'w-[200px]'
+      }`}>
+        <div className={`bg-[#003624]/95 backdrop-blur-xl rounded-[2.5rem] p-4 shadow-[0_20px_80px_rgba(0,0,0,0.3)] flex items-center overflow-hidden border border-white/10 ring-4 ring-black/5 ${
+          showPulse ? 'gap-12' : 'justify-center cursor-pointer hover:scale-105'
+        }`} onClick={() => !showPulse && setShowPulse(true)}>
+          
+          <div className={`flex items-center gap-4 bg-white/10 px-6 py-2.5 rounded-2xl border border-white/10 shrink-0 shadow-inner transition-all ${
+            showPulse ? '' : 'bg-transparent border-none px-0'
+          }`}>
+             <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_15px_#34d399]" />
+             <span className="text-[12px] font-black text-white uppercase tracking-[0.2em] whitespace-nowrap">
+                {showPulse ? 'Operational Pulse' : 'Live Pulse'}
+             </span>
+             {showPulse && (
+               <button 
+                 onClick={(e) => { e.stopPropagation(); setShowPulse(false); }}
+                 className="ml-2 p-1 hover:bg-white/10 rounded-lg transition-colors"
+               >
+                 <X size={14} className="text-white/40" />
+               </button>
+             )}
+          </div>
+          
+          {showPulse && (
+            <div className="flex-1 overflow-hidden relative animate-fade-in">
+               <div className="flex items-center gap-24 whitespace-nowrap animate-marquee py-1">
+                  {(analytics.live_pulse || []).map((p, i) => (
+                    <div key={i} className="flex items-center gap-8 group/pulse">
+                       <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest leading-none mb-1.5 opacity-60">Real-Time Event</span>
+                          <span className="text-[15px] font-bold text-white leading-none tracking-tight">{p.id} • {p.type}</span>
+                       </div>
+                       <div className="h-10 w-px bg-white/10"></div>
+                       <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest leading-none mb-1.5 opacity-60">Location</span>
+                          <span className="text-[15px] font-bold text-white/80 leading-none tracking-tight">{p.location}</span>
+                       </div>
+                       <div className="ml-6 flex items-center gap-3">
+                          <span className="text-[11px] font-black text-[#003624] bg-emerald-400 px-3 py-1 rounded-xl shadow-[0_0_20px_rgba(52,211,153,0.3)]">
+                            {p.time}
+                          </span>
+                       </div>
+                    </div>
+                  ))}
+               </div>
+               <div className="absolute left-0 top-0 h-full w-32 bg-gradient-to-r from-[#003624] to-transparent z-10" />
+               <div className="absolute right-0 top-0 h-full w-32 bg-gradient-to-l from-[#003624] to-transparent z-10" />
+            </div>
+          )}
+          
+          {showPulse && (
+            <div className="shrink-0 flex items-center gap-2 px-6 border-l border-white/10 ml-4">
+               <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]"></div>
+               <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Active</span>
+            </div>
+          )}
+        </div>
       </div>
+
+        <div className="h-32"></div>
+    </div>
     </div>
   );
 }

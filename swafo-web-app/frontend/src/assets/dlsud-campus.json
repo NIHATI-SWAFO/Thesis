@@ -1,0 +1,2436 @@
+{
+  "type": "FeatureCollection",
+  "generator": "overpass-turbo",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+  "timestamp": "2026-04-24T15:11:56Z",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "relation/8505494",
+        "addr:city": "Dasmariñas",
+        "addr:country": "PH",
+        "addr:postcode": "4115",
+        "addr:province": "Cavite",
+        "amenity": "university",
+        "internet_access": "wlan",
+        "isced:level": "6/7/8",
+        "isced:level:1997": "5/6",
+        "landuse": "education",
+        "name": "De La Salle University - Dasmariñas",
+        "opening_hours": "Mo-Sa 06:00-21:00",
+        "opening_hours:covid19": "off",
+        "phone": "+63 46 481 1900;+63 2 8779 5180",
+        "previously": "node:255071797",
+        "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+        "source": "Bing",
+        "type": "multipolygon",
+        "website": "https://www.dlsud.edu.ph/",
+        "wheelchair": "yes",
+        "wikidata": "Q5244550",
+        "wikipedia": "en:De La Salle University – Dasmariñas"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              120.9615241,
+              14.322598
+            ],
+            [
+              120.9611261,
+              14.3230489
+            ],
+            [
+              120.9610489,
+              14.3231424
+            ],
+            [
+              120.960534,
+              14.3227162
+            ],
+            [
+              120.960429,
+              14.3228543
+            ],
+            [
+              120.9591876,
+              14.3244873
+            ],
+            [
+              120.9590034,
+              14.3248307
+            ],
+            [
+              120.9593059,
+              14.3250814
+            ],
+            [
+              120.9597968,
+              14.3254881
+            ],
+            [
+              120.9595123,
+              14.3259588
+            ],
+            [
+              120.9593174,
+              14.3261645
+            ],
+            [
+              120.9589225,
+              14.3264961
+            ],
+            [
+              120.9587965,
+              14.3266857
+            ],
+            [
+              120.9587188,
+              14.3266336
+            ],
+            [
+              120.9586411,
+              14.326617
+            ],
+            [
+              120.958569,
+              14.3266468
+            ],
+            [
+              120.9584696,
+              14.3267315
+            ],
+            [
+              120.9579679,
+              14.3273125
+            ],
+            [
+              120.9577073,
+              14.3274413
+            ],
+            [
+              120.9574912,
+              14.3275684
+            ],
+            [
+              120.957292,
+              14.3275715
+            ],
+            [
+              120.9571729,
+              14.3275733
+            ],
+            [
+              120.957034,
+              14.3276394
+            ],
+            [
+              120.9569758,
+              14.3279247
+            ],
+            [
+              120.9570109,
+              14.3279362
+            ],
+            [
+              120.9570433,
+              14.3279581
+            ],
+            [
+              120.9570663,
+              14.3279892
+            ],
+            [
+              120.9570759,
+              14.3280254
+            ],
+            [
+              120.9570765,
+              14.3281105
+            ],
+            [
+              120.9570666,
+              14.328233
+            ],
+            [
+              120.9570509,
+              14.3282817
+            ],
+            [
+              120.9569953,
+              14.3282648
+            ],
+            [
+              120.9569432,
+              14.328249
+            ],
+            [
+              120.9569589,
+              14.3282004
+            ],
+            [
+              120.9569199,
+              14.3281863
+            ],
+            [
+              120.9569078,
+              14.3282239
+            ],
+            [
+              120.9568792,
+              14.3282168
+            ],
+            [
+              120.9568407,
+              14.3282064
+            ],
+            [
+              120.9568515,
+              14.3281694
+            ],
+            [
+              120.9568069,
+              14.3281537
+            ],
+            [
+              120.9566492,
+              14.3281061
+            ],
+            [
+              120.9566268,
+              14.327994
+            ],
+            [
+              120.9565711,
+              14.327875
+            ],
+            [
+              120.9565367,
+              14.3278186
+            ],
+            [
+              120.9564269,
+              14.3277256
+            ],
+            [
+              120.9561724,
+              14.3275316
+            ],
+            [
+              120.9561273,
+              14.3274855
+            ],
+            [
+              120.9561015,
+              14.3274347
+            ],
+            [
+              120.9560864,
+              14.3273943
+            ],
+            [
+              120.9560756,
+              14.3273319
+            ],
+            [
+              120.9560696,
+              14.32727
+            ],
+            [
+              120.9560817,
+              14.3271704
+            ],
+            [
+              120.9561808,
+              14.3269331
+            ],
+            [
+              120.9562077,
+              14.3268511
+            ],
+            [
+              120.9562895,
+              14.326856
+            ],
+            [
+              120.9562945,
+              14.326779
+            ],
+            [
+              120.956214,
+              14.3267732
+            ],
+            [
+              120.956212,
+              14.3266996
+            ],
+            [
+              120.9561653,
+              14.3265281
+            ],
+            [
+              120.956144,
+              14.3264802
+            ],
+            [
+              120.9561165,
+              14.3264529
+            ],
+            [
+              120.9562748,
+              14.3260202
+            ],
+            [
+              120.9563153,
+              14.325944
+            ],
+            [
+              120.95636,
+              14.3259136
+            ],
+            [
+              120.9564351,
+              14.3258772
+            ],
+            [
+              120.9565702,
+              14.3258323
+            ],
+            [
+              120.9566275,
+              14.3257499
+            ],
+            [
+              120.956722,
+              14.3255102
+            ],
+            [
+              120.9567692,
+              14.3253656
+            ],
+            [
+              120.9568159,
+              14.325275
+            ],
+            [
+              120.9575736,
+              14.3244043
+            ],
+            [
+              120.9578031,
+              14.3239547
+            ],
+            [
+              120.9578284,
+              14.3235063
+            ],
+            [
+              120.957852,
+              14.3232904
+            ],
+            [
+              120.9578561,
+              14.3230555
+            ],
+            [
+              120.9580172,
+              14.3225999
+            ],
+            [
+              120.9580983,
+              14.3224915
+            ],
+            [
+              120.9582589,
+              14.3224444
+            ],
+            [
+              120.958479,
+              14.3223889
+            ],
+            [
+              120.9586818,
+              14.3223096
+            ],
+            [
+              120.9588795,
+              14.3221548
+            ],
+            [
+              120.9593316,
+              14.3218478
+            ],
+            [
+              120.9594639,
+              14.3216802
+            ],
+            [
+              120.9594925,
+              14.3213493
+            ],
+            [
+              120.9593385,
+              14.3211883
+            ],
+            [
+              120.9591884,
+              14.3210223
+            ],
+            [
+              120.9589992,
+              14.3208954
+            ],
+            [
+              120.958849,
+              14.3207725
+            ],
+            [
+              120.9587548,
+              14.3206171
+            ],
+            [
+              120.9586048,
+              14.3204396
+            ],
+            [
+              120.9586121,
+              14.3203955
+            ],
+            [
+              120.9603437,
+              14.3205451
+            ],
+            [
+              120.9606877,
+              14.3205425
+            ],
+            [
+              120.9609626,
+              14.3202969
+            ],
+            [
+              120.9622412,
+              14.3201894
+            ],
+            [
+              120.9635288,
+              14.3200987
+            ],
+            [
+              120.9637377,
+              14.3201019
+            ],
+            [
+              120.9637319,
+              14.3201648
+            ],
+            [
+              120.9637083,
+              14.3203768
+            ],
+            [
+              120.9637014,
+              14.320438
+            ],
+            [
+              120.9636973,
+              14.3204734
+            ],
+            [
+              120.9635748,
+              14.3215734
+            ],
+            [
+              120.9635681,
+              14.3216468
+            ],
+            [
+              120.96356,
+              14.3217347
+            ],
+            [
+              120.9635569,
+              14.3217682
+            ],
+            [
+              120.9635518,
+              14.3218219
+            ],
+            [
+              120.9634986,
+              14.3223761
+            ],
+            [
+              120.9634865,
+              14.3224903
+            ],
+            [
+              120.963478,
+              14.3225699
+            ],
+            [
+              120.9634654,
+              14.3226881
+            ],
+            [
+              120.9629323,
+              14.3225636
+            ],
+            [
+              120.9625002,
+              14.3225012
+            ],
+            [
+              120.9620756,
+              14.3224853
+            ],
+            [
+              120.9618789,
+              14.322478
+            ],
+            [
+              120.9617494,
+              14.3224819
+            ],
+            [
+              120.9616295,
+              14.3225296
+            ],
+            [
+              120.9615241,
+              14.322598
+            ]
+          ]
+        ]
+      },
+      "id": "relation/8505494"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/155931597",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9635569,
+            14.3217682
+          ],
+          [
+            120.96356,
+            14.3217347
+          ],
+          [
+            120.9635681,
+            14.3216468
+          ],
+          [
+            120.9635748,
+            14.3215734
+          ]
+        ]
+      },
+      "id": "way/155931597"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/614183214",
+        "barrier": "wall",
+        "height": "3",
+        "material": "concrete",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.960429,
+            14.3228543
+          ],
+          [
+            120.960534,
+            14.3227162
+          ],
+          [
+            120.9610489,
+            14.3231424
+          ],
+          [
+            120.9611261,
+            14.3230489
+          ]
+        ]
+      },
+      "id": "way/614183214"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/614183222",
+        "barrier": "wall",
+        "height": "3",
+        "material": "concrete",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9615241,
+            14.322598
+          ],
+          [
+            120.9616295,
+            14.3225296
+          ],
+          [
+            120.9617494,
+            14.3224819
+          ],
+          [
+            120.9618789,
+            14.322478
+          ],
+          [
+            120.9620756,
+            14.3224853
+          ],
+          [
+            120.9625002,
+            14.3225012
+          ],
+          [
+            120.9629323,
+            14.3225636
+          ],
+          [
+            120.9634654,
+            14.3226881
+          ]
+        ]
+      },
+      "id": "way/614183222"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/614183224",
+        "barrier": "retaining_wall",
+        "height": "3",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9563153,
+            14.325944
+          ],
+          [
+            120.95636,
+            14.3259136
+          ],
+          [
+            120.9564351,
+            14.3258772
+          ],
+          [
+            120.9565702,
+            14.3258323
+          ],
+          [
+            120.9566275,
+            14.3257499
+          ],
+          [
+            120.956722,
+            14.3255102
+          ],
+          [
+            120.9567692,
+            14.3253656
+          ],
+          [
+            120.9568159,
+            14.325275
+          ],
+          [
+            120.9575736,
+            14.3244043
+          ],
+          [
+            120.9578031,
+            14.3239547
+          ],
+          [
+            120.9578284,
+            14.3235063
+          ],
+          [
+            120.957852,
+            14.3232904
+          ]
+        ]
+      },
+      "id": "way/614183224"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/614183227",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9568069,
+            14.3281537
+          ],
+          [
+            120.9568515,
+            14.3281694
+          ],
+          [
+            120.9568407,
+            14.3282064
+          ],
+          [
+            120.9568792,
+            14.3282168
+          ],
+          [
+            120.9569078,
+            14.3282239
+          ],
+          [
+            120.9569199,
+            14.3281863
+          ],
+          [
+            120.9569589,
+            14.3282004
+          ]
+        ]
+      },
+      "id": "way/614183227"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/614183229",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9569589,
+            14.3282004
+          ],
+          [
+            120.9569432,
+            14.328249
+          ],
+          [
+            120.9569953,
+            14.3282648
+          ],
+          [
+            120.9570509,
+            14.3282817
+          ],
+          [
+            120.9570666,
+            14.328233
+          ]
+        ]
+      },
+      "id": "way/614183229"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/614183231",
+        "barrier": "wall",
+        "height": "3",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9570666,
+            14.328233
+          ],
+          [
+            120.9570765,
+            14.3281105
+          ],
+          [
+            120.9570759,
+            14.3280254
+          ],
+          [
+            120.9570663,
+            14.3279892
+          ],
+          [
+            120.9570433,
+            14.3279581
+          ],
+          [
+            120.9570109,
+            14.3279362
+          ],
+          [
+            120.9569758,
+            14.3279247
+          ]
+        ]
+      },
+      "id": "way/614183231"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/614183236",
+        "barrier": "wall",
+        "height": "3",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9587965,
+            14.3266857
+          ],
+          [
+            120.9589225,
+            14.3264961
+          ],
+          [
+            120.9593174,
+            14.3261645
+          ],
+          [
+            120.9595123,
+            14.3259588
+          ],
+          [
+            120.9597968,
+            14.3254881
+          ]
+        ]
+      },
+      "id": "way/614183236"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/614183240",
+        "barrier": "wall",
+        "height": "3",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9597968,
+            14.3254881
+          ],
+          [
+            120.9593059,
+            14.3250814
+          ],
+          [
+            120.9590034,
+            14.3248307
+          ],
+          [
+            120.9591876,
+            14.3244873
+          ]
+        ]
+      },
+      "id": "way/614183240"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/614183242",
+        "barrier": "wall",
+        "height": "3",
+        "material": "concrete",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9591876,
+            14.3244873
+          ],
+          [
+            120.960429,
+            14.3228543
+          ]
+        ]
+      },
+      "id": "way/614183242"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/617642565",
+        "barrier": "wall",
+        "height": "3",
+        "material": "concrete",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9611261,
+            14.3230489
+          ],
+          [
+            120.9615241,
+            14.322598
+          ]
+        ]
+      },
+      "id": "way/617642565"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/622302496",
+        "barrier": "wall",
+        "height": "3",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9574912,
+            14.3275684
+          ],
+          [
+            120.9577073,
+            14.3274413
+          ],
+          [
+            120.9579679,
+            14.3273125
+          ],
+          [
+            120.9584696,
+            14.3267315
+          ],
+          [
+            120.958569,
+            14.3266468
+          ],
+          [
+            120.9586411,
+            14.326617
+          ],
+          [
+            120.9587188,
+            14.3266336
+          ],
+          [
+            120.9587965,
+            14.3266857
+          ]
+        ]
+      },
+      "id": "way/622302496"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/622302497",
+        "barrier": "wall",
+        "height": "3",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.957292,
+            14.3275715
+          ],
+          [
+            120.9574912,
+            14.3275684
+          ]
+        ]
+      },
+      "id": "way/622302497"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/631911160",
+        "barrier": "wall",
+        "height": "3",
+        "material": "concrete",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9637377,
+            14.3201019
+          ],
+          [
+            120.9635288,
+            14.3200987
+          ],
+          [
+            120.9622412,
+            14.3201894
+          ],
+          [
+            120.9609626,
+            14.3202969
+          ],
+          [
+            120.9606877,
+            14.3205425
+          ],
+          [
+            120.9603437,
+            14.3205451
+          ],
+          [
+            120.9586121,
+            14.3203955
+          ]
+        ]
+      },
+      "id": "way/631911160"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/634450990",
+        "barrier": "wall",
+        "height": "3",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9566492,
+            14.3281061
+          ],
+          [
+            120.9568069,
+            14.3281537
+          ]
+        ]
+      },
+      "id": "way/634450990"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/634450993",
+        "barrier": "retaining_wall",
+        "height": "3",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9561653,
+            14.3265281
+          ],
+          [
+            120.956212,
+            14.3266996
+          ],
+          [
+            120.956214,
+            14.3267732
+          ],
+          [
+            120.9562945,
+            14.326779
+          ],
+          [
+            120.9562895,
+            14.326856
+          ],
+          [
+            120.9562077,
+            14.3268511
+          ],
+          [
+            120.9561808,
+            14.3269331
+          ],
+          [
+            120.9560817,
+            14.3271704
+          ],
+          [
+            120.9560696,
+            14.32727
+          ],
+          [
+            120.9560756,
+            14.3273319
+          ],
+          [
+            120.9560864,
+            14.3273943
+          ],
+          [
+            120.9561015,
+            14.3274347
+          ],
+          [
+            120.9561273,
+            14.3274855
+          ],
+          [
+            120.9561724,
+            14.3275316
+          ],
+          [
+            120.9564269,
+            14.3277256
+          ]
+        ]
+      },
+      "id": "way/634450993"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/680046350",
+        "barrier": "retaining_wall",
+        "height": "3",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9565711,
+            14.327875
+          ],
+          [
+            120.9566268,
+            14.327994
+          ],
+          [
+            120.9566492,
+            14.3281061
+          ]
+        ]
+      },
+      "id": "way/680046350"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/680046351",
+        "barrier": "retaining_wall",
+        "height": "3",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9564269,
+            14.3277256
+          ],
+          [
+            120.9565367,
+            14.3278186
+          ]
+        ]
+      },
+      "id": "way/680046351"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/682352920",
+        "barrier": "retaining_wall",
+        "height": "3",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.957852,
+            14.3232904
+          ],
+          [
+            120.9578561,
+            14.3230555
+          ],
+          [
+            120.9580172,
+            14.3225999
+          ],
+          [
+            120.9580983,
+            14.3224915
+          ],
+          [
+            120.9582589,
+            14.3224444
+          ],
+          [
+            120.958479,
+            14.3223889
+          ],
+          [
+            120.9586818,
+            14.3223096
+          ],
+          [
+            120.9588795,
+            14.3221548
+          ],
+          [
+            120.9593316,
+            14.3218478
+          ],
+          [
+            120.9594639,
+            14.3216802
+          ],
+          [
+            120.9594925,
+            14.3213493
+          ],
+          [
+            120.9593385,
+            14.3211883
+          ],
+          [
+            120.9591884,
+            14.3210223
+          ],
+          [
+            120.9589992,
+            14.3208954
+          ],
+          [
+            120.958849,
+            14.3207725
+          ],
+          [
+            120.9587548,
+            14.3206171
+          ],
+          [
+            120.9586048,
+            14.3204396
+          ],
+          [
+            120.9586121,
+            14.3203955
+          ]
+        ]
+      },
+      "id": "way/682352920"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/802759876",
+        "barrier": "fence",
+        "fence_type": "metal",
+        "height": "2",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9635518,
+            14.3218219
+          ],
+          [
+            120.9635569,
+            14.3217682
+          ]
+        ]
+      },
+      "id": "way/802759876"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/802759877",
+        "barrier": "fence",
+        "fence_type": "metal",
+        "height": "2",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9634986,
+            14.3223761
+          ],
+          [
+            120.9635518,
+            14.3218219
+          ]
+        ]
+      },
+      "id": "way/802759877"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/802759878",
+        "barrier": "wall",
+        "height": "3",
+        "material": "concrete",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9634654,
+            14.3226881
+          ],
+          [
+            120.963478,
+            14.3225699
+          ]
+        ]
+      },
+      "id": "way/802759878"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/802759879",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9636973,
+            14.3204734
+          ],
+          [
+            120.9637014,
+            14.320438
+          ],
+          [
+            120.9637083,
+            14.3203768
+          ],
+          [
+            120.9637319,
+            14.3201648
+          ],
+          [
+            120.9637377,
+            14.3201019
+          ]
+        ]
+      },
+      "id": "way/802759879"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/802759880",
+        "barrier": "fence",
+        "fence_type": "metal",
+        "height": "2",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9635748,
+            14.3215734
+          ],
+          [
+            120.9636973,
+            14.3204734
+          ]
+        ]
+      },
+      "id": "way/802759880"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/802762867",
+        "barrier": "fence",
+        "fence_type": "metal",
+        "height": "2",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.963478,
+            14.3225699
+          ],
+          [
+            120.9634865,
+            14.3224903
+          ],
+          [
+            120.9634986,
+            14.3223761
+          ]
+        ]
+      },
+      "id": "way/802762867"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/978949711",
+        "barrier": "retaining_wall",
+        "height": "3",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9563153,
+            14.325944
+          ],
+          [
+            120.9562748,
+            14.3260202
+          ],
+          [
+            120.9561165,
+            14.3264529
+          ],
+          [
+            120.956144,
+            14.3264802
+          ],
+          [
+            120.9561653,
+            14.3265281
+          ]
+        ]
+      },
+      "id": "way/978949711"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1097296356",
+        "barrier": "wall",
+        "height": "3",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.957034,
+            14.3276394
+          ],
+          [
+            120.9571729,
+            14.3275733
+          ],
+          [
+            120.957292,
+            14.3275715
+          ]
+        ]
+      },
+      "id": "way/1097296356"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1097296357",
+        "admin_level": "10",
+        "boundary": "administrative",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9569758,
+            14.3279247
+          ],
+          [
+            120.957034,
+            14.3276394
+          ]
+        ]
+      },
+      "id": "way/1097296357"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1097296359",
+        "@relations": [
+          {
+            "role": "outer",
+            "rel": 8505494,
+            "reltags": {
+              "addr:city": "Dasmariñas",
+              "addr:country": "PH",
+              "addr:postcode": "4115",
+              "addr:province": "Cavite",
+              "amenity": "university",
+              "internet_access": "wlan",
+              "isced:level": "6/7/8",
+              "isced:level:1997": "5/6",
+              "landuse": "education",
+              "name": "De La Salle University - Dasmariñas",
+              "opening_hours": "Mo-Sa 06:00-21:00",
+              "opening_hours:covid19": "off",
+              "phone": "+63 46 481 1900;+63 2 8779 5180",
+              "previously": "node:255071797",
+              "short_name": "DLSU-D;DLSUD;DLSU–D;DLS U-D;DLS UD; DLS U–D",
+              "source": "Bing",
+              "type": "multipolygon",
+              "website": "https://www.dlsud.edu.ph/",
+              "wheelchair": "yes",
+              "wikidata": "Q5244550",
+              "wikipedia": "en:De La Salle University – Dasmariñas"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.9565367,
+            14.3278186
+          ],
+          [
+            120.9565711,
+            14.327875
+          ]
+        ]
+      },
+      "id": "way/1097296359"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/671179744",
+        "access": "no",
+        "barrier": "gate",
+        "name": "Magdalo Gate",
+        "ref": "1"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.9635681,
+          14.3216468
+        ]
+      },
+      "id": "node/671179744"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/1682747222",
+        "access": "permissive",
+        "barrier": "gate",
+        "ref": "3"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.9568792,
+          14.3282168
+        ]
+      },
+      "id": "node/1682747222"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5585400854",
+        "access": "private",
+        "barrier": "gate",
+        "man_made": "surveillance",
+        "ref": "4",
+        "surveillance": "outdoor",
+        "surveillance:type": "guard",
+        "surveillance:zone": "traffic"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.9637014,
+          14.320438
+        ]
+      },
+      "id": "node/5585400854"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5586182266",
+        "access": "private",
+        "barrier": "turnstile",
+        "man_made": "surveillance",
+        "name": "Magdalo Gate",
+        "ref": "1",
+        "surveillance": "indoor",
+        "surveillance:type": "guard",
+        "surveillance:zone": "traffic"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.96356,
+          14.3217347
+        ]
+      },
+      "id": "node/5586182266"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13568856346",
+        "access": "no",
+        "barrier": "gate",
+        "colour": "black",
+        "locked": "yes",
+        "material": "metal",
+        "wheelchair": "no"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120.9634865,
+          14.3224903
+        ]
+      },
+      "id": "node/13568856346"
+    }
+  ]
+}

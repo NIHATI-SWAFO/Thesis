@@ -1,12 +1,20 @@
 from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from collections import defaultdict
 from apps.users.models import StudentProfile
 from apps.handbook.models import HandbookEntry
 from .models import Violation
 from .serializers import ViolationSerializer
+try:
+    from constants.locations import get_all_location_names, get_locations_by_category
+except ImportError:
+    def get_all_location_names(): return []
+    def get_locations_by_category(): return {}
 
 class ViolationAssessmentView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -188,7 +196,7 @@ class ViolationAssignView(APIView):
             officer = User.objects.get(email=email)
             
             violation.assigned_to = officer
-            violation.status = 'UNDER_REVIEW'
+            # Keep status as OPEN during investigation phase
             violation.save()
             
             return Response({
@@ -200,3 +208,107 @@ class ViolationAssignView(APIView):
             return Response({"error": "Violation not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class HeatmapView(APIView):
+    """
+    Returns violation data for Mapbox heatmap + cluster layers.
+
+    GPS-READY ARCHITECTURE:
+        GeoJSON returns ONE feature per violation (not aggregated).
+        Mapbox clusters them client-side — works identically whether
+        violations come from named-location lookup OR real GPS coordinates.
+
+    Query params (all optional):
+        date_from  — YYYY-MM-DD
+        date_to    — YYYY-MM-DD
+        category   — minor / major / traffic
+
+    Returns:
+        geojson          — GeoJSON FeatureCollection, one Point per violation
+        location_summary — [{name, lat, lng, count}] aggregated for stats chips
+        total_violations — int
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        violations = Violation.objects.exclude(latitude=None).exclude(longitude=None) \
+                                      .select_related('rule', 'student')
+
+        date_from = request.query_params.get('date_from')
+        date_to   = request.query_params.get('date_to')
+        category  = request.query_params.get('category', '').lower()
+
+        if date_from:
+            violations = violations.filter(timestamp__date__gte=date_from)
+        if date_to:
+            violations = violations.filter(timestamp__date__lte=date_to)
+        if category == 'minor':
+            violations = violations.filter(rule__category__icontains='minor')
+        elif category == 'major':
+            violations = violations.filter(rule__category__icontains='major')
+        elif category == 'traffic':
+            violations = violations.filter(rule__category__icontains='traffic')
+
+        # ── One GeoJSON feature per violation ──────────────────────────────
+        # ⚠️ Mapbox coordinate order: [lng, lat] — NOT [lat, lng]
+        # Mapbox clusters these client-side via clusterRadius.
+        # Works with exact named-location coords today, and real GPS tomorrow.
+        features = []
+        for v in violations:
+            features.append({
+                "type": "Feature",
+                "properties": {
+                    "id":            v.id,
+                    "location_name": v.location_name or v.location or "Unknown",
+                    "category":      v.rule.category if v.rule else "Unknown",
+                    "rule_code":     v.rule.rule_code if v.rule else "",
+                    "status":        v.status,
+                    "timestamp":     v.timestamp.strftime('%Y-%m-%d'),
+                },
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [v.longitude, v.latitude],  # [lng, lat] for Mapbox
+                }
+            })
+
+        geojson = {"type": "FeatureCollection", "features": features}
+
+        # ── Aggregated location_summary for stats chips ─────────────────────
+        location_counts = defaultdict(lambda: {'lat': 0.0, 'lng': 0.0, 'count': 0, 'name': ''})
+        for v in violations:
+            key = v.location_name or v.location or 'Unknown'
+            location_counts[key]['lat']    = v.latitude
+            location_counts[key]['lng']    = v.longitude
+            location_counts[key]['count'] += 1
+            location_counts[key]['name']   = key
+
+        location_summary = sorted(
+            [{'name': d['name'], 'lat': d['lat'], 'lng': d['lng'], 'count': d['count']}
+             for d in location_counts.values()],
+            key=lambda x: -x['count']
+        )
+
+        return Response({
+            'geojson':          geojson,
+            'location_summary': location_summary,
+            'total_violations': len(features),
+        })
+
+
+class LocationsView(APIView):
+    """
+    Returns all DLSU-D patrol location names for the violation form dropdown.
+    Supports flat list or grouped by category.
+
+    Query params:
+        grouped=true  — returns {"locations": {"Category": ["name1", ...]}}
+        grouped=false — returns {"locations": ["name1", ...]}
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        grouped = request.query_params.get('grouped', 'false').lower() == 'true'
+        if grouped:
+            return Response({'locations': get_locations_by_category()})
+        return Response({'locations': get_all_location_names()})

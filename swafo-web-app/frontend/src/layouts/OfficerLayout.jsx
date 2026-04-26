@@ -11,6 +11,7 @@ const navItems = [
   { name: 'Student Records', path: '/officer/students', icon: 'people' },
   { name: 'Reports & Analytics', path: '/officer/reports', icon: 'bar_chart' },
   { name: 'Patrol History', path: '/officer/patrol-history', icon: 'history' },
+  { name: 'Campus Map', path: '/officer/campus-map', icon: 'map' },
 ];
 
 export default function OfficerLayout() {
@@ -32,7 +33,7 @@ export default function OfficerLayout() {
     <div className="flex h-screen bg-portal-bg font-manrope selection:bg-portal-primary selection:text-white">
       
       {/* ══════════════════════════════ SIDEBAR ══════════════════════════════ */}
-      <aside className="fixed left-0 top-0 h-screen w-[270px] z-50 bg-[#F7F9FB] flex flex-col py-8 shadow-[20px_0_60px_rgba(0,0,0,0.03)] border-r border-emerald-50/50 rounded-r-[3.5rem]">
+      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-[270px] z-50 bg-[#F7F9FB] flex-col py-8 shadow-[20px_0_60px_rgba(0,0,0,0.03)] border-r border-emerald-50/50 rounded-r-[3.5rem]">
         
         {/* Brand */}
         <div className="px-8 mb-8 flex items-center gap-3">
@@ -86,10 +87,10 @@ export default function OfficerLayout() {
       </aside>
 
       {/* ══════════════════════════════ CONTENT AREA ══════════════════════════════ */}
-      <div className="flex-1 ml-[270px] flex flex-col h-full overflow-hidden shrink-0">
+      <div className="flex-1 lg:ml-[270px] flex flex-col h-full overflow-hidden shrink-0">
         
         {/* Topbar: Translucent Emerald Glass */}
-        <header className="sticky top-0 h-[80px] px-10 bg-[#003624]/90 backdrop-blur-xl flex items-center justify-between z-40 relative shrink-0 border-b border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.15)]">
+        <header className="hidden lg:flex sticky top-0 h-[80px] px-10 bg-[#003624]/90 backdrop-blur-xl items-center justify-between z-40 relative shrink-0 border-b border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.15)]">
           <div className="flex-1 max-w-[500px] relative group">
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-[20px] group-focus-within:text-emerald-400 transition-colors">search</span>
             <input
@@ -181,7 +182,7 @@ export default function OfficerLayout() {
         </header>
 
         {/* Scrollable Page Content */}
-        <main className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto lg:px-10 lg:py-8 custom-scrollbar">
           <Outlet />
         </main>
       </div>

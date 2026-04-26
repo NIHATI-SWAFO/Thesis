@@ -23,6 +23,8 @@ export const API_ENDPOINTS = {
   VIOLATIONS_ASSESS: `${API_BASE_URL}/api/violations/assess/`,
   VIOLATIONS_ASSIGN: (id) => `${API_BASE_URL}/api/violations/${id}/assign/`,
   VIOLATIONS_UPDATE_STATUS: (id) => `${API_BASE_URL}/api/violations/${id}/update-status/`,
+  VIOLATIONS_HEATMAP: `${API_BASE_URL}/api/violations/heatmap/`,
+  VIOLATIONS_LOCATIONS: `${API_BASE_URL}/api/violations/locations/`,
   
   // Patrols
   PATROLS_LIST: `${API_BASE_URL}/api/patrols/list/`,
