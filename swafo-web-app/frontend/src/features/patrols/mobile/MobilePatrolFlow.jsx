@@ -299,6 +299,12 @@ export default function MobilePatrolFlow({ initialScreen = 'selectArea' }) {
       {location.pathname.endsWith('live') && <LiveMapScreen onEnd={handleEndPatrol} onExpand={() => navigate('/officer/patrols/expanded-map')} onBack={() => navigate('/officer/patrols/select')} seconds={seconds} isPatrolActive={isPatrolActive} setIsPatrolActive={handleStartPatrol} capturedPhotos={capturedPhotos} onCamera={() => cameraInputRef.current?.click()} />}
       {location.pathname.endsWith('summary') && <DynamicSummaryScreen onSave={handleSaveToHistory} onBack={() => navigate('/officer/patrols/live')} sessionData={activeSession} isSaving={isSaving} />}
       {location.pathname.endsWith('expanded-map') && <FullMapScreen onBack={() => navigate('/officer/patrols/live')} />}
+      {location.pathname.includes('patrol-history/') && (() => {
+        const pathId = location.pathname.split('patrol-history/')[1];
+        const allHistory = JSON.parse(localStorage.getItem('swafo_local_history') || '[]');
+        const archived = allHistory.find(p => String(p.id) === pathId) || allHistory[0] || {};
+        return <DynamicSummaryScreen onSave={() => navigate('/officer/patrols')} onBack={() => navigate('/officer/patrol-history')} sessionData={archived} isSaving={false} />;
+      })()}
     </div>
   );
 }
