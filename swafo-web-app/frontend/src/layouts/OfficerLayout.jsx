@@ -11,6 +11,7 @@ const navItems = [
   { name: 'Student Records', path: '/officer/students', icon: 'people' },
   { name: 'Reports & Analytics', path: '/officer/reports', icon: 'bar_chart' },
   { name: 'Patrol History', path: '/officer/patrol-history', icon: 'history' },
+  { name: 'Campus Map', path: '/officer/campus-map', icon: 'map' },
 ];
 
 export default function OfficerLayout() {
