@@ -19,6 +19,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { API_ENDPOINTS } from '../../api/config';
+import { useColleges } from '../../hooks/useColleges';
 import {
   ComposedChart, Area, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
@@ -48,25 +49,29 @@ const COLLEGE_ACRONYMS = {
 
 export default function ReportsAnalytics() {
   const [timeFilter, setTimeFilter] = useState('Month');
+  const [collegeFilter, setCollegeFilter] = useState('');
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPulse, setShowPulse] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const { colleges } = useColleges();
 
   useEffect(() => {
     const range = timeFilter.toLowerCase();
     setLoading(true);
-    fetch(`${API_ENDPOINTS.ADMIN_DASHBOARD}?range=${range}`)
+    const params = new URLSearchParams({ range });
+    if (collegeFilter) params.set('college', collegeFilter);
+    fetch(`${API_ENDPOINTS.ADMIN_DASHBOARD}?${params.toString()}`)
       .then(res => res.json())
       .then(json => {
         setAnalytics(json);
         setLoading(false);
       })
       .catch(err => {
-        console.error("Error fetching analytics:", err);
+        console.error('Error fetching analytics:', err);
         setLoading(false);
       });
-  }, [timeFilter]);
+  }, [timeFilter, collegeFilter]);
 
   const handleExport = () => {
     if (!analytics) return;
@@ -116,9 +121,21 @@ export default function ReportsAnalytics() {
             A comprehensive diagnostic overview of institutional compliance, patrol efficiency, and behavioral trends across campus colleges.
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
+          {/* College Filter */}
+          <select
+            value={collegeFilter}
+            onChange={e => setCollegeFilter(e.target.value)}
+            className="px-5 py-3 bg-white border border-[#f1f5f9] rounded-2xl text-[15px] font-bold text-[#475569] shadow-sm hover:bg-gray-50 transition-all outline-none cursor-pointer"
+          >
+            <option value="">All Colleges</option>
+            {colleges.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+
           <div className="relative">
-            <button 
+            <button
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className="flex items-center gap-3 px-6 py-3 bg-white border border-[#f1f5f9] rounded-2xl text-[15px] font-bold text-[#475569] shadow-sm hover:bg-gray-50 transition-all"
             >
@@ -128,7 +145,7 @@ export default function ReportsAnalytics() {
             {isFilterOpen && (
               <div className="absolute top-full mt-2 right-0 w-[200px] bg-white border border-slate-100 rounded-2xl shadow-xl z-50 p-2 animate-in fade-in slide-in-from-top-2">
                 {['Month', 'Year'].map(f => (
-                  <button 
+                  <button
                     key={f}
                     onClick={() => changeFilter(f)}
                     className={`w-full text-left px-4 py-3 rounded-xl text-[14px] font-bold transition-colors ${timeFilter === f ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50'}`}
@@ -139,12 +156,22 @@ export default function ReportsAnalytics() {
               </div>
             )}
           </div>
-          <button 
+          {collegeFilter && (
+            <a
+              href={API_ENDPOINTS.COLLEGE_REPORT(collegeFilter)}
+              download
+              className="flex items-center gap-3 px-8 py-3 bg-rose-600 text-white rounded-2xl text-[15px] font-black shadow-lg shadow-rose-600/20 hover:scale-[1.02] active:scale-95 transition-all"
+            >
+              <Download size={18} />
+              Generate College Report
+            </a>
+          )}
+          <button
             onClick={handleExport}
             className="flex items-center gap-3 px-8 py-3 bg-[#004d33] text-white rounded-2xl text-[15px] font-black shadow-lg shadow-[#004d33]/20 hover:scale-[1.02] active:scale-95 transition-all"
           >
             <Download size={18} />
-            Export Report
+            Export CSV
           </button>
         </div>
       </div>

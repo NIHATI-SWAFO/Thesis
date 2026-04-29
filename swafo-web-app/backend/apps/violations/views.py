@@ -162,15 +162,19 @@ class ViolationListView(generics.ListAPIView):
     def get_queryset(self):
         email = self.request.query_params.get('email')
         student_id = self.request.query_params.get('student_id')
-        
+        college = self.request.query_params.get('college')
+
         queryset = Violation.objects.all()
-        
+
         if email:
             queryset = queryset.filter(student__user__email__iexact=email)
         if student_id:
             queryset = queryset.filter(student__student_number=student_id)
-            
+        if college:
+            queryset = queryset.filter(student__course__iexact=college)
+
         return queryset.order_by('-timestamp')
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ViolationUpdateStatusView(generics.UpdateAPIView):

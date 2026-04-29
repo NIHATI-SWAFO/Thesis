@@ -1,5 +1,6 @@
 from rest_framework import permissions, generics
 from rest_framework.views import APIView
+from django.db.models import Count
 from rest_framework.response import Response
 from rest_framework import status
 from .models import StudentProfile, User
@@ -43,8 +44,26 @@ class ProfileByEmailView(APIView):
 
 class StudentListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
-    queryset = StudentProfile.objects.all().order_by('user__full_name')
     serializer_class = StudentProfileSerializer
+
+    def get_queryset(self):
+        queryset = StudentProfile.objects.all().order_by('user__full_name')
+        college = self.request.query_params.get('college')
+        if college:
+            queryset = queryset.filter(course__iexact=college)
+        return queryset
+
+class CollegeListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        colleges = (
+            StudentProfile.objects
+            .values_list('course', flat=True)
+            .distinct()
+            .order_by('course')
+        )
+        return Response({'colleges': [c for c in colleges if c]})
 
 class UserListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]

@@ -2,33 +2,40 @@ import React, { useState, useMemo, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../api/config';
+import { useColleges } from '../../hooks/useColleges';
 
 export default function CaseManagement({ role }) {
   const { user } = useAuth();
   const [violations, setViolations] = useState([]);
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterTab, setFilterTab] = useState('all'); // 'all' or 'mine'
+  const [filterTab, setFilterTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [priorityFilter, setPriorityFilter] = useState('All Severity');
-  
+  const [collegeFilter, setCollegeFilter] = useState('');
+  const { colleges } = useColleges();
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
   useEffect(() => {
-    fetch(API_ENDPOINTS.VIOLATIONS_LIST)
+    const url = collegeFilter
+      ? `${API_ENDPOINTS.VIOLATIONS_LIST}?college=${encodeURIComponent(collegeFilter)}`
+      : API_ENDPOINTS.VIOLATIONS_LIST;
+    setLoading(true);
+    fetch(url)
       .then(res => res.json())
       .then(data => {
         setViolations(Array.isArray(data) ? data : (data.results || []));
         setLoading(false);
       })
       .catch(err => {
-        console.error("Error fetching violations:", err);
+        console.error('Error fetching violations:', err);
         setLoading(false);
       });
-  }, []);
+  }, [collegeFilter]);
 
   useEffect(() => {
     if (role === 'admin') {
@@ -50,36 +57,36 @@ export default function CaseManagement({ role }) {
     const results = violations.filter(v => {
       const studentName = v.student_details?.user_details?.full_name || '';
       const caseId = `#CS-${v.id.toString().padStart(5, '0')}`;
-      
-      const matchesSearch = studentName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           caseId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           v.student_details?.student_number?.includes(searchQuery);
-      
-      const statusMap = { 
+
+      const matchesSearch = studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        caseId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        v.student_details?.student_number?.includes(searchQuery);
+
+      const statusMap = {
         'All Status': 'ALL',
-        'Open': 'OPEN', 
-        'Awaiting Decision': 'AWAITING_DECISION', 
-        'Decision Rendered': 'DECISION_RENDERED', 
+        'Open': 'OPEN',
+        'Awaiting Decision': 'AWAITING_DECISION',
+        'Decision Rendered': 'DECISION_RENDERED',
         'Dismissed': 'DISMISSED',
-        'Closed': 'CLOSED' 
+        'Closed': 'CLOSED'
       };
       const matchesStatus = statusFilter === 'All Status' || v.status === statusMap[statusFilter];
-      
+
       const severity = getPriority(v);
       const matchesPriority = priorityFilter === 'All Severity' || severity === priorityFilter;
-      
+
       // Assignment Filter:
       // - Officers: 'mine' tab shows only cases assigned to them
       // - Admins (Director): 'mine' tab shows cases assigned to them PLUS all active Director Decision cases
       const isDirectorDecisionCase = v.requires_director_decision && !['CLOSED', 'DISMISSED'].includes(v.status);
-      const matchesTab = filterTab === 'all' 
+      const matchesTab = filterTab === 'all'
         || (v.assigned_to_details?.email === user?.email)
         || (role === 'admin' && isDirectorDecisionCase);
-      
+
       return matchesSearch && matchesStatus && matchesPriority && matchesTab;
 
     });
-    
+
     return results;
   }, [violations, searchQuery, statusFilter, priorityFilter, filterTab, user]);
 
@@ -118,7 +125,7 @@ export default function CaseManagement({ role }) {
 
   const handleStatusUpdate = (caseId, newStatus) => {
     const v = violations.find(v => v.id === caseId);
-    
+
     // AUTO-ADJUDICATION LOGIC:
     // If submitting for decision and it's a "Clear Table" case, bypass the Director queue
     if (newStatus === 'AWAITING_DECISION' && v && !v.requires_director_decision) {
@@ -132,17 +139,17 @@ export default function CaseManagement({ role }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus })
     })
-    .then(res => res.json())
-    .then(updated => {
-      setViolations(prev => prev.map(v => v.id === caseId ? { ...v, status: newStatus } : v));
-      // Sync modal state
-      setSelectedCase(prev => prev ? { ...prev, status: newStatus } : null);
-      setIsUpdating(false);
-    })
-    .catch(err => {
-      console.error("Update error:", err);
-      setIsUpdating(false);
-    });
+      .then(res => res.json())
+      .then(updated => {
+        setViolations(prev => prev.map(v => v.id === caseId ? { ...v, status: newStatus } : v));
+        // Sync modal state
+        setSelectedCase(prev => prev ? { ...prev, status: newStatus } : null);
+        setIsUpdating(false);
+      })
+      .catch(err => {
+        console.error("Update error:", err);
+        setIsUpdating(false);
+      });
   };
 
   const handleRenderDecision = (caseId, sanction, remarks) => {
@@ -150,22 +157,22 @@ export default function CaseManagement({ role }) {
     fetch(API_ENDPOINTS.VIOLATIONS_UPDATE_STATUS(caseId), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         status: 'DECISION_RENDERED',
         director_sanction: sanction,
         director_remarks: remarks
       })
     })
-    .then(res => res.json())
-    .then(updated => {
-      setViolations(prev => prev.map(v => v.id === caseId ? updated : v));
-      setSelectedCase(updated);
-      setIsUpdating(false);
-    })
-    .catch(err => {
-      console.error("Adjudication error:", err);
-      setIsUpdating(false);
-    });
+      .then(res => res.json())
+      .then(updated => {
+        setViolations(prev => prev.map(v => v.id === caseId ? updated : v));
+        setSelectedCase(updated);
+        setIsUpdating(false);
+      })
+      .catch(err => {
+        console.error("Adjudication error:", err);
+        setIsUpdating(false);
+      });
   };
 
   const handleClaimCase = (caseId) => {
@@ -175,24 +182,24 @@ export default function CaseManagement({ role }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: user?.email })
     })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        const assignment = { email: user?.email, full_name: user?.name || 'System Officer' };
-        setViolations(prev => prev.map(v => 
-          v.id === caseId 
-            ? { ...v, assigned_to_details: assignment } 
-            : v
-        ));
-        // Sync modal state
-        setSelectedCase(prev => prev ? { ...prev, assigned_to_details: assignment } : null);
-      }
-      setIsUpdating(false);
-    })
-    .catch(err => {
-      console.error("Assignment error:", err);
-      setIsUpdating(false);
-    });
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          const assignment = { email: user?.email, full_name: user?.name || 'System Officer' };
+          setViolations(prev => prev.map(v =>
+            v.id === caseId
+              ? { ...v, assigned_to_details: assignment }
+              : v
+          ));
+          // Sync modal state
+          setSelectedCase(prev => prev ? { ...prev, assigned_to_details: assignment } : null);
+        }
+        setIsUpdating(false);
+      })
+      .catch(err => {
+        console.error("Assignment error:", err);
+        setIsUpdating(false);
+      });
   };
 
   const handleAssignCase = (caseId, officerEmail) => {
@@ -202,25 +209,25 @@ export default function CaseManagement({ role }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: officerEmail })
     })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        const officer = officers.find(o => o.email === officerEmail);
-        const assignment = { email: officerEmail, full_name: officer?.full_name || 'System Officer' };
-        setViolations(prev => prev.map(v => 
-          v.id === caseId 
-            ? { ...v, assigned_to_details: assignment } 
-            : v
-        ));
-        // Sync modal state
-        setSelectedCase(prev => prev ? { ...prev, assigned_to_details: assignment } : null);
-      }
-      setIsUpdating(false);
-    })
-    .catch(err => {
-      console.error("Assignment error:", err);
-      setIsUpdating(false);
-    });
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          const officer = officers.find(o => o.email === officerEmail);
+          const assignment = { email: officerEmail, full_name: officer?.full_name || 'System Officer' };
+          setViolations(prev => prev.map(v =>
+            v.id === caseId
+              ? { ...v, assigned_to_details: assignment }
+              : v
+          ));
+          // Sync modal state
+          setSelectedCase(prev => prev ? { ...prev, assigned_to_details: assignment } : null);
+        }
+        setIsUpdating(false);
+      })
+      .catch(err => {
+        console.error("Assignment error:", err);
+        setIsUpdating(false);
+      });
   };
 
   const exportToCSV = () => {
@@ -234,8 +241,8 @@ export default function CaseManagement({ role }) {
       v.status
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\n" 
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + headers.join(",") + "\n"
       + rows.map(e => e.join(",")).join("\n");
 
     const encodedUri = encodeURI(csvContent);
@@ -265,7 +272,7 @@ export default function CaseManagement({ role }) {
           <h1 className="text-[36px] font-pjs font-extrabold text-[#003624] tracking-tight">
             Case Management
           </h1>
-          
+
           <div className="flex p-1.5 bg-emerald-50/50 rounded-2xl border border-emerald-100/50 shadow-sm">
             <button onClick={() => setFilterTab('all')} className={`px-8 py-2.5 rounded-xl text-[14px] font-bold transition-all ${filterTab === 'all' ? 'bg-[#003624] text-white shadow-lg' : 'text-emerald-700'}`}>
               {role === 'admin' ? 'All Institutional Cases' : 'All Cases'}
@@ -276,7 +283,7 @@ export default function CaseManagement({ role }) {
           </div>
         </div>
       </div>
-      
+
       {role === 'admin' && violations.some(v => v.requires_director_decision && !['CLOSED', 'DISMISSED', 'DECISION_RENDERED'].includes(v.status)) && (
         <div className="mb-12 animate-in slide-in-from-top-4 duration-500">
           <div className="bg-rose-50 border border-rose-100 rounded-[2.5rem] p-10 flex flex-col md:flex-row items-center gap-10 shadow-xl shadow-rose-900/5">
@@ -286,7 +293,7 @@ export default function CaseManagement({ role }) {
             <div className="flex-1">
               <h3 className="text-[24px] font-pjs font-bold text-rose-900 mb-2">Institutional Adjudication Required</h3>
               <p className="text-[15px] text-rose-700/80 font-medium leading-relaxed max-w-[700px]">
-                There are active cases flagged under <strong>Section 27.3.5 (Multi-Nature Major Offenses)</strong>. 
+                There are active cases flagged under <strong>Section 27.3.5 (Multi-Nature Major Offenses)</strong>.
                 These require a formal Director's decision to determine final sanctions.
               </p>
             </div>
@@ -307,7 +314,7 @@ export default function CaseManagement({ role }) {
         const thisMonthCases = violations.filter(v => new Date(v.timestamp).getMonth() === now.getMonth()).length;
         const lastMonthCases = violations.filter(v => new Date(v.timestamp).getMonth() === (now.getMonth() - 1 + 12) % 12).length;
         const growth = lastMonthCases === 0 ? (thisMonthCases > 0 ? 100 : 0) : Math.round(((thisMonthCases - lastMonthCases) / lastMonthCases) * 100);
-        
+
         const majorUnderReview = violations.filter(v => v.status === 'OPEN' && getPriority(v) === 'Major').length;
         const resolutionRate = stats.total === 0 ? 0 : Math.round((stats.closed / stats.total) * 100);
         const openLoad = stats.total === 0 ? 0 : Math.round((stats.open / stats.total) * 100);
@@ -358,17 +365,28 @@ export default function CaseManagement({ role }) {
 
       <div className="flex flex-col xl:flex-row items-start gap-10">
         <div className="flex-1 w-full flex flex-col gap-8">
-          
+
           <div className="bg-[#F0F4F4]/80 p-3 rounded-[2rem] flex flex-col md:flex-row gap-4 items-center">
             <div className="relative flex-1 w-full group">
               <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-gray-400">search</span>
               <input type="text" placeholder="Search student name or ID..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white rounded-2xl py-3.5 pl-14 pr-4 text-[14px] font-manrope font-medium outline-none border-2 border-transparent focus:border-[#003624] transition-all shadow-sm h-[52px]" />
             </div>
-            
-            <div className="flex gap-3 w-full md:w-auto">
-              <select 
-                value={statusFilter} 
-                onChange={(e) => setStatusFilter(e.target.value)} 
+
+            <div className="flex gap-3 w-full md:w-auto flex-wrap">
+              <select
+                value={collegeFilter}
+                onChange={(e) => { setCollegeFilter(e.target.value); setCurrentPage(1); }}
+                className="bg-white px-5 rounded-2xl text-[14px] font-bold text-slate-600 h-[52px] border-2 border-transparent focus:border-[#003624] outline-none transition-all cursor-pointer"
+              >
+                <option value="">All Colleges</option>
+                {colleges.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
                 className="bg-white px-5 rounded-2xl text-[14px] font-bold text-slate-600 h-[52px] md:w-[180px] border-2 border-transparent focus:border-[#003624] outline-none transition-all cursor-pointer"
               >
                 <option>All Status</option>
@@ -379,9 +397,9 @@ export default function CaseManagement({ role }) {
                 <option>Closed</option>
               </select>
 
-              <select 
-                value={priorityFilter} 
-                onChange={(e) => setPriorityFilter(e.target.value)} 
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
                 className="bg-white px-5 rounded-2xl text-[14px] font-bold text-slate-600 h-[52px] md:w-[180px] border-2 border-transparent focus:border-[#003624] outline-none transition-all cursor-pointer"
               >
                 <option>All Severity</option>
@@ -395,7 +413,7 @@ export default function CaseManagement({ role }) {
           <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-[0_4px_40px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col">
             <div className="px-10 py-8 border-b border-slate-50 flex justify-between items-center bg-white">
               <h2 className="text-[20px] font-pjs font-bold text-[#111827]">All Cases</h2>
-              <button 
+              <button
                 onClick={exportToCSV}
                 className="flex items-center gap-2 text-[#009b69] hover:text-[#003624] text-[14px] font-bold px-5 py-2.5 hover:bg-emerald-50 rounded-xl transition-all"
               >
@@ -427,18 +445,18 @@ export default function CaseManagement({ role }) {
                     const time = new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     const severity = getPriority(v);
                     const isTerminal = ['CLOSED', 'DISMISSED'].includes(v.status);
-                    
+
                     return (
                       <tr key={v.id} className="group hover:bg-emerald-50/20 transition-all duration-300">
                         <td className="px-10 py-8 font-black text-[#009b69] text-[14px]">{caseId}</td>
                         <td className="px-10 py-8">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-full bg-emerald-50 text-[#009b69] flex items-center justify-center font-bold text-[13px] border border-emerald-100">
-                               {studentName.charAt(0)}
+                              {studentName.charAt(0)}
                             </div>
                             <div className="flex flex-col">
-                               <span className="text-[15px] font-bold text-[#111827] leading-tight">{studentName}</span>
-                               <span className="text-[11px] font-medium text-slate-400 mt-0.5">ID: {v.student_details?.student_number}</span>
+                              <span className="text-[15px] font-bold text-[#111827] leading-tight">{studentName}</span>
+                              <span className="text-[11px] font-medium text-slate-400 mt-0.5">ID: {v.student_details?.student_number}</span>
                             </div>
                           </div>
                         </td>
@@ -475,31 +493,29 @@ export default function CaseManagement({ role }) {
                           </td>
                         )}
                         <td className="px-10 py-8">
-                           <div className="flex flex-col">
-                              <span className="text-[14px] font-bold text-slate-700">{date}</span>
-                              <span className="text-[11px] font-medium text-slate-400">{time}</span>
-                           </div>
+                          <div className="flex flex-col">
+                            <span className="text-[14px] font-bold text-slate-700">{date}</span>
+                            <span className="text-[11px] font-medium text-slate-400">{time}</span>
+                          </div>
                         </td>
                         <td className="px-10 py-8">
-                          <span className={`inline-flex items-center justify-center whitespace-nowrap px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm border gap-1.5 ${
-                            v.status === 'OPEN' ? 'bg-rose-50 text-rose-600 border-rose-100' : 
-                            v.status === 'AWAITING_DECISION' ? 'bg-amber-50 text-amber-600 border-amber-100' : 
-                            v.status === 'DECISION_RENDERED' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 
-                            v.status === 'DISMISSED' ? 'bg-slate-50 text-slate-500 border-slate-200' : 
-                            'bg-emerald-600 text-white border-emerald-700 shadow-emerald-900/20'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${
-                              v.status === 'OPEN' ? 'bg-rose-500 animate-pulse' : 
-                              v.status === 'AWAITING_DECISION' ? 'bg-amber-500' : 
-                              v.status === 'DECISION_RENDERED' ? 'bg-indigo-500' : 
-                              v.status === 'DISMISSED' ? 'bg-slate-400' : 
-                              'bg-white'
-                            }`}></span>
+                          <span className={`inline-flex items-center justify-center whitespace-nowrap px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm border gap-1.5 ${v.status === 'OPEN' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                              v.status === 'AWAITING_DECISION' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                v.status === 'DECISION_RENDERED' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
+                                  v.status === 'DISMISSED' ? 'bg-slate-50 text-slate-500 border-slate-200' :
+                                    'bg-emerald-600 text-white border-emerald-700 shadow-emerald-900/20'
+                            }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${v.status === 'OPEN' ? 'bg-rose-500 animate-pulse' :
+                                v.status === 'AWAITING_DECISION' ? 'bg-amber-500' :
+                                  v.status === 'DECISION_RENDERED' ? 'bg-indigo-500' :
+                                    v.status === 'DISMISSED' ? 'bg-slate-400' :
+                                      'bg-white'
+                              }`}></span>
                             {v.status.replace(/_/g, ' ')}
                           </span>
                         </td>
                         <td className="px-10 py-8 text-right">
-                          <button 
+                          <button
                             onClick={() => setSelectedCase(v)}
                             className="text-[13px] font-bold text-[#003624] hover:text-[#009b69] transition-all flex items-center gap-1 ml-auto"
                           >
@@ -532,7 +548,7 @@ export default function CaseManagement({ role }) {
           <div className="bg-[#004D33] rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl group">
             <div className="absolute top-[-50%] right-[-50%] w-[150%] h-[150%] bg-[#005c3d] rounded-full opacity-40 blur-3xl"></div>
             <div className="relative z-10 flex flex-col gap-10">
-              <h3 className="text-[28px] font-pjs font-bold leading-[1.1] tracking-tight">Priority<br/>Breakdown</h3>
+              <h3 className="text-[28px] font-pjs font-bold leading-[1.1] tracking-tight">Priority<br />Breakdown</h3>
               <div className="flex flex-col gap-8">
                 <ProgressItem label="Major Violations" percent={priorityStats.high.percent} color="bg-white" />
                 <ProgressItem label="Minor Violations" percent={priorityStats.low.percent} color="bg-white/60" />
@@ -551,19 +567,19 @@ export default function CaseManagement({ role }) {
                 const severity = getPriority(v);
                 const timeStr = new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 const dateStr = new Date(v.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
-                
+
                 return (
-                  <ActivityItem 
+                  <ActivityItem
                     key={v.id}
-                    icon={severity === 'Major' ? 'priority_high' : 'add_circle'} 
-                    color={severity === 'Major' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'} 
-                    title={v.student_details?.user_details?.full_name || 'New Case'} 
+                    icon={severity === 'Major' ? 'priority_high' : 'add_circle'}
+                    color={severity === 'Major' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'}
+                    title={v.student_details?.user_details?.full_name || 'New Case'}
                     sub={<span className="flex items-center gap-1.5 truncate">
-                      {(v.rule_details?.category || 'General').replace(/^(Major|Minor|General)\s*[—\-]\s*/i, '')} 
+                      {(v.rule_details?.category || 'General').replace(/^(Major|Minor|General)\s*[—\-]\s*/i, '')}
                       <span className="opacity-40">•</span>
                       <span className="whitespace-nowrap">{v.status.replace('_', ' ')}</span>
-                    </span>} 
-                    time={`${dateStr}, ${timeStr}`} 
+                    </span>}
+                    time={`${dateStr}, ${timeStr}`}
                   />
                 );
               })}
@@ -575,9 +591,9 @@ export default function CaseManagement({ role }) {
         </div>
       </div>
       {selectedCase && ReactDOM.createPortal(
-        <CaseDetailModal 
-          caseData={selectedCase} 
-          onClose={() => setSelectedCase(null)} 
+        <CaseDetailModal
+          caseData={selectedCase}
+          onClose={() => setSelectedCase(null)}
           onUpdate={handleStatusUpdate}
           onClaim={handleClaimCase}
           onAssign={handleAssignCase}
@@ -601,18 +617,18 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
   const isUnassigned = !caseData.assigned_to_details;
   const isAssignedToMe = caseData.assigned_to_details?.email === currentUser?.email;
   const isTerminal = ['CLOSED', 'DISMISSED'].includes(caseData.status);
-  
+
   const [selectedOfficer, setSelectedOfficer] = useState('');
   const [selectedSanction, setSelectedSanction] = useState('');
   const [isAdjudicationOpen, setIsAdjudicationOpen] = useState(caseData.status === 'AWAITING_DECISION');
   const [isDelegationOpen, setIsDelegationOpen] = useState(!caseData.assigned_to_details && caseData.status === 'OPEN');
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[100] flex justify-center p-6 bg-emerald-950/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-300"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white rounded-[2.5rem] w-full max-w-[800px] h-fit my-auto overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.3)] border border-white/20 animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
@@ -624,37 +640,36 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
               <p className="text-[18px] font-bold text-emerald-400">#{caseId}</p>
             </div>
             <div className="flex items-center gap-4">
-              <span className={`inline-flex items-center whitespace-nowrap px-5 py-2 rounded-full text-[11px] font-black uppercase tracking-widest ${
-                caseData.status === 'OPEN' ? 'bg-rose-500/20 text-rose-300' : 
-                caseData.status === 'AWAITING_DECISION' ? 'bg-amber-500/20 text-amber-300' : 
-                caseData.status === 'DECISION_RENDERED' ? 'bg-indigo-500/20 text-indigo-300' : 
-                isTerminal ? 'bg-emerald-500/20 text-emerald-300' : 
-                'bg-slate-500/20 text-slate-300'
-              }`}>
+              <span className={`inline-flex items-center whitespace-nowrap px-5 py-2 rounded-full text-[11px] font-black uppercase tracking-widest ${caseData.status === 'OPEN' ? 'bg-rose-500/20 text-rose-300' :
+                  caseData.status === 'AWAITING_DECISION' ? 'bg-amber-500/20 text-amber-300' :
+                    caseData.status === 'DECISION_RENDERED' ? 'bg-indigo-500/20 text-indigo-300' :
+                      isTerminal ? 'bg-emerald-500/20 text-emerald-300' :
+                        'bg-slate-500/20 text-slate-300'
+                }`}>
                 {caseData.status.replace(/_/g, ' ')}
               </span>
-              <button 
-                onClick={onClose} 
+              <button
+                onClick={onClose}
                 className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all"
               >
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
           </div>
-          
+
           <h2 className="text-[28px] font-pjs font-bold leading-tight tracking-tight mb-8">
             {caseData.rule_details?.description || caseData.rule_details?.category || 'General Violation'}
           </h2>
 
           {caseData.status === 'AWAITING_DECISION' && (
             <div className="mb-8 p-6 bg-rose-500/10 border border-rose-500/20 rounded-[1.5rem] flex items-center gap-5">
-               <div className="w-12 h-12 rounded-2xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-900/20">
-                  <span className="material-symbols-outlined text-[24px] fill-1">gavel</span>
-               </div>
-               <div>
-                  <h4 className="text-[14px] font-black text-rose-200 uppercase tracking-widest leading-none mb-1">Awaiting Institutional Decision</h4>
-                  <p className="text-[12px] text-rose-100 font-medium opacity-80">This case has been submitted for formal review. The SWAFO Director must now render a decision or dismiss the case.</p>
-               </div>
+              <div className="w-12 h-12 rounded-2xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-900/20">
+                <span className="material-symbols-outlined text-[24px] fill-1">gavel</span>
+              </div>
+              <div>
+                <h4 className="text-[14px] font-black text-rose-200 uppercase tracking-widest leading-none mb-1">Awaiting Institutional Decision</h4>
+                <p className="text-[12px] text-rose-100 font-medium opacity-80">This case has been submitted for formal review. The SWAFO Director must now render a decision or dismiss the case.</p>
+              </div>
             </div>
           )}
 
@@ -662,20 +677,23 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
           <div className="flex items-center gap-6 p-4 bg-black/20 rounded-[1.5rem] border border-white/5 backdrop-blur-md">
             <div className="flex items-center gap-4 flex-1">
               <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-emerald-500/30">
-                <img 
-                  src={`https://ui-avatars.com/api/?name=${caseData.student_details?.user_details?.full_name}&background=003624&color=fff`} 
-                  alt="avatar" 
+                <img
+                  src={`https://ui-avatars.com/api/?name=${caseData.student_details?.user_details?.full_name}&background=003624&color=fff`}
+                  alt="avatar"
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="flex flex-col">
                 <span className="text-[16px] font-bold text-white">{caseData.student_details?.user_details?.full_name}</span>
                 <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">STUDENT NO: {caseData.student_details?.student_number}</span>
+                {caseData.student_details?.course && (
+                  <span className="text-[11px] font-semibold text-emerald-400/80 mt-0.5">{caseData.student_details.course}</span>
+                )}
               </div>
             </div>
-            
+
             <div className="h-10 w-[1px] bg-white/10"></div>
-            
+
             <div className="flex items-center gap-6 px-4">
               <div className="flex items-center gap-3 text-white/70">
                 <span className="material-symbols-outlined text-[20px] text-emerald-400">calendar_today</span>
@@ -692,15 +710,15 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
         {/* Details Section */}
         <div className="p-10 space-y-10 bg-white">
           <div className="bg-[#F0F4F4]/50 rounded-[2rem] p-8 border-l-4 border-emerald-500">
-             <p className="text-[16px] font-manrope font-medium text-slate-700 leading-relaxed italic">
-               "{caseData.description || 'No detailed account provided.'}"
-             </p>
+            <p className="text-[16px] font-manrope font-medium text-slate-700 leading-relaxed italic">
+              "{caseData.description || 'No detailed account provided.'}"
+            </p>
           </div>
 
           {/* Institutional Adjudication Section */}
           {(role === 'admin' || (role === 'officer' && !caseData.requires_director_decision)) && caseData.status === 'AWAITING_DECISION' && (
             <div className={`border-2 rounded-[2rem] transition-all duration-300 ${isAdjudicationOpen ? 'bg-rose-50/50 border-rose-100 p-8' : 'bg-rose-50/20 border-rose-50 p-4'}`}>
-              <button 
+              <button
                 onClick={() => setIsAdjudicationOpen(!isAdjudicationOpen)}
                 className="w-full flex items-center justify-between outline-none"
               >
@@ -712,11 +730,11 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                 </div>
                 <span className={`material-symbols-outlined transition-transform duration-300 ${isAdjudicationOpen ? 'rotate-180' : ''}`}>expand_more</span>
               </button>
-              
+
               {isAdjudicationOpen && (
                 <div className="mt-6 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-300">
                   {/* Sanction dropdown — full width */}
-                  <select 
+                  <select
                     value={selectedSanction}
                     onChange={(e) => setSelectedSanction(e.target.value)}
                     className="w-full bg-white border-2 border-rose-200 rounded-xl px-5 py-3 text-[14px] font-bold text-rose-900 outline-none focus:border-rose-500 transition-all"
@@ -732,7 +750,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                   </select>
 
                   {/* Render Decision — full width */}
-                  <button 
+                  <button
                     disabled={!selectedSanction || isUpdating}
                     onClick={() => onAdjudicate(caseData.id, selectedSanction, 'Institutional decision rendered by SWAFO Director.')}
                     className="w-full bg-[#003624] text-white py-3 rounded-xl text-[14px] font-black uppercase tracking-widest hover:bg-[#004d35] transition-all disabled:opacity-30 shadow-lg shadow-emerald-950/10 flex items-center justify-center gap-2"
@@ -744,7 +762,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                   {/* Dismiss row */}
                   <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-rose-100">
                     <p className="text-[12px] text-rose-700/60 font-medium italic flex-1">Or if the violation is invalid or requires no action:</p>
-                    <button 
+                    <button
                       disabled={isUpdating}
                       onClick={() => onUpdate(caseData.id, 'DISMISSED')}
                       className="bg-rose-100 text-rose-700 px-6 py-2 rounded-lg text-[12px] font-black uppercase tracking-widest hover:bg-rose-200 transition-all disabled:opacity-30 whitespace-nowrap"
@@ -777,7 +795,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
           {/* Officer Delegation Section */}
           {role === 'admin' && !isTerminal && (
             <div className={`border-2 rounded-[2rem] transition-all duration-300 ${isDelegationOpen ? 'bg-indigo-50/50 border-indigo-200 p-8' : 'bg-indigo-50/30 border-indigo-100 p-4'}`}>
-              <button 
+              <button
                 onClick={() => setIsDelegationOpen(!isDelegationOpen)}
                 className="w-full flex items-center justify-between outline-none"
               >
@@ -798,7 +816,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
               {isDelegationOpen && (
                 <div className="mt-8 animate-in slide-in-from-top-2 duration-300">
                   <div className="flex gap-4">
-                    <select 
+                    <select
                       value={selectedOfficer}
                       onChange={(e) => setSelectedOfficer(e.target.value)}
                       className="flex-1 bg-white border-2 border-indigo-100 rounded-xl px-5 py-3 text-[14px] font-bold text-slate-700 outline-none focus:border-indigo-600 transition-all"
@@ -808,7 +826,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                         <option key={off.email} value={off.email}>{off.full_name}</option>
                       ))}
                     </select>
-                    <button 
+                    <button
                       disabled={!selectedOfficer || isUpdating}
                       onClick={() => onAssign(caseData.id, selectedOfficer)}
                       className="bg-indigo-600 text-white px-8 py-3 rounded-xl text-[14px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all disabled:opacity-30 shadow-lg shadow-indigo-900/10"
@@ -826,10 +844,10 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
               <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Handbook Rule</p>
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-emerald-600">menu_book</span>
-                  <div>
-                    <p className="text-[15px] font-bold text-slate-900">{caseData.rule_details?.rule_code}</p>
-                    <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">{(caseData.rule_details?.category || 'General').replace(/^(Major|Minor|General)\s*[—\-]\s*/i, '')}</p>
-                  </div>
+                <div>
+                  <p className="text-[15px] font-bold text-slate-900">{caseData.rule_details?.rule_code}</p>
+                  <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">{(caseData.rule_details?.category || 'General').replace(/^(Major|Minor|General)\s*[—\-]\s*/i, '')}</p>
+                </div>
               </div>
             </div>
             <div>
@@ -851,24 +869,24 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
           {/* Footer Action Bar */}
           <div className="pt-10 border-t border-slate-100 flex items-center justify-between">
             <div className="flex flex-col">
-                <h4 className="text-[12px] font-black text-[#003624] uppercase tracking-widest mb-1">
-                  {isTerminal ? 'Institutional Record Locked'
-                    : caseData.status === 'DECISION_RENDERED' ? 'Awaiting Fulfillment'
+              <h4 className="text-[12px] font-black text-[#003624] uppercase tracking-widest mb-1">
+                {isTerminal ? 'Institutional Record Locked'
+                  : caseData.status === 'DECISION_RENDERED' ? 'Awaiting Fulfillment'
                     : caseData.status === 'AWAITING_DECISION' ? 'Pending Institutional Decision'
-                    : (caseData.requires_director_decision && role === 'admin') ? "Director's Case — §27.3.5"
-                    : isUnassigned ? 'Unclaimed Violation'
-                    : caseData.requires_director_decision ? 'Reserved for Director'
-                    : 'Ready for Auto-Sanction'}
-                </h4>
-                <p className="text-[13px] text-slate-400 font-medium">
-                  {isTerminal ? 'This institutional record is closed and archived.'
-                    : caseData.status === 'DECISION_RENDERED' ? 'Waiting for the student to serve the rendered sanction.'
+                      : (caseData.requires_director_decision && role === 'admin') ? "Director's Case — §27.3.5"
+                        : isUnassigned ? 'Unclaimed Violation'
+                          : caseData.requires_director_decision ? 'Reserved for Director'
+                            : 'Ready for Auto-Sanction'}
+              </h4>
+              <p className="text-[13px] text-slate-400 font-medium">
+                {isTerminal ? 'This institutional record is closed and archived.'
+                  : caseData.status === 'DECISION_RENDERED' ? 'Waiting for the student to serve the rendered sanction.'
                     : caseData.status === 'AWAITING_DECISION' ? 'Awaiting formal sanction from the SWAFO Director.'
-                    : (caseData.requires_director_decision && role === 'admin') ? 'Multi-nature major offense — only you may adjudicate.'
-                    : isUnassigned ? 'Review details and take action to begin resolution.'
-                    : caseData.requires_director_decision ? 'This case is reserved for the SWAFO Director.'
-                    : 'Submit to instantly apply handbook-prescribed sanction.'}
-                </p>
+                      : (caseData.requires_director_decision && role === 'admin') ? 'Multi-nature major offense — only you may adjudicate.'
+                        : isUnassigned ? 'Review details and take action to begin resolution.'
+                          : caseData.requires_director_decision ? 'This case is reserved for the SWAFO Director.'
+                            : 'Submit to instantly apply handbook-prescribed sanction.'}
+              </p>
             </div>
 
             <div className="flex gap-4">
@@ -921,8 +939,8 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                     </div>
                   ) : caseData.status === 'AWAITING_DECISION' && role !== 'admin' ? (
                     <div className="flex items-center gap-3 px-8 py-4 bg-slate-800/50 border border-white/5 rounded-xl text-slate-400">
-                       <span className="material-symbols-outlined text-[20px]">lock</span>
-                       <span className="text-[13px] font-bold uppercase tracking-widest">Locked for Director</span>
+                      <span className="material-symbols-outlined text-[20px]">lock</span>
+                      <span className="text-[13px] font-bold uppercase tracking-widest">Locked for Director</span>
                     </div>
                   ) : (
                     <button

@@ -1,43 +1,50 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../../api/config';
+import { useColleges } from '../../hooks/useColleges';
 
 export default function StudentRecords({ role = 'officer' }) {
   const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [collegeFilter, setCollegeFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeTab, setActiveTab] = useState('ALL'); // 'ALL', 'COMPLIANT', 'UNDER_REVIEW', 'NON_COMPLIANT'
+  const [activeTab, setActiveTab] = useState('ALL');
   const [showRiskHelp, setShowRiskHelp] = useState(false);
+  const { colleges } = useColleges();
   const itemsPerPage = 10;
 
   useEffect(() => {
-    fetch(API_ENDPOINTS.USERS_LIST)
+    const url = collegeFilter
+      ? `${API_ENDPOINTS.USERS_LIST}?college=${encodeURIComponent(collegeFilter)}`
+      : API_ENDPOINTS.USERS_LIST;
+    setLoading(true);
+    fetch(url)
       .then(res => res.json())
       .then(data => {
         setStudents(data);
         setLoading(false);
       })
       .catch(err => {
-        console.error("Error fetching students:", err);
+        console.error('Error fetching students:', err);
         setLoading(false);
       });
-  }, []);
+  }, [collegeFilter]);
 
   const filteredStudents = useMemo(() => {
     return students.filter(student => {
       const name = student.user_details?.full_name || '';
       const id = student.student_number || '';
       const course = student.course || '';
-      
-      const hasUnresolved = (student.violation_count || 0) > 0 && student.has_pending_violations; 
+
+      const hasUnresolved = (student.violation_count || 0) > 0 && student.has_pending_violations;
       const complianceStatus = student.is_repeat_offender ? 'NON_COMPLIANT' : hasUnresolved ? 'UNDER_REVIEW' : 'COMPLIANT';
-      
+
       const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            id.includes(searchQuery) ||
                            course.toLowerCase().includes(searchQuery.toLowerCase());
-      
+
       const matchesTab = activeTab === 'ALL' || complianceStatus === activeTab;
 
       return matchesSearch && matchesTab;
@@ -214,10 +221,22 @@ export default function StudentRecords({ role = 'officer' }) {
         </div>
 
         <div className="flex items-center gap-4 w-full xl:w-auto">
-          <div className="relative flex-1 xl:w-[400px]">
+          {/* College Filter Dropdown */}
+          <select
+            value={collegeFilter}
+            onChange={e => { setCollegeFilter(e.target.value); setCurrentPage(1); }}
+            className="h-14 pl-5 pr-10 bg-white border border-slate-100 rounded-2xl text-[13px] font-bold text-slate-600 focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all shadow-sm appearance-none"
+          >
+            <option value="">All Colleges</option>
+            {colleges.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+
+          <div className="relative flex-1 xl:w-[340px]">
             <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 text-[20px]">search</span>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Search by name, ID, or course..."
               className="w-full pl-13 pr-6 py-4 bg-white border border-slate-100 rounded-2xl text-[14px] font-bold focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all shadow-sm"
               value={searchQuery}

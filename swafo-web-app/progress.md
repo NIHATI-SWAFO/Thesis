@@ -297,3 +297,43 @@
 | **🟡 HAS OBLIGATION** | `active_violations > 0` | Student has an ongoing case blocking §14 Clearance. |
 | **🔴 REPEAT OFFENDER**| `total_violations >= 2` | Behavioral pattern flagged in backend risk scoring. |
 | **⛔ PROBATION**      | `total_violations >= 5` | Habitual Offender Pattern. Requires immediate SWAFO intervention. |
+
+---
+
+## 10. COLLEGE FILTERING & PER-COLLEGE REPORTING (April 28, 2026)
+
+### 10.1 Cross-Module College Filter
+
+- [x] **Dynamic College API:** Added `/api/users/colleges/` endpoint — returns distinct college names from `StudentProfile.course` field (no hardcoding).
+- [x] **`useColleges` hook:** Shared React hook for fetching and managing college list state across all dashboard screens.
+- [x] **Case Management filter:** College dropdown alongside Status/Severity filters; refetches from backend on change.
+- [x] **Student Records filter:** College dropdown in management header for granular student browsing.
+- [x] **Reports & Analytics filter:** College dropdown in header; all KPIs, charts, leaderboard, recidivism patterns, and trends fully re-scope to selected college.
+- [x] **Backend `ViolationListView`:** Accepts `?college=` query param — filters via `student__course__iexact`.
+- [x] **Backend `StudentListView`:** Accepts `?college=` query param — filters via `course__iexact`.
+- [x] **Backend `AdminDashboardAPIView`:** Accepts `?college=` — scopes `base_qs` through all analytics queries (KPIs, hotspots, officer activity, temporal trends, policy breakdown, recidivism, resolution speed, live pulse).
+- [x] **Leaderboard & recidivism scoping:** Risk Score Leaderboard and Recidivism Pattern Detection both filter `StudentProfile` by college when selected.
+- [x] **`by_college` chart preserved:** College distribution bar chart intentionally uses unfiltered queryset — it is the comparison tool and must always show all 8 colleges.
+- [x] **Case modal college display:** Student's college name now displayed under student number in the adjudication modal header (emerald tint).
+
+### 10.2 Per-College PDF Report (`reportlab`)
+
+> Matches the institutional format used by SWAFO for per-college reporting — each college sees only its own data; other colleges' figures are confidential per data privacy policy.
+
+- [x] **`reportlab` installed** in Django virtualenv (v4.4.10).
+- [x] **`report_generator.py`** — standalone module with `generate_college_report(college)` function.
+- [x] **`CollegeReportPDFView`** — Django REST API view at `/api/analytics/college-report/?college=` returning `application/pdf`.
+- [x] **Frontend button:** "Generate College Report" button appears in Analytics header **only when a college is selected** (red button, distinct from CSV Export). Direct `<a download>` link triggers PDF download.
+- [x] **`COLLEGE_REPORT` endpoint** added to `API_ENDPOINTS` in `config.js` as a function: `(college) => url`.
+
+#### PDF Report Sections:
+| # | Section | Algorithm Highlight |
+|---|---|---|
+| 1 | Offense Classification | Minor vs Major per semester + bar chart |
+| 2 | Institutional Position | All 8 colleges listed; only target college filled; total shown |
+| 3 | Behavioral Risk Score | **Temporal Decay Algorithm** — score = severity × e^(−0.023 × days) × 1.5 if unresolved; risk distribution bar + top at-risk student table |
+| 4 | Disciplinary Escalation Status | 1st–4th+ minor offense ladder; only §27.3.1.43 and §27.3.5 used (confirmed real references) |
+| 5 | Recidivism Pattern Detection | **Apriori-Based Association Mining** — top 3 offense progressions with properly wrapping text |
+| 6 | Case Resolution Summary | Total, open, resolved counts and resolution rate |
+
+> **Design notes:** DLSU-D branded header (dark green), concise one-line section subtitles, two embedded charts (offense classification bar, risk distribution horizontal bar). Avg. Resolution Time removed (unreliable with current data). Fake handbook references (§27.3.1.41/.42) removed — only confirmed references kept.

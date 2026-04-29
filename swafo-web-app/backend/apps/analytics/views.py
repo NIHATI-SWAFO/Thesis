@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
+from django.http import HttpResponse
 from django.db.models import Count, Q, Avg, Sum, F, ExpressionWrapper, DurationField, Max
 from django.utils import timezone
 from apps.violations.models import Violation
@@ -16,18 +17,24 @@ class AdminDashboardAPIView(APIView):
             # Use local time for correct date matching (Asia/Manila)
             local_now = timezone.localtime(timezone.now())
             today = local_now.date()
-            now = local_now # For trend calculations
-            total_count = Violation.objects.count()
-            closed_count = Violation.objects.filter(status__in=['CLOSED', 'DISMISSED']).count()
+            now = local_now  # For trend calculations
+
+            # College filter — scopes all queries when provided
+            college = request.query_params.get('college', '').strip()
+            base_qs = Violation.objects.filter(student__course__iexact=college) if college else Violation.objects.all()
+
+            total_count = base_qs.count()
+            closed_count = base_qs.filter(status__in=['CLOSED', 'DISMISSED']).count()
             active_cases = total_count - closed_count
 
+
             # 1. Hotspots (Aggregation by Location)
-            hotspots = Violation.objects.values('location').annotate(
+            hotspots = base_qs.values('location').annotate(
                 count=Count('id')
             ).order_by('-count')[:5]
 
             # 2. Officer Activity
-            officer_activity = Violation.objects.values('officer__first_name', 'officer__last_name', 'officer__username').annotate(
+            officer_activity = base_qs.values('officer__first_name', 'officer__last_name', 'officer__username').annotate(
                 count=Count('id')
             ).order_by('-count')[:5]
 
@@ -45,7 +52,7 @@ class AdminDashboardAPIView(APIView):
             
             start_date = local_now.date() - timezone.timedelta(days=total_days_to_fetch - 1)
             violations_by_date = {}
-            vs = Violation.objects.filter(timestamp__date__gte=start_date, timestamp__date__lte=local_now.date()).values('timestamp__date').annotate(count=Count('id'))
+            vs = base_qs.filter(timestamp__date__gte=start_date, timestamp__date__lte=local_now.date()).values('timestamp__date').annotate(count=Count('id'))
             for v in vs:
                 violations_by_date[v['timestamp__date']] = v['count']
 
@@ -114,13 +121,13 @@ class AdminDashboardAPIView(APIView):
 
             # 4. Policy Breakdown (Handbook Classification)
             # Minor vs Major (Misconduct/Dishonesty/Violent Acts) vs Traffic
-            policy_breakdown = Violation.objects.values('rule__category').annotate(
+            policy_breakdown = base_qs.values('rule__category').annotate(
                 count=Count('id')
             ).order_by('-count')
 
             # 5. Section 27.3.5 - Different Nature Major Offense Detection
             # Use the proven Audit Logic to find priority students
-            active_vs = Violation.objects.filter(status__in=['OPEN', 'AWAITING_DECISION', 'DECISION_RENDERED']).select_related('student', 'student__user', 'rule')
+            active_vs = base_qs.filter(status__in=['OPEN', 'AWAITING_DECISION', 'DECISION_RENDERED']).select_related('student', 'student__user', 'rule')
             priority_students_map = {}
             
             for v in active_vs:
@@ -147,21 +154,23 @@ class AdminDashboardAPIView(APIView):
 
             # 7. Hotspots and Temporal (Already in logic)
             
-            # 8. College Distribution
+            # 8. College Distribution — always unfiltered (this IS the comparison chart)
             by_college = Violation.objects.values('student__course').annotate(
                 count=Count('id')
             ).order_by('-count')
 
             # 9. Recent Violations
-            recent_violations = Violation.objects.all().order_by('-timestamp')[:10]
+            recent_violations = base_qs.order_by('-timestamp')[:10]
             recent_serializer = ViolationSerializer(recent_violations, many=True)
 
             # 10. Risk Score Leaderboard (Top 10)
-            # Use the StudentProfileSerializer to get the risk score for all students with violations
-            students_with_violations = StudentProfile.objects.annotate(v_count=Count('violations')).filter(v_count__gt=0)
+            # Scope to college if filter is active
+            leaderboard_qs = StudentProfile.objects.annotate(v_count=Count('violations')).filter(v_count__gt=0)
+            if college:
+                leaderboard_qs = leaderboard_qs.filter(course__iexact=college)
             leaderboard = []
             from apps.users.serializers import StudentProfileSerializer
-            for s in students_with_violations:
+            for s in leaderboard_qs:
                 s_ser = StudentProfileSerializer(s)
                 leaderboard.append({
                     "name": s.user.full_name,
@@ -172,7 +181,7 @@ class AdminDashboardAPIView(APIView):
             leaderboard = sorted(leaderboard, key=lambda x: x['score'], reverse=True)[:10]
 
             # 11. Institutional Resolution Speed (Avg hours to CLOSE)
-            resolved_cases_with_time = Violation.objects.filter(status='CLOSED').annotate(
+            resolved_cases_with_time = base_qs.filter(status='CLOSED').annotate(
                 duration=ExpressionWrapper(F('updated_at') - F('timestamp'), output_field=DurationField())
             ).filter(duration__gt=timezone.timedelta(seconds=1))
             
@@ -180,10 +189,12 @@ class AdminDashboardAPIView(APIView):
             avg_resolution_hours = round(avg_duration.total_seconds() / 3600, 1) if avg_duration else 0
 
             # 12. Recidivism Pattern Detection (Simplified Apriori)
-            # Find common pairs using specific rule descriptions
-            repeaters = StudentProfile.objects.annotate(v_count=Count('violations')).filter(v_count__gt=1)
+            # Scope to college if filter is active
+            repeaters_qs = StudentProfile.objects.annotate(v_count=Count('violations')).filter(v_count__gt=1)
+            if college:
+                repeaters_qs = repeaters_qs.filter(course__iexact=college)
             patterns_map = {}
-            for s in repeaters:
+            for s in repeaters_qs:
                 v_list = list(s.violations.select_related('rule').order_by('timestamp'))
                 for i in range(len(v_list) - 1):
                     key = (
@@ -196,7 +207,7 @@ class AdminDashboardAPIView(APIView):
 
             patterns = []
             for (desc_a, cat_a, desc_b, cat_b), count in patterns_map.items():
-                count_a = Violation.objects.filter(rule__description=desc_a).count()
+                count_a = base_qs.filter(rule__description=desc_a).count()
                 confidence = round((count / count_a * 100), 1) if count_a > 0 else 0
                 if confidence > 10:
                     patterns.append({
@@ -212,7 +223,7 @@ class AdminDashboardAPIView(APIView):
             # 13. Comparative Trends (vs Previous Period)
             prev_start = now - timezone.timedelta(days=days_count * 2)
             prev_end = now - timezone.timedelta(days=days_count)
-            prev_period_violations = Violation.objects.filter(timestamp__range=[prev_start, prev_end])
+            prev_period_violations = base_qs.filter(timestamp__range=[prev_start, prev_end])
             prev_total = prev_period_violations.count()
             
             total_trend = round(((total_count - prev_total) / prev_total * 100), 1) if prev_total > 0 else 0
@@ -227,7 +238,7 @@ class AdminDashboardAPIView(APIView):
 
             # 14. Live Pulse Feed
             live_pulse = []
-            for v in Violation.objects.all().order_by('-timestamp')[:3]:
+            for v in base_qs.order_by('-timestamp')[:3]:
                 live_pulse.append({
                     "id": f"VIO-{v.id}",
                     "type": v.rule.category,
@@ -236,24 +247,25 @@ class AdminDashboardAPIView(APIView):
                 })
 
             # 1. KPIs
-            total_count = Violation.objects.count()
-            closed_count = Violation.objects.filter(status__in=['CLOSED', 'DISMISSED', 'DECISION_RENDERED']).count()
-            active_status_count = Violation.objects.filter(status__in=['OPEN', 'AWAITING_DECISION']).count()
+            total_count = base_qs.count()
+            closed_count = base_qs.filter(status__in=['CLOSED', 'DISMISSED', 'DECISION_RENDERED']).count()
+            active_status_count = base_qs.filter(status__in=['OPEN', 'AWAITING_DECISION']).count()
 
             return Response({
                 "status_distribution": {
                     "total": total_count,
                     "breakdown": [
                         {"status": "CLOSED", "count": closed_count},
-                        {"status": "AWAITING_DECISION", "count": Violation.objects.filter(status='AWAITING_DECISION').count()},
-                        {"status": "OPEN", "count": Violation.objects.filter(status='OPEN').count()}
+                        {"status": "AWAITING_DECISION", "count": base_qs.filter(status='AWAITING_DECISION').count()},
+                        {"status": "OPEN", "count": base_qs.filter(status='OPEN').count()}
                     ]
                 },
                 "stats": {
                     "active_cases": active_status_count,
-                    "repeat_offenders": StudentProfile.objects.annotate(v_count=Count('violations')).filter(v_count__gt=1).count(),
+                    "repeat_offenders": repeaters_qs.count(),
+
                     "active_patrols": active_patrols_count,
-                    "violations_today": Violation.objects.filter(timestamp__date=today).count(),
+                    "violations_today": base_qs.filter(timestamp__date=today).count(),
                     "pending_director_decisions": pending_decision_count,
                     "avg_resolution_hours": avg_resolution_hours,
                     "total_trend": total_trend,
@@ -473,4 +485,26 @@ class OfficerDashboardAPIView(APIView):
                 "active_patrols": active_patrols_count
             })
         except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+
+class CollegeReportPDFView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        from .report_generator import generate_college_report
+        college = request.query_params.get('college', '').strip()
+        if not college:
+            return Response({"error": "college parameter is required"}, status=400)
+        try:
+            pdf_bytes = generate_college_report(college)
+            safe_name = college.replace(' ', '_').replace('&', 'and')
+            filename = f"SWAFO_Report_{safe_name}_{timezone.localdate()}.pdf"
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Access-Control-Allow-Origin'] = '*'
+            return response
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response({"error": str(e)}, status=500)

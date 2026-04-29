@@ -16,6 +16,8 @@ export const API_ENDPOINTS = {
   USERS_LIST: `${API_BASE_URL}/api/users/list/`,
   USERS_BY_ROLE: (role) => `${API_BASE_URL}/api/users/users/?role=${role}`,
   PROFILE_BY_EMAIL: `${API_BASE_URL}/api/users/profile-by-email/`,
+  COLLEGES_LIST: `${API_BASE_URL}/api/users/colleges/`,
+
   
   // Violations
   VIOLATIONS_LIST: `${API_BASE_URL}/api/violations/list/`,
@@ -35,6 +37,7 @@ export const API_ENDPOINTS = {
   // Analytics
   OFFICER_DASHBOARD: `${API_BASE_URL}/api/analytics/officer-dashboard/`,
   ADMIN_DASHBOARD: `${API_BASE_URL}/api/analytics/admin-dashboard/`,
+  COLLEGE_REPORT: (college) => `${API_BASE_URL}/api/analytics/college-report/?college=${encodeURIComponent(college)}`,
   
   // Handbook
   HANDBOOK_RULES: `${API_BASE_URL}/api/handbook/rules/`,
