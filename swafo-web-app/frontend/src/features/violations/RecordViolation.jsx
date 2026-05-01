@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { API_ENDPOINTS } from '../../api/config';
 import { useAuth } from '../../context/AuthContext';
+import BarcodeScanner from '../../components/BarcodeScanner';
 
 export default function RecordViolation() {
   const { user } = useAuth();
@@ -37,25 +38,31 @@ export default function RecordViolation() {
   const [mobileStep, setMobileStep] = useState('scan'); // 'scan', 'manual', 'confirm', 'form'
   const [showScannerModal, setShowScannerModal] = useState(false);
 
-  const simulateScan = async () => {
+  /**
+   * Called by BarcodeScanner once a barcode is decoded.
+   * The scanned value is the student number encoded in the barcode.
+   * We search the API with it — exact-match style.
+   */
+  const handleBarcodeScan = async (scannedValue) => {
+    setShowScannerModal(false);
     setIsSearching(true);
     try {
-      // For simulation, we just search for "202" to grab a random valid student from the DB
-      const response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=202`);
+      const response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(scannedValue)}`);
       if (response.ok) {
         const data = await response.json();
         if (Array.isArray(data) && data.length > 0) {
-          setFoundStudent(data[0]);
-          fetchStudentHistory(data[0].user_details?.email);
+          // Prefer exact student_number match, else take first result
+          const exact = data.find(s => s.student_number === scannedValue) || data[0];
+          setFoundStudent(exact);
+          fetchStudentHistory(exact.user_details?.email);
           setMobileStep('confirm');
-          setShowScannerModal(false);
         } else {
-          alert('Simulation failed: No students found matching "202". Please enter manually.');
+          alert(`No student found for barcode: "${scannedValue}". Try manual entry.`);
           setMobileStep('manual');
         }
       }
     } catch (e) {
-      console.error(e);
+      console.error('Barcode lookup failed:', e);
       setMobileStep('manual');
     } finally {
       setIsSearching(false);
@@ -844,60 +851,25 @@ export default function RecordViolation() {
         </div>, document.body
       )}
 
-      {/* DESKTOP SCANNER MODAL */}
+      {/* DESKTOP SCANNER MODAL — real camera */}
       {showScannerModal && createPortal(
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-md">
-           <div className="bg-white w-[500px] rounded-[3rem] p-10 flex flex-col items-center relative animate-in zoom-in-95">
-              <button onClick={() => setShowScannerModal(false)} className="absolute top-6 right-6 w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500">
-                 <span className="material-symbols-outlined">close</span>
-              </button>
-              <h2 className="text-[24px] font-black text-[#003624] mb-2">Scan Student ID Barcode</h2>
-              <p className="text-[13px] text-slate-500 mb-8">Align the barcode within the frame</p>
-              
-              <div className="relative w-full aspect-video bg-slate-800 rounded-3xl overflow-hidden mb-8 shadow-inner flex items-center justify-center">
-                 <div className="absolute inset-0 opacity-40 bg-[url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=400&auto=format&fit=crop')] bg-cover bg-center mix-blend-luminosity"></div>
-                 <span className="material-symbols-outlined text-[48px] text-white/40 z-10">qr_code_scanner</span>
-                 <div className="absolute left-8 right-8 top-1/2 -translate-y-1/2 h-[140px] border-2 border-emerald-400/50 rounded-2xl z-10 pointer-events-none overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-[2px] bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,1)] animate-scan"></div>
-                 </div>
-              </div>
-
-              <button onClick={simulateScan} className="bg-[#003624] text-white font-black px-8 py-5 rounded-2xl flex items-center gap-3 w-full justify-center hover:bg-[#004d35] transition-all">
-                 <span className="material-symbols-outlined">photo_camera</span> SIMULATE SCAN (TEST ONLY)
-              </button>
-           </div>
-        </div>, document.body
+        <BarcodeScanner
+          onScan={handleBarcodeScan}
+          onClose={() => setShowScannerModal(false)}
+        />,
+        document.body
       )}
 
     </div>
 
     {/* MOBILE LAYOUT (WIZARD) */}
     <div className="block lg:hidden min-h-screen bg-slate-50 font-pjs pb-24">
-      {/* STEP 1: SCANNER */}
+      {/* STEP 1: SCANNER — real camera full screen */}
       {mobileStep === 'scan' && (
-        <div className="flex flex-col items-center pt-16 px-6">
-           <p className="text-[10px] font-black text-emerald-600 tracking-[0.2em] uppercase mb-2">Detection Active</p>
-           <h2 className="text-[28px] font-black text-[#003624] leading-tight mb-2 text-center">Scan Student ID<br/>Barcode</h2>
-           <p className="text-[13px] text-slate-500 font-medium mb-10 text-center">Align the barcode within the emerald frame</p>
-           
-           <div className="relative w-full max-w-[320px] aspect-[4/5] bg-slate-800 rounded-[2.5rem] overflow-hidden mb-10 shadow-[0_20px_50px_rgba(0,0,0,0.15)]">
-             <div className="absolute inset-0 opacity-50 bg-[url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=400&auto=format&fit=crop')] bg-cover bg-center mix-blend-luminosity"></div>
-             <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-[140px] border-4 border-emerald-400 rounded-3xl z-10 pointer-events-none overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-[3px] bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,1)] animate-scan"></div>
-             </div>
-           </div>
-
-           <button onClick={simulateScan} className="w-16 h-16 rounded-full bg-[#003624] flex items-center justify-center text-white shadow-xl shadow-emerald-900/20 active:scale-95 transition-all mb-12">
-             <span className="material-symbols-outlined text-[28px]">photo_camera</span>
-           </button>
-
-           <div className="flex flex-col items-center w-full">
-             <button onClick={() => setMobileStep('manual')} className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 shadow-sm active:scale-95 transition-all mb-3">
-               <span className="material-symbols-outlined text-[28px]">keyboard</span>
-             </button>
-             <p className="text-[12px] font-bold text-[#003624]">Enter Student ID Manually</p>
-           </div>
-        </div>
+        <BarcodeScanner
+          onScan={handleBarcodeScan}
+          onClose={() => setMobileStep('manual')}
+        />
       )}
 
       {/* STEP 1.5: MANUAL ENTRY */}
