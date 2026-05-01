@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../../api/config';
 import { useAuth } from '../../context/AuthContext';
 
 export default function RecordViolation() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [foundStudent, setFoundStudent] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -243,6 +245,9 @@ export default function RecordViolation() {
     });
     setSmartSearchQuery('');
     setEvidenceFiles([]);
+    
+    // Return to the previous screen (Live Map)
+    navigate(-1);
   };
 
   const handleInputChange = (e) => {
@@ -875,7 +880,10 @@ export default function RecordViolation() {
     <div className="block lg:hidden min-h-screen bg-slate-50 font-pjs pb-24">
       {/* STEP 1: SCANNER */}
       {mobileStep === 'scan' && (
-        <div className="flex flex-col items-center pt-16 px-6">
+        <div className="flex flex-col items-center pt-16 px-6 relative">
+           <button onClick={() => navigate(-1)} className="absolute top-6 left-6 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm active:scale-95 transition-all text-slate-400 hover:text-emerald-600">
+             <span className="material-symbols-outlined">arrow_back</span>
+           </button>
            <p className="text-[10px] font-black text-emerald-600 tracking-[0.2em] uppercase mb-2">Detection Active</p>
            <h2 className="text-[28px] font-black text-[#003624] leading-tight mb-2 text-center">Scan Student ID<br/>Barcode</h2>
            <p className="text-[13px] text-slate-500 font-medium mb-10 text-center">Align the barcode within the emerald frame</p>
@@ -1176,7 +1184,14 @@ export default function RecordViolation() {
 
             <div className="bg-white rounded-[2rem] p-6 mb-8 border-l-8 border-red-500 shadow-xl">
                <div className="flex flex-col items-center">
-                 <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mb-4 shadow-inner">
+                 {/* Back Button */}
+                 <div className="hidden lg:flex items-center gap-4 mb-8">
+                   <button onClick={() => navigate(-1)} className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-slate-400 hover:text-emerald-600 transition-all">
+                     <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+                   </button>
+                   <h1 className="font-manrope font-black text-[#003624] text-[32px] tracking-tight">Record Violation</h1>
+                 </div>
+                 <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mb-4">
                     <span className="material-symbols-outlined text-[24px]">gavel</span>
                  </div>
                  <span className="bg-slate-100 text-slate-500 text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-widest mb-3">Auto-Sanction</span>

@@ -259,6 +259,16 @@ export default function MapTrial() {
     fetchAndRefresh(mapInstance.current, filters);
   }, [filters, mapReady, fetchAndRefresh]);
 
+  // ── Auto-poll every 30s so new violations appear without page refresh ────
+  useEffect(() => {
+    if (!mapReady || !mapInstance.current) return;
+    const interval = setInterval(() => {
+      fetchAndRefresh(mapInstance.current, filters);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [filters, mapReady, fetchAndRefresh]);
+
+
   const handleFilter = (key, val) => setFilters(f => ({ ...f, [key]: val }));
   const clearFilters  = () => setFilters({ date_from: '', date_to: '', category: '' });
   const hasFilters    = filters.date_from || filters.date_to || filters.category;

@@ -27,12 +27,16 @@ export const API_ENDPOINTS = {
   VIOLATIONS_UPDATE_STATUS: (id) => `${API_BASE_URL}/api/violations/${id}/update-status/`,
   VIOLATIONS_HEATMAP: `${API_BASE_URL}/api/violations/heatmap/`,
   VIOLATIONS_LOCATIONS: `${API_BASE_URL}/api/violations/locations/`,
+  VIOLATIONS_STATISTICS: `${API_BASE_URL}/api/violations/statistics/`,
   
   // Patrols
   PATROLS_LIST: `${API_BASE_URL}/api/patrols/list/`,
   PATROLS_CREATE: `${API_BASE_URL}/api/patrols/`,
   PATROLS_HISTORY: `${API_BASE_URL}/api/patrols/list/`,
+  PATROLS_STATISTICS: `${API_BASE_URL}/api/patrols/statistics/`,
   PATROLS_END: (id) => `${API_BASE_URL}/api/patrols/${id}/end_session/`,
+  PATROLS_PATROLLED_TODAY: `${API_BASE_URL}/api/patrols/patrolled_today/`,
+
   
   // Analytics
   OFFICER_DASHBOARD: `${API_BASE_URL}/api/analytics/officer-dashboard/`,

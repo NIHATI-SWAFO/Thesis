@@ -16,12 +16,18 @@ class PatrolSession(models.Model):
     # Checkpoints stored as JSON for flexibility in the prototype
     checkpoints_data = models.JSONField(default=list, blank=True)
     
+    # Real-time GPS Tracking data
+    trail_coordinates = models.JSONField(default=list, blank=True)
+    distance_km = models.FloatField(default=0.0)
+    
     # Form data from mobile
     shift_type = models.CharField(max_length=50, null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
     
     # Performance metrics
-    photos_count = models.IntegerField(default=0)
+    photos_count      = models.IntegerField(default=0)
+    violations_count  = models.IntegerField(default=0, help_text="Number of violations recorded during this patrol")
+
     
     def __str__(self):
         return f"Patrol {self.id} - {self.location} ({self.officer.full_name})"

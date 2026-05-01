@@ -8,6 +8,8 @@ from django.utils.decorators import method_decorator
 from collections import defaultdict
 from apps.users.models import StudentProfile
 from apps.handbook.models import HandbookEntry
+from django.db import models
+from django.utils import timezone
 from .models import Violation
 from .serializers import ViolationSerializer
 try:
@@ -217,27 +219,20 @@ class ViolationAssignView(APIView):
 class HeatmapView(APIView):
     """
     Returns violation data for Mapbox heatmap + cluster layers.
-
-    GPS-READY ARCHITECTURE:
-        GeoJSON returns ONE feature per violation (not aggregated).
-        Mapbox clusters them client-side — works identically whether
-        violations come from named-location lookup OR real GPS coordinates.
-
-    Query params (all optional):
-        date_from  — YYYY-MM-DD
-        date_to    — YYYY-MM-DD
-        category   — minor / major / traffic
-
-    Returns:
-        geojson          — GeoJSON FeatureCollection, one Point per violation
-        location_summary — [{name, lat, lng, count}] aggregated for stats chips
-        total_violations — int
+    Coordinates are resolved from DLSUD_LOCATIONS lookup when stored coords
+    are missing or are the campus-center fallback.
     """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        violations = Violation.objects.exclude(latitude=None).exclude(longitude=None) \
-                                      .select_related('rule', 'student')
+        from constants.locations import DLSUD_LOCATIONS, CAMPUS_CENTER
+
+        CAMPUS_LAT = CAMPUS_CENTER['lat']
+        CAMPUS_LNG = CAMPUS_CENTER['lng']
+        CAMPUS_LAT_ROUNDED = round(CAMPUS_LAT, 4)
+        CAMPUS_LNG_ROUNDED = round(CAMPUS_LNG, 4)
+
+        violations = Violation.objects.select_related('rule', 'student')
 
         date_from = request.query_params.get('date_from')
         date_to   = request.query_params.get('date_to')
@@ -254,12 +249,39 @@ class HeatmapView(APIView):
         elif category == 'traffic':
             violations = violations.filter(rule__category__icontains='traffic')
 
+        def resolve_coords(v):
+            """Return (lat, lng) for a violation, looking up from DLSUD_LOCATIONS
+               when the stored value is null or the campus-center fallback."""
+            lat, lng = v.latitude, v.longitude
+            # Treat None or exact campus-center as 'unknown'
+            is_fallback = (
+                lat is None or lng is None or
+                (round(lat, 4) == CAMPUS_LAT_ROUNDED and round(lng, 4) == CAMPUS_LNG_ROUNDED)
+            )
+            if is_fallback:
+                loc_key = v.location_name or v.location or ''
+                # Try exact match first
+                coords = DLSUD_LOCATIONS.get(loc_key)
+                if not coords:
+                    # Try case-insensitive partial match
+                    loc_lower = loc_key.lower()
+                    for name, c in DLSUD_LOCATIONS.items():
+                        if loc_lower in name.lower() or name.lower() in loc_lower:
+                            coords = c
+                            break
+                if coords:
+                    lat, lng = coords['lat'], coords['lng']
+                else:
+                    # Still unknown — skip from heatmap (don't pollute campus center)
+                    return None, None
+            return lat, lng
+
         # ── One GeoJSON feature per violation ──────────────────────────────
-        # ⚠️ Mapbox coordinate order: [lng, lat] — NOT [lat, lng]
-        # Mapbox clusters these client-side via clusterRadius.
-        # Works with exact named-location coords today, and real GPS tomorrow.
         features = []
         for v in violations:
+            lat, lng = resolve_coords(v)
+            if lat is None:
+                continue  # skip violations with no resolvable location
             features.append({
                 "type": "Feature",
                 "properties": {
@@ -272,24 +294,27 @@ class HeatmapView(APIView):
                 },
                 "geometry": {
                     "type": "Point",
-                    "coordinates": [v.longitude, v.latitude],  # [lng, lat] for Mapbox
+                    "coordinates": [lng, lat],  # [lng, lat] for Mapbox
                 }
             })
 
         geojson = {"type": "FeatureCollection", "features": features}
 
-        # ── Aggregated location_summary for stats chips ─────────────────────
-        location_counts = defaultdict(lambda: {'lat': 0.0, 'lng': 0.0, 'count': 0, 'name': ''})
+        # ── Aggregated location_summary with resolved coords ─────────────────
+        location_counts = defaultdict(lambda: {'lat': None, 'lng': None, 'count': 0, 'name': ''})
         for v in violations:
+            lat, lng = resolve_coords(v)
+            if lat is None:
+                continue
             key = v.location_name or v.location or 'Unknown'
-            location_counts[key]['lat']    = v.latitude
-            location_counts[key]['lng']    = v.longitude
+            location_counts[key]['lat']    = lat
+            location_counts[key]['lng']    = lng
             location_counts[key]['count'] += 1
             location_counts[key]['name']   = key
 
         location_summary = sorted(
             [{'name': d['name'], 'lat': d['lat'], 'lng': d['lng'], 'count': d['count']}
-             for d in location_counts.values()],
+             for d in location_counts.values() if d['lat'] is not None],
             key=lambda x: -x['count']
         )
 
@@ -316,3 +341,35 @@ class LocationsView(APIView):
         if grouped:
             return Response({'locations': get_locations_by_category()})
         return Response({'locations': get_all_location_names()})
+
+class ViolationStatisticsView(APIView):
+    """
+    Returns aggregated statistics for the violation summary dashboard.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        today = timezone.localtime(timezone.now()).date()
+        is_today = request.query_params.get('today', 'true').lower() == 'true'
+        
+        qs = Violation.objects.all()
+        if is_today:
+            qs = qs.filter(timestamp__date=today)
+            
+        uniform = qs.filter(rule__description__icontains='uniform').count()
+        curfew = qs.filter(rule__description__icontains='curfew').count()
+        id_pass = qs.filter(models.Q(rule__description__icontains='ID ') | models.Q(rule__description__icontains='identification') | models.Q(rule__description__icontains='id ')).count()
+        smoking = qs.filter(rule__description__icontains='smok').count()
+        
+        total = uniform + curfew + id_pass + smoking
+        
+        return Response({
+            "total_reports": total,
+            "categories": {
+                "uniform": uniform,
+                "curfew": curfew,
+                "id_pass": id_pass,
+                "smoking": smoking
+            }
+        })
+

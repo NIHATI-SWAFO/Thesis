@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     ViolationAssessmentView, ViolationCreateView, ViolationListView,
     ViolationUpdateStatusView, ViolationAssignView,
-    HeatmapView, LocationsView,
+    HeatmapView, LocationsView, ViolationStatisticsView,
 )
 
 urlpatterns = [
@@ -13,4 +13,5 @@ urlpatterns = [
     path('<int:id>/assign/',     ViolationAssignView.as_view(),      name='violation-assign'),
     path('heatmap/',             HeatmapView.as_view(),              name='violation-heatmap'),
     path('locations/',           LocationsView.as_view(),            name='violation-locations'),
+    path('statistics/',          ViolationStatisticsView.as_view(),  name='violation-statistics'),
 ]
