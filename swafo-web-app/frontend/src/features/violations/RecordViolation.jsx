@@ -71,32 +71,6 @@ export default function RecordViolation() {
     }
   };
 
-  /**
-   * simulateScan
-   * Fallback for testing/defense when camera isn't available or needed.
-   * Picks a random student from the first few search results.
-   */
-  const simulateScan = async () => {
-    setIsSearching(true);
-    try {
-      // Simulate scanning Timothy De Castro (our known test student)
-      const response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=202110245`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.length > 0) {
-          setFoundStudent(data[0]);
-          fetchStudentHistory(data[0].user_details?.email);
-          setMobileStep('confirm');
-          setShowScannerModal(false);
-        }
-      }
-    } catch (e) {
-      console.error('Simulation failed:', e);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (locationRef.current && !locationRef.current.contains(event.target)) {
@@ -442,9 +416,6 @@ export default function RecordViolation() {
                    </button>
                    <button onClick={() => setShowScannerModal(true)} className="bg-white/10 hover:bg-white/20 text-emerald-100 font-black h-[72px] px-8 rounded-[2rem] transition-all active:scale-95 flex items-center justify-center border border-white/20 shrink-0">
                      <span className="material-symbols-outlined">qr_code_scanner</span>
-                   </button>
-                   <button onClick={simulateScan} className="bg-white/10 hover:bg-white/20 text-emerald-100 font-black h-[72px] px-8 rounded-[2rem] transition-all active:scale-95 flex items-center justify-center border border-white/20 shrink-0">
-                     <span className="material-symbols-outlined">bug_report</span>
                    </button>
                    
                    {/* Search Results Dropdown - Premium */}

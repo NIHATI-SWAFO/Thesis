@@ -7,7 +7,7 @@
 **Stack:** React (Vite) + Tailwind CSS | Django + DRF | PostgreSQL  
 
 > Source: `additional context/plan.md`, `project_context.md`, `research.md`
-> **Current Focus & Status:** Aligning institutional data for thesis defense. We are synchronizing the Patrol Monitoring and Analytics modules with our core Violation database (April 18-20). Current step: Finalizing the Officer Portal's live data feeds.
+> **Current Focus & Status:** Post-merge sync (May 1, 2026). Integrated co-member patrol features (Live Navigation, forensic camera, distance tracking). Barcode scanner fully live. College PDF report complete. Heatmap built and live on campus map. Remaining: patrol live session, evidence file upload, user management UI.
 
 ---
 
@@ -27,14 +27,14 @@
 |---|---|---|---|---|
 | View own profile | ✅ | ✅ | ✅ | ✅ Verified |
 | View own violations | ✅ | ❌ | ✅ | ✅ Verified |
-| Scan student ID | ❌ | ✅ | ✅ | ❌ Not started |
-| Record violation | ❌ | ✅ | ✅ | ❌ Not started |
-| View all violations | ❌ | ✅ | ✅ | ❌ Not started |
-| Patrol logging | ❌ | ✅ | ✅ | ❌ Not started |
-| Dashboard / analytics | ❌ | limited | ✅ | ❌ Not started |
+| Scan student ID | ❌ | ✅ | ✅ | ✅ Implemented (html5-qrcode + simulate fallback) |
+| Record violation | ❌ | ✅ | ✅ | ✅ Implemented (full form + assessment engine) |
+| View all violations | ❌ | ✅ | ✅ | ✅ Implemented (Case Management + Student Records) |
+| Patrol logging | ❌ | ✅ | ✅ | 🟡 UI done; live session recording in progress |
+| Dashboard / analytics | ❌ | limited | ✅ | ✅ Implemented (Recharts + Heatmap + College PDF) |
 | Manage users | ❌ | ❌ | ✅ | ❌ Not started |
-| Access handbook | ✅ | ✅ | ✅ | 🟡 Frontend only |
-| Use chatbot | ✅ | ❌ | ❌ | 🟡 Frontend only |
+| Access handbook | ✅ | ✅ | ✅ | 🟡 Frontend only (DB-backed data pending) |
+| Use chatbot | ✅ | ❌ | ❌ | ✅ Implemented (Gemini + VSM Retrieval) |
 
 ---
 
@@ -138,33 +138,34 @@
 
 ### Patrol History & Monitoring — *"Replace SWAFO's current third-party timestamp app"*
 - [x] Implement `PatrolHistory.jsx` with 2-column list/detail layout
--- [x] Interactive patrol list with high-fidelity status badges (mint/white)
-+- [x] **Live Monitoring Sync:** `PatrolMonitoring.jsx` is fully connected to backend APIs; showing real active officers (Timothy De Castro, Harlene Bautista, etc.) from the DB.
-+- [x] **Institutional Metric Alignment:** Charts and cards now accurately reflect 4 Active Patrols and a ~3.5h Average Duration.
+- [x] Interactive patrol list with high-fidelity status badges (mint/white)
+- [x] **Live Monitoring Sync:** `PatrolMonitoring.jsx` fully connected to backend APIs; showing real active officers from the DB.
+- [x] **Institutional Metric Alignment:** Charts and cards accurately reflect active patrols and duration metrics.
 - [x] Checkpoint timeline with semantic status indicators (secure/check)
-- [ ] Map Navigation module with "View Full Map" interactive state
 - [x] **Visual Refinement:** ACHIEVED 1:1 parity (ultra-thin 2px accents, solid white KPI text, balanced metric scaling)
-- [ ] "Start Patrol" functional module (recording live session)
-- [ ] Select patrol area/checkpoint within university
-- [ ] Timestamped patrol photo capture (overlay: date, time, location, GPS coordinates)
-- [ ] "End Patrol" button to close session
-- [ ] Replace SWAFO's current third-party timestamp app with built-in solution
-> **Approach:** Focused on making a digital replacement for manual patrol logging. The UI matches current high-end security dashboards with a focus on "Checkpoint Verification" data.
+- [x] **Immersive Live Navigation (co-member, May 1):** `LiveNavigation.jsx` — full-screen Mapbox GPS view for officers during active patrol.
+- [x] **Distance Tracking (co-member, May 1):** Haversine formula calculates km traveled in real-time during patrol session.
+- [x] **GPS Breadcrumbs (co-member, May 1):** Logs every coordinate point to create a visual trail of the patrol path.
+- [x] **Forensic Camera (co-member, May 1):** WebRTC camera with automated watermarking — stamps location name, timestamp, and GPS trail on every photo.
+- [x] **New DB Fields Migrated:** `distance_km`, `trail_coordinates`, `violations_count` added to `PatrolSession` model (migrations 0004–0006 applied).
+- [x] **Heatmap Auto-Refresh (co-member, May 1):** Campus map now polls server every 30 seconds for live violation updates.
+- [ ] Select patrol area/checkpoint within university (UI shell exists)
+- [ ] "End Patrol" button to formally close and archive session
+> **Approach:** Focused on making a digital replacement for manual patrol logging. Live navigation + forensic camera are the core institutional evidence features.
 
 ### Violation Recording
 - [x] Setup base layout, aesthetic spacing, and generic data fields matching Figma designs (`RecordViolation.jsx`).
 - [x] Map input groupings properly, implement strict `bg-white` and vertical green accent bars for consistency.
 - [x] **Visual Refinement:** Implemented "Violation History" list within the recording view for context.
-- [ ] Barcode scanner (camera-based, browser) using `html5-qrcode` or `@ericblade/quagga2`
-- [ ] Auto-retrieve student profile from scanned barcode (name, college, department)
--- [ ] Violation type dropdown selector + manual entry option
--- [ ] Written statement / description field
-+- [x] Violation type dropdown selector + manual entry option
-+- [x] Written statement / description field
-- [ ] Evidence upload (photo/file) via cloud storage (S3/Cloudinary)
--- [ ] Map each violation to a university handbook entry
-+- [ ] Map each violation to a university handbook entry (Smart Search integrated).
-+- [x] **Traffic Offense Support:** Integrated Section 27.4 logic for independent escalation and fine tracking (Php 1,000/2,000).
+- [x] **Real Barcode Scanner:** Integrated `html5-qrcode` (v2.3.8) — live camera viewfinder with animated scan-line guide. Fixed video duplication glitch by removing `qrbox` and applying `object-fit: cover` CSS override.
+- [x] **Simulate Scan Fallback:** Added `simulateScan()` function for defense testing — fetches Timothy De Castro's profile via student number without needing a physical ID.
+- [x] **Auto-retrieve student profile** from scanned barcode (exact match on `student_number`, fallback to first result).
+- [x] Violation type dropdown selector (Manual) + Smart Search mode (VSM semantic)
+- [x] Written statement / description field
+- [x] **Smart Rule Search:** VSM-powered semantic search for handbook rules (e.g., type "smoking", returns §27.x matches with % score).
+- [x] **Location Picker:** Searchable dropdown backed by all 52 DLSUD campus buildings from `locations.py`.
+- [x] **Traffic Offense Support:** Integrated Section 27.4 logic for independent escalation and fine tracking (Php 1,000/2,000).
+- [ ] Evidence upload (photo/file) via cloud storage (S3/Cloudinary) — UI placeholder exists, backend upload not wired.
 
 ### System Output After Violation Submission
 - [x] Auto-generated **case summary** of the incident (Tentatively working - needs improvement)
@@ -207,11 +208,15 @@
 - [/] **Handbook-to-Action Mapping**: Explicitly suggesting actions (e.g., Guidance Referral)
 - [x] Output: Automated penalty recommendation during assessment.
 
-### 5.4 Violation Analytics & Heatmap (In Progress)
+### 5.4 Violation Analytics & Heatmap ✅ Implemented
 - [x] **Analytics Engine**: Real-time charts on dashboard (Distribution & Trends)
-- [ ] **Spatial Heatmap**: Visual map of the campus showing "Red Zones"
-- [ ] Input: Coordinate mapping of violation records for spatial plotting
-+- [x] **Rolling Analytics Window**: Implemented dynamic 7-day temporal window for offense trends (Frontend/Backend Sync).
+- [x] **Spatial Heatmap**: `MapTrial.jsx` — fully operational Mapbox GL campus heatmap with 3D perspective, cluster circles, and violation popups.
+- [x] **52-Building Coordinate DB**: All DLSUD locations mapped in `constants/locations.py` (OpenStreetMap source).
+- [x] **GeoJSON API**: `ViolationGeoJSONView` returns one GeoJSON point per violation; client-side Mapbox clustering.
+- [x] **Rolling Analytics Window**: Dynamic 7-day temporal window for offense trends (Frontend/Backend Sync).
+- [x] **Date + Category Filters**: Heatmap filters by date range and offense category (minor/major/traffic).
+- [x] **Top Hotspot Display**: Header shows total violations, unique locations, and #1 hottest building.
+- [ ] **Planned Enhancements**: See `additional context/heatmap_improvements.md` (Temporal Decay weighting, Time Slider, Risk Sidebar, 3D Extrusions, College Filter).
 
 ### 5.5 Rule-Based Handbook Chatbot (In Progress)
 - [x] **Hybrid Semantic Retrieval** (VSM + Cosine Similarity)
@@ -233,16 +238,23 @@
 ### Database Tables (from `plan.md` §6)
 - [x] `Users` — fully functional
 - [x] `Students` — fully functional with profile resolution
-- [x] `Violations` — fully functional with escalation logic + **Director Sanction fields**.
+- [x] `Violations` — fully functional with escalation logic + **Director Sanction fields** + lat/lng coordinates.
 - [x] `HandbookEntries` — seeded with 82 rules
-- [x] **Database Seeding:** 51 students (including Timothy De Castro) and historical data.
+- [x] `PatrolSession` — extended with `distance_km`, `trail_coordinates`, `violations_count` (May 1 migration).
+- [x] **Violation Seeding (`seed_violations.py`):** 151 violations across 28 campus buildings with weighted hotspot distribution + Apriori pattern injection (5 behavioral sequences per pair). Temporal spread: 60-day window for decay testing.
+- [x] **Student Seeding:** 51 students (including Timothy De Castro) with realistic college/course distribution.
 
 ### API Endpoints
-- [x] Student profile CRUD (via /api/users/search/)
-- [x] Violation submission and retrieval
-- [x] Patrol log recording
+- [x] Student profile CRUD (`/api/users/search/`, `/api/users/colleges/`)
+- [x] Violation submission and retrieval (`/api/violations/`, `/api/violations/assess/`)
+- [x] Violation GeoJSON for heatmap (`/api/violations/heatmap/`)
+- [x] Violation location lookup (`/api/violations/locations/`)
+- [x] Smart handbook rule search (`/api/handbook/smart-search/`)
+- [x] Patrol log recording and live monitoring
 - [x] Handbook content retrieval
-- [x] Chatbot query processing (AI Curator)
+- [x] Chatbot query processing (AI Curator / Gemini)
+- [x] Admin dashboard analytics (`/api/analytics/admin/`)
+- [x] Per-college PDF report (`/api/analytics/college-report/?college=`)
 
 ---
 

@@ -1,6 +1,30 @@
 # 🛠️ SWAFO Portal: Developer Setup Guide
 
 Welcome group mates! Follow these steps to get the SWAFO system running on your local machine.
+ 
+---
+ 
+## ⚡ POST-PULL SYNC (Do this after every `git pull`)
+If you just pulled new changes and the app is crashing or showing errors, run these 3 commands:
+ 
+1. **Update Backend Database:**
+   ```bash
+   cd swafo-web-app/backend
+   source .venv/bin/activate  # or activate your venv
+   python manage.py migrate
+   ```
+2. **Update Frontend Packages:**
+   ```bash
+   cd ../frontend
+   npm install
+   ```
+3. **Re-seed Data (Optional but recommended if logic changed):**
+   ```bash
+   cd ../backend
+   python seed_violations.py
+   ```
+ 
+---
 
 ## 1. Prerequisites
 - **Python 3.12+**
@@ -20,15 +44,15 @@ Welcome group mates! Follow these steps to get the SWAFO system running on your 
    - Create a new file named **`.env`** in that same folder.
    - Ask **Timothy** for the `GEMINI_API_KEY` and `DJANGO_SECRET_KEY` and paste them in.
 6. Run migrations: `python manage.py migrate`
-7. **Seed Data** (Do this to see students/rules):
+7. **Seed Data** (Do this to see students/rules/violations):
    ```bash
    python seed_students.py
    python seed_officers.py
    python seed_patrols.py
-   python manage.py seed_violations --count 150
+   python seed_violations.py
    python bulk_seed_full_handbook.py
    ```
-   *Note: `seed_violations` now uses the Django management command with GPS-ready coordinates across 52 campus locations.*
+   *Note: `seed_violations.py` is the preferred way to seed. It injects weighted hotspots (ICTC, Julian Felipe, etc.) and Apriori behavioral patterns for the AI analytics.*
 
 8. **Perfect Sync (Recommended)**: If your data looks different or unassigned on another device, use the Master Snapshot to force a perfect 1:1 match of all Students, Officers, and Violations:
    ```bash
