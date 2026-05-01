@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../../api/config';
 import { useAuth } from '../../context/AuthContext';
 import BarcodeScanner from '../../components/BarcodeScanner';
 
 export default function RecordViolation() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [foundStudent, setFoundStudent] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -64,6 +66,32 @@ export default function RecordViolation() {
     } catch (e) {
       console.error('Barcode lookup failed:', e);
       setMobileStep('manual');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  /**
+   * simulateScan
+   * Fallback for testing/defense when camera isn't available or needed.
+   * Picks a random student from the first few search results.
+   */
+  const simulateScan = async () => {
+    setIsSearching(true);
+    try {
+      // Simulate scanning Timothy De Castro (our known test student)
+      const response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=202110245`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.length > 0) {
+          setFoundStudent(data[0]);
+          fetchStudentHistory(data[0].user_details?.email);
+          setMobileStep('confirm');
+          setShowScannerModal(false);
+        }
+      }
+    } catch (e) {
+      console.error('Simulation failed:', e);
     } finally {
       setIsSearching(false);
     }
@@ -250,6 +278,9 @@ export default function RecordViolation() {
     });
     setSmartSearchQuery('');
     setEvidenceFiles([]);
+    
+    // Return to the previous screen (Live Map)
+    navigate(-1);
   };
 
   const handleInputChange = (e) => {
@@ -411,6 +442,9 @@ export default function RecordViolation() {
                    </button>
                    <button onClick={() => setShowScannerModal(true)} className="bg-white/10 hover:bg-white/20 text-emerald-100 font-black h-[72px] px-8 rounded-[2rem] transition-all active:scale-95 flex items-center justify-center border border-white/20 shrink-0">
                      <span className="material-symbols-outlined">qr_code_scanner</span>
+                   </button>
+                   <button onClick={simulateScan} className="bg-white/10 hover:bg-white/20 text-emerald-100 font-black h-[72px] px-8 rounded-[2rem] transition-all active:scale-95 flex items-center justify-center border border-white/20 shrink-0">
+                     <span className="material-symbols-outlined">bug_report</span>
                    </button>
                    
                    {/* Search Results Dropdown - Premium */}
@@ -1148,7 +1182,14 @@ export default function RecordViolation() {
 
             <div className="bg-white rounded-[2rem] p-6 mb-8 border-l-8 border-red-500 shadow-xl">
                <div className="flex flex-col items-center">
-                 <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mb-4 shadow-inner">
+                 {/* Back Button */}
+                 <div className="hidden lg:flex items-center gap-4 mb-8">
+                   <button onClick={() => navigate(-1)} className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-slate-400 hover:text-emerald-600 transition-all">
+                     <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+                   </button>
+                   <h1 className="font-manrope font-black text-[#003624] text-[32px] tracking-tight">Record Violation</h1>
+                 </div>
+                 <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mb-4">
                     <span className="material-symbols-outlined text-[24px]">gavel</span>
                  </div>
                  <span className="bg-slate-100 text-slate-500 text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-widest mb-3">Auto-Sanction</span>

@@ -3,9 +3,26 @@ from .models import Violation
 from apps.users.serializers import StudentProfileSerializer
 from apps.handbook.serializers import HandbookEntrySerializer
 try:
-    from constants.locations import get_coordinates
+    from constants.locations import DLSUD_LOCATIONS, get_coordinates
 except ImportError:
+    DLSUD_LOCATIONS = {}
     def get_coordinates(name): return {"lat": 14.3228, "lng": 120.9600}
+
+def resolve_building_coords(location_name: str):
+    """Resolve lat/lng from DLSUD_LOCATIONS, with fuzzy fallback.
+    Returns (lat, lng, normalized_name) or (None, None, location_name) if not found."""
+    if not location_name:
+        return None, None, location_name
+    # 1. Exact match
+    coords = DLSUD_LOCATIONS.get(location_name)
+    if coords:
+        return coords['lat'], coords['lng'], location_name
+    # 2. Case-insensitive partial match
+    loc_lower = location_name.lower()
+    for name, c in DLSUD_LOCATIONS.items():
+        if loc_lower in name.lower() or name.lower() in loc_lower:
+            return c['lat'], c['lng'], name
+    return None, None, location_name
 
 class ViolationSerializer(serializers.ModelSerializer):
     student_details = StudentProfileSerializer(source='student', read_only=True)
@@ -151,12 +168,12 @@ class ViolationSerializer(serializers.ModelSerializer):
             'case_summary', 'corrective_action', 'prescribed_sanction', 
             'requires_director_decision', 'director_sanction', 'director_remarks', 'timestamp'
         ]
-        read_only_fields = ['id', 'officer', 'timestamp', 'latitude', 'longitude']
+        read_only_fields = ['id', 'officer', 'timestamp']
 
     def create(self, validated_data):
         request = self.context.get('request')
-        officer_email = request.data.get('officer_email')
-        
+        officer_email = request.data.get('officer_email') if request else None
+
         # Priority 1: Use explicitly passed officer email (for demo/mock login)
         if officer_email:
             from django.contrib.auth import get_user_model
@@ -165,18 +182,24 @@ class ViolationSerializer(serializers.ModelSerializer):
                 validated_data['officer'] = User.objects.get(email=officer_email)
             except User.DoesNotExist:
                 pass
-        
+
         # Priority 2: Use session user if still not set
         if not validated_data.get('officer') and request and request.user.is_authenticated:
             validated_data['officer'] = request.user
 
-        # Auto-populate coordinates from location_name lookup table
-        location_name = validated_data.get('location_name', '') or validated_data.get('location', '')
-        if location_name:
-            if not validated_data.get('location_name'):
-                validated_data['location_name'] = location_name
-            coords = get_coordinates(location_name)
-            validated_data['latitude']  = coords['lat']
-            validated_data['longitude'] = coords['lng']
-            
+        # ── Auto-geocode: resolve real building coordinates from location name ────
+        # This is what makes newly recorded violations appear on the heatmap.
+        loc_name = validated_data.get('location_name') or validated_data.get('location', '')
+        lat, lng, resolved_name = resolve_building_coords(loc_name)
+        if lat is not None:
+            validated_data['latitude']      = lat
+            validated_data['longitude']     = lng
+            validated_data['location_name'] = resolved_name
+            if not validated_data.get('location'):
+                validated_data['location'] = resolved_name
+        else:
+            # Unknown building — store name but leave coords null
+            # HeatmapView will still try to resolve them at query time
+            validated_data['location_name'] = loc_name
+
         return super().create(validated_data)

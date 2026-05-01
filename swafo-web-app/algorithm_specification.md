@@ -226,6 +226,39 @@ This context ensures accurate filtering when toggling "School Days" and prevents
 
 ---
 
+## 12. Spherical Distance Algorithm (Haversine Formula)
+Because the earth is a sphere, the system cannot use basic Euclidean geometry (e.g., the Pythagorean theorem) to calculate the distance between two GPS coordinates during a live patrol. The system implements the **Haversine Algorithm** to calculate the exact great-circle distance (in kilometers) across the curvature of the earth.
+
+### 12.1 Mathematical Implementation
+It takes the previous coordinate $(lng_1, lat_1)$ and the new coordinate $(lng_2, lat_2)$, converts them to radians, and multiplies them by the Earth's radius ($R = 6371 \text{ km}$).
+
+**Formula:**
+$$dLat = (lat_2 - lat_1) \times \frac{\pi}{180}$$
+$$dLng = (lng_2 - lng_1) \times \frac{\pi}{180}$$
+$$a = \sin^2\left(\frac{dLat}{2}\right) + \cos(lat_1) \times \cos(lat_2) \times \sin^2\left(\frac{dLng}{2}\right)$$
+$$\text{Distance} = R \times 2 \times \text{atan2}\left(\sqrt{a}, \sqrt{1-a}\right)$$
+
+### 12.2 Real-time Spatial Thresholding (Jitter Filter)
+To prevent GPS sensor noise from artificially inflating the officer's traveled distance, the algorithm applies real-time thresholding:
+- **Micro-Jitter Filter:** If $Distance < 0.002 \text{ km}$ (2 meters), the movement is discarded as sensor noise.
+- **Teleportation Filter:** If $Distance \ge 0.2 \text{ km}$ (200 meters) instantaneously, the system assumes a GPS signal jump, discards the distance, and resets the visual trail sequence to prevent rendering impossible paths.
+
+---
+
+## 13. Forensic Watermarking Algorithm (Temporal & Spatial Injection)
+To ensure that evidentiary photos captured by officers cannot be spoofed or contested by students, the system implements a **Canvas Pixel Buffer Algorithm** with **Historical Breadcrumb Extraction**.
+
+### 13.1 Canvas Pixel Buffer Processing
+Instead of saving the raw camera output, the system intercepts the video frame in memory. It dynamically allocates a hidden HTML5 `<canvas>` matching the camera's resolution and mathematically paints the raw video frame onto this buffer using a 2D rendering context.
+
+### 13.2 Precise Timestamp & GPS Injection
+The system algorithmically calculates and stamps verifiable metadata directly into the image's pixel structure before it is ever saved to disk:
+1. **Temporal Stamp:** Grabs the system's exact local millisecond time at the point of capture, formats it into localized strings, and draws it onto the bottom-right coordinates of the buffer using `fillText()`.
+2. **Spatial Stamp (Breadcrumb Extraction):** Because pinging the hardware GPS sensor takes too long and introduces shutter-lag, the algorithm executes a $O(1)$ look-behind on the active patrol's `trailCoords` array. It extracts the absolute most recent coordinate ($node_{n-1}$), truncates the floats to 5 decimal places for accuracy, and renders them beneath the timestamp (e.g., $14.32145^\circ N, 120.93214^\circ E$).
+3. **Immutable Flattening:** The algorithm flattens the image matrix, the text vectors, and their respective drop-shadows into a single base64 JPEG payload (`canvas.toDataURL`), creating a mathematically flat, immutable image.
+
+---
+
 ## Summary of Technical Stack
 - **AI Core**: Google Gemini 1.5 (Pro/Flash)
 - **Embedding Engine**: Gemini Embedding 001
