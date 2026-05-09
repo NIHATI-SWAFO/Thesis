@@ -10,7 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 import environ
+import dj_database_url
 from pathlib import Path
 
 # Initialize environ
@@ -22,8 +24,10 @@ env = environ.Env(
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Read .env file
-environ.Env.read_env(BASE_DIR / '.env')
+# Read .env file (only if it exists — Railway uses real env vars)
+env_file = BASE_DIR / '.env'
+if env_file.exists():
+    environ.Env.read_env(env_file)
 
 
 # Quick-start development settings - unsuitable for production
@@ -33,9 +37,17 @@ environ.Env.read_env(BASE_DIR / '.env')
 SECRET_KEY = env('DJANGO_SECRET_KEY', default='django-insecure-default-key-for-dev')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool('DEBUG', default=False)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '.railway.app',
+]
+# Allow Railway's auto-generated domain
+RAILWAY_PUBLIC_DOMAIN = env('RAILWAY_PUBLIC_DOMAIN', default='')
+if RAILWAY_PUBLIC_DOMAIN:
+    ALLOWED_HOSTS.append(RAILWAY_PUBLIC_DOMAIN)
 
 
 # Application definition
@@ -65,6 +77,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', # MUST BE AT THE TOP
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files in production
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -105,8 +118,14 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5175",
     "http://localhost:5176",
 ]
+# Add deployed frontend URL from env var (e.g. https://swafo.vercel.app)
+CORS_FRONTEND_URL = env('CORS_ALLOWED_ORIGIN', default='')
+if CORS_FRONTEND_URL:
+    CORS_ALLOWED_ORIGINS.append(CORS_FRONTEND_URL)
+    CSRF_TRUSTED_ORIGINS = [CORS_FRONTEND_URL, "http://localhost:5173"]
+else:
+    CSRF_TRUSTED_ORIGINS = ["http://localhost:5173"]
 CORS_ALLOW_CREDENTIALS = True
-CSRF_TRUSTED_ORIGINS = ["http://localhost:5173"]
 
 TEMPLATES = [
     {
@@ -128,12 +147,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+# Uses DATABASE_URL in production (Railway auto-injects this), falls back to SQLite for local dev
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+    )
 }
 
 
@@ -171,8 +191,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Default primary key field type
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # AI Assistant Settings
-GEMINI_API_KEY = env('GEMINI_API_KEY')
-HANDBOOK_PATH = BASE_DIR.parent.parent / 'additional context' / 'handbook_reference.md'
+GEMINI_API_KEY = env('GEMINI_API_KEY', default='')
+HANDBOOK_PATH = env('HANDBOOK_PATH', default=str(BASE_DIR.parent.parent / 'additional context' / 'handbook_reference.md'))
