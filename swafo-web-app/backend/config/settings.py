@@ -125,6 +125,10 @@ if CORS_FRONTEND_URL:
     CSRF_TRUSTED_ORIGINS = [CORS_FRONTEND_URL, "http://localhost:5173"]
 else:
     CSRF_TRUSTED_ORIGINS = ["http://localhost:5173"]
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",
+]
 CORS_ALLOW_CREDENTIALS = True
 
 TEMPLATES = [
