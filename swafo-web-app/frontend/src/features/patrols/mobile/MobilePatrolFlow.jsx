@@ -4,10 +4,87 @@ import { API_ENDPOINTS } from '../../../api/config';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import html2canvas from 'html2canvas';
+import campusData from '../../../assets/dlsud-campus.json';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 const DLSUD_CENTER = [120.9600, 14.3228];
-const CAMPUS_BOUNDS = [[120.9540, 14.3175], [120.9660, 14.3310]];
+// Tight bounds matching the actual DLSU-D campus polygon footprint (mirrors MapTrial)
+const CAMPUS_BOUNDS = [[120.9555, 14.3193], [120.9645, 14.3290]];
+
+// ── All DLSU-D named locations (mirrors MapTrial / backend constants/locations.py) ──
+const DLSUD_LOCATIONS = [
+  { name: 'Gate 3',                              lat: 14.3281023, lng: 120.9569612, category: 'Gates & Entry Points' },
+  { name: 'Magdalo Gate',                        lat: 14.3216701, lng: 120.9633916, category: 'Gates & Entry Points' },
+  { name: 'CTH Building A',                      lat: 14.3234062, lng: 120.9592155, category: 'Academic Building' },
+  { name: 'CTH Building B',                      lat: 14.3232843, lng: 120.9594965, category: 'Academic Building' },
+  { name: 'Doctor Fe Del Mundo Hall',            lat: 14.3202359, lng: 120.9628733, category: 'Academic Building' },
+  { name: 'Doña Marcela Agoncillo Hall',         lat: 14.3211602, lng: 120.9622084, category: 'Academic Building' },
+  { name: 'Felipe Calderon Hall',                lat: 14.3226234, lng: 120.9596990, category: 'Academic Building' },
+  { name: 'Francisco Barzaga Hall',              lat: 14.3222260, lng: 120.9598766, category: 'Academic Building' },
+  { name: 'Gregoria De Jesus Hall',              lat: 14.3237095, lng: 120.9582591, category: 'Academic Building' },
+  { name: 'ICTC Building',                       lat: 14.3223323, lng: 120.9629743, category: 'Academic Building' },
+  { name: 'Julian Felipe Hall',                  lat: 14.3211370, lng: 120.9628567, category: 'Academic Building' },
+  { name: 'Ladislao Diwa Hall',                  lat: 14.3223048, lng: 120.9596321, category: 'Academic Building' },
+  { name: 'LDH Kubo',                            lat: 14.3224933, lng: 120.9596815, category: 'Academic Building' },
+  { name: 'Maria Salome Llanera Hall',           lat: 14.3227719, lng: 120.9584732, category: 'Academic Building' },
+  { name: 'Mariano Alvarez Hall',                lat: 14.3219241, lng: 120.9629693, category: 'Academic Building' },
+  { name: 'Mariano Trias Hall',                  lat: 14.3237533, lng: 120.9587990, category: 'Academic Building' },
+  { name: 'MTH Covered Court',                   lat: 14.3232939, lng: 120.9589006, category: 'Academic Building' },
+  { name: 'Paulo Campos Hall',                   lat: 14.3209194, lng: 120.9628865, category: 'Academic Building' },
+  { name: 'Saint La Salle Hall',                 lat: 14.3256939, lng: 120.9590734, category: 'Academic Building' },
+  { name: 'Santiago Alvarez Hall',               lat: 14.3232948, lng: 120.9582303, category: 'Academic Building' },
+  { name: 'Severino de las Alas Hall',           lat: 14.3226348, lng: 120.9610677, category: 'Academic Building' },
+  { name: 'Vito Belarmino Hall',                 lat: 14.3222303, lng: 120.9591472, category: 'Academic Building' },
+  { name: 'DLSU-D High School',                  lat: 14.3255855, lng: 120.9585768, category: 'High School Area' },
+  { name: 'De La Salle University - Dasmariñas High School Complex', lat: 14.3257582, lng: 120.9590448, category: 'High School Area' },
+  { name: 'High School Annex Building',          lat: 14.3255627, lng: 120.9591360, category: 'High School Area' },
+  { name: 'High School Chapel',                  lat: 14.3260533, lng: 120.9592000, category: 'High School Area' },
+  { name: 'Basic Education Covered Court',       lat: 14.3252593, lng: 120.9590583, category: 'Facility' },
+  { name: 'Botanical Garden Park',               lat: 14.3216709, lng: 120.9615933, category: 'Facility' },
+  { name: 'DLSU-D Grandstand',                   lat: 14.3249513, lng: 120.9575162, category: 'Facility' },
+  { name: 'GMH Quadrangle',                      lat: 14.3228834, lng: 120.9591659, category: 'Facility' },
+  { name: 'Guest House',                         lat: 14.3208670, lng: 120.9596082, category: 'Facility' },
+  { name: 'Ladies Dormitory Complex',            lat: 14.3207950, lng: 120.9592808, category: 'Facility' },
+  { name: 'Motor Pool',                          lat: 14.3202606, lng: 120.9636220, category: 'Facility' },
+  { name: 'Residencia La Salle',                 lat: 14.3204049, lng: 120.9620443, category: 'Facility' },
+  { name: 'Ugnayang La Salle',                   lat: 14.3267127, lng: 120.9574525, category: 'Facility' },
+  { name: 'University Student Government',       lat: 14.3228244, lng: 120.9590088, category: 'Facility' },
+  { name: 'Aklatang Emilio Aguinaldo',           lat: 14.3207434, lng: 120.9619580, category: 'Library & Cultural' },
+  { name: 'Ayuntamiento',                        lat: 14.3207567, lng: 120.9630615, category: 'Library & Cultural' },
+  { name: 'Ayuntamiento De Gonzalez',            lat: 14.3205439, lng: 120.9630429, category: 'Library & Cultural' },
+  { name: 'Museo De La Salle',                   lat: 14.3209977, lng: 120.9610387, category: 'Library & Cultural' },
+  { name: 'Rizal Library',                       lat: 14.3210924, lng: 120.9618808, category: 'Library & Cultural' },
+  { name: 'Antonio and Victoria Cojuanco Memorial Chapel of Our Lady of the Holy Rosary', lat: 14.3205188, lng: 120.9615292, category: 'Chapel & Religious' },
+  { name: 'La Porteria De San Benildo',          lat: 14.3224365, lng: 120.9633927, category: 'Chapel & Religious' },
+  { name: 'University Clinic',                   lat: 14.3211716, lng: 120.9629366, category: 'Health & Services' },
+  { name: 'Cafe Museo',                          lat: 14.3216672, lng: 120.9600649, category: 'Food & Canteen' },
+  { name: 'Food Square Extension',               lat: 14.3215291, lng: 120.9603484, category: 'Food & Canteen' },
+  { name: 'University Food Square',              lat: 14.3215061, lng: 120.9599738, category: 'Food & Canteen' },
+  { name: 'DLSU-D Faculty/Staff Parking',        lat: 14.3244490, lng: 120.9586005, category: 'Parking' },
+  { name: 'DLSU-D Student/Faculty/Staff Parking',lat: 14.3263091, lng: 120.9578142, category: 'Parking' },
+  { name: 'High School Parking',                 lat: 14.3259515, lng: 120.9585919, category: 'Parking' },
+];
+
+const MOBILE_CATEGORY_COLORS = {
+  'Gates & Entry Points': '#f59e0b',
+  'Academic Building':    '#2563eb',
+  'High School Area':     '#7c3aed',
+  'Facility':             '#0891b2',
+  'Library & Cultural':   '#db2777',
+  'Chapel & Religious':   '#dc2626',
+  'Health & Services':    '#16a34a',
+  'Food & Canteen':       '#ea580c',
+  'Parking':              '#6b7280',
+};
+
+const CAMPUS_LOCATIONS_GEOJSON_MOBILE = {
+  type: 'FeatureCollection',
+  features: DLSUD_LOCATIONS.map(loc => ({
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [loc.lng, loc.lat] },
+    properties: { name: loc.name, category: loc.category, color: MOBILE_CATEGORY_COLORS[loc.category] || '#6b7280' },
+  })),
+};
 
 // ── Heatmap configuration for Risk Zones ─────────────────────────────────────
 const RISK_HEATMAP_CONFIG = {
@@ -611,6 +688,62 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
             paint: { 'circle-color': '#ff4444', 'circle-radius': 8, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' },
           });
 
+          // ── World mask — hide everything outside the DLSU-D campus polygon ───────────────────
+          try {
+            const worldMask = {
+              type: 'Feature',
+              geometry: {
+                type: 'Polygon',
+                coordinates: [
+                  [[-180,90],[-180,-90],[180,-90],[180,90],[-180,90]],
+                  ...campusData.features[0].geometry.coordinates,
+                ],
+              },
+            };
+            m.addSource('world-mask-mobile', { type: 'geojson', data: worldMask });
+            m.addLayer({ id: 'world-mask-mobile', type: 'fill', source: 'world-mask-mobile',
+              paint: { 'fill-color': '#ecfdf5', 'fill-opacity': 1 } });
+          } catch (maskErr) {
+            console.warn('World mask failed:', maskErr);
+          }
+
+          // ── Campus location pins (all 52 named locations) ───────────────────────────
+          m.addSource('campus-locations-mobile', { type: 'geojson', data: CAMPUS_LOCATIONS_GEOJSON_MOBILE });
+          m.addLayer({
+            id: 'campus-loc-circle-mobile',
+            type: 'circle',
+            source: 'campus-locations-mobile',
+            paint: {
+              'circle-color':        ['get', 'color'],
+              'circle-radius':       ['interpolate', ['linear'], ['zoom'], 15, 5, 17, 8, 19, 11],
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#ffffff',
+              'circle-opacity':      0.85,
+            },
+          });
+          m.addLayer({
+            id: 'campus-loc-label-mobile',
+            type: 'symbol',
+            source: 'campus-locations-mobile',
+            minzoom: 16.5,
+            layout: {
+              'text-field':         ['get', 'name'],
+              'text-font':          ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+              'text-size':          10,
+              'text-offset':        [0, 1.4],
+              'text-anchor':        'top',
+              'text-max-width':     8,
+              'text-allow-overlap': false,
+            },
+            paint: {
+              'text-color':      '#003624',
+              'text-halo-color': '#ffffff',
+              'text-halo-width': 2,
+            },
+          });
+          m.on('mouseenter', 'campus-loc-circle-mobile', () => { m.getCanvas().style.cursor = 'pointer'; });
+          m.on('mouseleave', 'campus-loc-circle-mobile', () => { m.getCanvas().style.cursor = ''; });
+
           setMapReady(true);
         } catch (e) {
           console.error('Mobile heatmap failed:', e);
@@ -621,6 +754,22 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
       // ── Map click → use real API data for accurate area naming ────────────
       m.on('click', (e) => {
         const { lng, lat } = e.lngLat;
+
+        // 0. Campus location pin tap — highest priority, use pin name + exact coords
+        const campusPinFeatures = m.queryRenderedFeatures(e.point, { layers: ['campus-loc-circle-mobile'] });
+        if (campusPinFeatures.length > 0) {
+          const { name } = campusPinFeatures[0].properties;
+          const [pinLng, pinLat] = campusPinFeatures[0].geometry.coordinates.slice();
+          if (markerRef.current) markerRef.current.remove();
+          const el = document.createElement('div');
+          el.style.cssText = 'width:44px;height:44px;border-radius:50%;background:#1A5C3A;border:4px solid white;box-shadow:0 8px 24px rgba(26,92,58,0.4);display:flex;align-items:center;justify-content:center;cursor:pointer;';
+          el.innerHTML = '<span class="material-symbols-outlined" style="color:white;font-size:20px;">location_on</span>';
+          markerRef.current = new mapboxgl.Marker({ element: el, anchor: 'center' }).setLngLat([pinLng, pinLat]).addTo(m);
+          m.easeTo({ center: [pinLng, pinLat], zoom: Math.max(m.getZoom(), 17), duration: 400 });
+          setSelectedArea({ name, lng: pinLng, lat: pinLat });
+          setSheetVisible(true);
+          return;
+        }
 
         // 1. Check if user tapped directly on an unclustered violation point
         const pointFeatures = m.queryRenderedFeatures(e.point, { layers: ['mobile-unclustered'] });
