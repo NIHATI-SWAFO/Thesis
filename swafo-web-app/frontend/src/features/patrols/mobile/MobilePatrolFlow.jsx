@@ -2212,6 +2212,88 @@ const PatrolSessionDetails = ({ onBack, sessionData }) => {
   const shiftLabel = sessionData?.shift_type ? `${sessionData.shift_type} Patrol` : 'Patrol Session';
   const isNight    = sessionData?.shift_type === 'Evening';
   const photos     = sessionData?.capturedPhotos || [];
+  const exportRef = useRef(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleSaveImage = async () => {
+    if (!exportRef.current) return;
+    setIsExporting(true);
+    
+    const tryCapture = async (scaleValue) => {
+      try {
+        const canvas = await html2canvas(exportRef.current, {
+          useCORS: true,
+          allowTaint: false, // Security: Safari block
+          backgroundColor: isNight ? '#111111' : '#F5F5F5',
+          scale: scaleValue,
+          logging: false,
+          onclone: (clonedDoc) => {
+            // Safari Fix: Aggressively remove all filters and backdrop-filters as they cause crashes during capture
+            const all = clonedDoc.getElementsByTagName("*");
+            for (let i = 0; i < all.length; i++) {
+              const el = all[i];
+              if (el instanceof HTMLElement) {
+                el.style.backdropFilter = 'none';
+                el.style.webkitBackdropFilter = 'none';
+                el.style.filter = 'none';
+              }
+            }
+            
+            // Ensure ignored elements are truly gone
+            const ignored = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
+            ignored.forEach(el => el.style.display = 'none');
+          }
+        });
+        return canvas;
+      } catch (err) {
+        if (scaleValue > 1) return tryCapture(1); // Retry at lower res
+        throw err;
+      }
+    };
+
+    try {
+      const canvas = await tryCapture(2);
+      const filename = `Patrol_Summary_${new Date().getTime()}.png`;
+      
+      // Native Share API
+      if (navigator.share && navigator.canShare) {
+        try {
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+          const file = new File([blob], filename, { type: 'image/png' });
+          
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'Patrol Summary',
+              text: 'SWAFO Patrol Session Details'
+            });
+            setIsExporting(false);
+            return;
+          }
+        } catch (shareErr) {
+          if (shareErr.name === 'AbortError') {
+            setIsExporting(false);
+            return;
+          }
+        }
+      }
+
+      // Download Fallback
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("Save failed. Try a screenshot or check your connection.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Fallback chain for start/end times (support old data keys too)
   const startTime = sessionData?.actual_start
@@ -2254,15 +2336,27 @@ const PatrolSessionDetails = ({ onBack, sessionData }) => {
         ];
 
   return (
-    <div className="flex-1 flex flex-col font-manrope animate-fade-in overflow-y-auto no-scrollbar pb-[120px]"
+    <div ref={exportRef} className="flex-1 flex flex-col font-manrope animate-fade-in overflow-y-auto no-scrollbar pb-[120px]"
       style={{ background: 'linear-gradient(180deg, #0D1A14 0%, #0F2318 40%, #F0F2F5 40%)' }}>
 
       {/* ── Dark Hero ───────────────────────────────────────────── */}
       <div className="relative px-6 pt-14 pb-6">
         {/* Back */}
-        <button onClick={onBack} className="absolute top-6 left-5 w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center text-white active:scale-90 transition-transform border border-white/15">
-          <span className="material-symbols-outlined text-[22px]">arrow_back</span>
-        </button>
+        <div className="absolute top-6 left-5 right-5 flex justify-between items-center z-50">
+          <button onClick={onBack} data-html2canvas-ignore className="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center text-white active:scale-90 transition-transform border border-white/15">
+            <span className="material-symbols-outlined text-[22px]">arrow_back</span>
+          </button>
+          
+          <button 
+            onClick={handleSaveImage} 
+            disabled={isExporting} 
+            data-html2canvas-ignore 
+            className="px-4 h-10 bg-[#39E58C] text-[#003624] rounded-full flex items-center gap-2 font-black text-[13px] shadow-lg active:scale-95 transition-all disabled:opacity-50"
+          >
+            {isExporting ? <span className="material-symbols-outlined text-[18px] animate-spin">sync</span> : <span className="material-symbols-outlined text-[18px]">download</span>}
+            {isExporting ? 'Saving...' : 'Save Image'}
+          </button>
+        </div>
 
         {/* Celebration icon */}
         <div className="flex justify-center mb-4">

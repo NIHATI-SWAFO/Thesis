@@ -9,7 +9,7 @@ const navItems = [
   { name: 'Record Violation', path: '/officer/violations/new', icon: 'gavel' },
   { name: 'Case Management', path: '/officer/cases', icon: 'folder_open' },
   { name: 'Student Records', path: '/officer/students', icon: 'people' },
-  { name: 'Reports & Analytics', path: '/officer/reports', icon: 'bar_chart' },
+  { name: 'Reports & Analytics', path: '/officer/analytics', icon: 'bar_chart' },
   { name: 'Patrol History', path: '/officer/patrol-history', icon: 'history' },
   { name: 'Campus Map', path: '/officer/campus-map', icon: 'map' },
 ];
