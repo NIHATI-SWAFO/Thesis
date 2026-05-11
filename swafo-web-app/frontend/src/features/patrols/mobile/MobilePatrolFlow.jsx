@@ -62,7 +62,15 @@ const DLSUD_LOCATIONS = [
   { name: 'University Food Square',              lat: 14.3215061, lng: 120.9599738, category: 'Food & Canteen' },
   { name: 'DLSU-D Faculty/Staff Parking',        lat: 14.3244490, lng: 120.9586005, category: 'Parking' },
   { name: 'DLSU-D Student/Faculty/Staff Parking',lat: 14.3263091, lng: 120.9578142, category: 'Parking' },
+  { name: 'DLSU-D ULS Parking',                  lat: 14.3265000, lng: 120.9576000, category: 'Parking' },
   { name: 'High School Parking',                 lat: 14.3259515, lng: 120.9585919, category: 'Parking' },
+  // ── Missing Locations Manually Added for Reliable Snapping ────────────────────────
+  { name: 'Purificacion Borromeo Hall',          lat: 14.3223000, lng: 120.9627000, category: 'Academic Building' },
+  { name: 'Information Technology Department Office', lat: 14.3225000, lng: 120.9628000, category: 'Academic Building' },
+  { name: 'Building Main',                       lat: 14.3221000, lng: 120.9630000, category: 'Academic Building' },
+  { name: 'Mila\'s Diner',                       lat: 14.3211000, lng: 120.9616000, category: 'Food & Canteen' },
+  { name: 'National Book Store',                 lat: 14.3215500, lng: 120.9602000, category: 'Facility' },
+  { name: 'Bahayang Pag-Asa Center for Streetchildren', lat: 14.3268000, lng: 120.9572000, category: 'Facility' },
 ];
 
 const MOBILE_CATEGORY_COLORS = {
@@ -668,6 +676,25 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
             cluster: true, clusterRadius: 25, clusterMaxZoom: 16,
           });
 
+          // ── World mask — hide everything outside the DLSU-D campus polygon ───────────────────
+          try {
+            const worldMask = {
+              type: 'Feature',
+              geometry: {
+                type: 'Polygon',
+                coordinates: [
+                  [[-180,90],[-180,-90],[180,-90],[180,90],[-180,90]],
+                  ...campusData.features[0].geometry.coordinates,
+                ],
+              },
+            };
+            m.addSource('world-mask-mobile', { type: 'geojson', data: worldMask });
+            m.addLayer({ id: 'world-mask-mobile', type: 'fill', source: 'world-mask-mobile',
+              paint: { 'fill-color': '#ecfdf5', 'fill-opacity': 1 } });
+          } catch (maskErr) {
+            console.warn('World mask failed:', maskErr);
+          }
+
           m.addLayer({ id: 'mobile-heatmap', type: 'heatmap', source: 'violations-mobile',
             paint: {
               'heatmap-weight': ['interpolate', ['linear'], ['coalesce', ['get', 'point_count'], 1], 1, 0.3, 10, 1.0],
@@ -688,61 +715,21 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
             paint: { 'circle-color': '#ff4444', 'circle-radius': 8, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' },
           });
 
-          // ── World mask — hide everything outside the DLSU-D campus polygon ───────────────────
-          try {
-            const worldMask = {
-              type: 'Feature',
-              geometry: {
-                type: 'Polygon',
-                coordinates: [
-                  [[-180,90],[-180,-90],[180,-90],[180,90],[-180,90]],
-                  ...campusData.features[0].geometry.coordinates,
-                ],
-              },
-            };
-            m.addSource('world-mask-mobile', { type: 'geojson', data: worldMask });
-            m.addLayer({ id: 'world-mask-mobile', type: 'fill', source: 'world-mask-mobile',
-              paint: { 'fill-color': '#ecfdf5', 'fill-opacity': 1 } });
-          } catch (maskErr) {
-            console.warn('World mask failed:', maskErr);
-          }
-
-          // ── Campus location pins (all 52 named locations) ───────────────────────────
+          // ── Campus location pins (all 52 named locations — clickable invisibly) ───────────────────────────
+          // NOTE: The dots are set to 1% opacity (0.01) so the map looks clean.
+          // Mapbox GL ignores opacity 0 for click detection, so 0.01 makes them invisible but still clickable!
           m.addSource('campus-locations-mobile', { type: 'geojson', data: CAMPUS_LOCATIONS_GEOJSON_MOBILE });
           m.addLayer({
             id: 'campus-loc-circle-mobile',
             type: 'circle',
             source: 'campus-locations-mobile',
             paint: {
-              'circle-color':        ['get', 'color'],
-              'circle-radius':       ['interpolate', ['linear'], ['zoom'], 15, 5, 17, 8, 19, 11],
-              'circle-stroke-width': 2,
-              'circle-stroke-color': '#ffffff',
-              'circle-opacity':      0.85,
+              'circle-color':        '#000000',
+              'circle-radius':       ['interpolate', ['linear'], ['zoom'], 15, 12, 17, 16, 19, 22], // Made even larger for better touch targets
+              'circle-opacity':      0.01,
+              'circle-stroke-width': 0,
             },
           });
-          m.addLayer({
-            id: 'campus-loc-label-mobile',
-            type: 'symbol',
-            source: 'campus-locations-mobile',
-            minzoom: 16.5,
-            layout: {
-              'text-field':         ['get', 'name'],
-              'text-font':          ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-              'text-size':          10,
-              'text-offset':        [0, 1.4],
-              'text-anchor':        'top',
-              'text-max-width':     8,
-              'text-allow-overlap': false,
-            },
-            paint: {
-              'text-color':      '#003624',
-              'text-halo-color': '#ffffff',
-              'text-halo-width': 2,
-            },
-          });
-          m.on('mouseenter', 'campus-loc-circle-mobile', () => { m.getCanvas().style.cursor = 'pointer'; });
-          m.on('mouseleave', 'campus-loc-circle-mobile', () => { m.getCanvas().style.cursor = ''; });
 
           setMapReady(true);
         } catch (e) {
@@ -754,9 +741,15 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
       // ── Map click → use real API data for accurate area naming ────────────
       m.on('click', (e) => {
         const { lng, lat } = e.lngLat;
+        
+        // 1. Comfortable fat-finger padding (40x40 pixels)
+        const bbox = [
+          [e.point.x - 20, e.point.y - 20],
+          [e.point.x + 20, e.point.y + 20]
+        ];
 
         // 0. Campus location pin tap — highest priority, use pin name + exact coords
-        const campusPinFeatures = m.queryRenderedFeatures(e.point, { layers: ['campus-loc-circle-mobile'] });
+        const campusPinFeatures = m.queryRenderedFeatures(bbox, { layers: ['campus-loc-circle-mobile'] });
         if (campusPinFeatures.length > 0) {
           const { name } = campusPinFeatures[0].properties;
           const [pinLng, pinLat] = campusPinFeatures[0].geometry.coordinates.slice();
@@ -772,12 +765,35 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
         }
 
         // 1. Check if user tapped directly on an unclustered violation point
-        const pointFeatures = m.queryRenderedFeatures(e.point, { layers: ['mobile-unclustered'] });
-        const clusterFeatures = m.queryRenderedFeatures(e.point, { layers: ['mobile-clusters'] });
+        const pointFeatures = m.queryRenderedFeatures(bbox, { layers: ['mobile-unclustered'] });
+        const clusterFeatures = m.queryRenderedFeatures(bbox, { layers: ['mobile-clusters'] });
+        
+        // 2. Query ALL features to catch Mapbox native POIs or Building Polygons
+        // We do NOT restrict by layer type (symbol vs fill) because building polygons 
+        // themselves often carry the name property instead of a separate text point.
+        const allFeatures = m.queryRenderedFeatures(bbox);
+        
+        const namedFeatures = allFeatures.filter(f => {
+          if (!f.properties) return false;
+          if (f.layer.id === 'mobile-cluster-count' || f.layer.id === 'campus-loc-label-mobile') return false;
+          
+          // Check various properties Mapbox uses to store names
+          const hasName = f.properties.name || f.properties.name_en || f.properties.title;
+          return !!hasName;
+        });
+
+        // Mapbox automatically sorts queryRenderedFeatures by highest z-index (topmost) and relevance
+        const poiFeature = namedFeatures.length > 0 ? namedFeatures[0] : null;
 
         let areaName;
         let pinLng = lng;
         let pinLat = lat;
+
+        // Combine hotspots with all 52 core campus locations so we can snap accurately even to areas without violations
+        const allKnownLocations = [
+          ...(locationDataRef.current || []),
+          ...DLSUD_LOCATIONS.map(loc => ({ name: loc.name, lng: loc.lng, lat: loc.lat }))
+        ];
 
         if (pointFeatures.length > 0) {
           // Tapped directly on a violation dot — use its exact location_name
@@ -788,9 +804,19 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
           const [cLng, cLat] = clusterFeatures[0].geometry.coordinates;
           areaName = getNearestFromData(cLng, cLat, locationDataRef.current);
           pinLng = cLng; pinLat = cLat;
+        } else if (poiFeature) {
+          // Tapped on a Mapbox POI label or Building Polygon with a name!
+          areaName = poiFeature.properties.name || poiFeature.properties.name_en || poiFeature.properties.title;
+          if (poiFeature.geometry && poiFeature.geometry.type === 'Point') {
+            [pinLng, pinLat] = poiFeature.geometry.coordinates;
+          } else {
+            // For polygons (like PBH building), just place the pin exactly where they tapped
+            pinLng = lng;
+            pinLat = lat;
+          }
         } else {
-          // Tapped on empty space — find nearest real violation location
-          areaName = getNearestFromData(lng, lat, locationDataRef.current);
+          // Tapped on empty space with absolutely no names nearby — snap to the nearest known location
+          areaName = getNearestFromData(lng, lat, allKnownLocations);
         }
 
         // Remove old marker
@@ -895,22 +921,22 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
           </div>
         )}
 
-        {/* AI Suggested Route — shows nearby checkpoints when area selected, global hotspots otherwise */}
-        {/* Hidden in single-building mode */}
-        {formData.patrolMode !== 'single' && (
+        {/* AI Suggested Route — ONLY SHOWS AFTER CLICKING A BUILDING */}
+        {/* Hidden in single-building mode or when no area is selected yet */}
+        {formData.patrolMode !== 'single' && selectedArea && (
         <div className="bg-[#1A5C3A] rounded-[28px] p-6 shadow-lg mb-8 relative overflow-hidden">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-8 h-8 bg-[#39E58C]/20 rounded-lg flex items-center justify-center"><span className="material-symbols-outlined text-[#39E58C] text-[20px]">magic_button</span></div>
             <div>
               <h3 className="font-black text-white text-[16px] tracking-tight">AI Suggested Route</h3>
               <p className="text-[9px] font-black text-[#39E58C] uppercase tracking-widest">
-                {selectedArea ? 'NEARBY BUILDINGS · SORTED BY RISK' : 'SORTED BY RISK LEVEL'}
+                NEARBY BUILDINGS · SORTED BY RISK
               </p>
             </div>
           </div>
 
-          {/* When area selected: show previewCheckpoints (nearby buildings by risk) */}
-          {selectedArea && previewCheckpoints.length > 0 ? (
+          {/* Show previewCheckpoints (nearby buildings by risk) */}
+          {previewCheckpoints.length > 0 ? (
             <div className="space-y-4">
               {previewCheckpoints.map((cp, idx) => {
                 const risk = getRiskLevel(cp.riskCount || 0);
@@ -942,50 +968,6 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
                   </div>
                 );
               })}
-            </div>
-          ) : !selectedArea && suggestedRoute.length > 0 ? (
-            <div className="space-y-4">
-              {suggestedRoute.map((loc, idx) => {
-                const risk = getRiskLevel(loc.count || 0);
-                const isFirst = idx === 0;
-                const locationName = loc.name || loc.location_name;
-                return (
-                  <div key={locationName || idx} className="flex items-start gap-3">
-                    <div className="flex flex-col items-center shrink-0">
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black border-2 border-white/20
-                        ${isFirst ? 'bg-[#39E58C] text-[#1A5C3A] border-[#39E58C]' : 'bg-white/10 text-white'}`}>
-                        {idx + 1}
-                      </div>
-                      {idx < suggestedRoute.length - 1 && <div className="w-0.5 h-4 bg-white/15 mt-1" />}
-                    </div>
-                    <div className="flex-1 pt-0.5">
-                      <p className={`font-black text-[14px] tracking-tight leading-none mb-1.5 ${isFirst ? 'text-[#39E58C]' : 'text-white'}`}>
-                        {locationName}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full" style={{backgroundColor: risk.color}} />
-                        <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">{risk.label}</span>
-                        <span className="text-[9px] font-bold text-white/40">• {loc.count || 0} violations</span>
-                      </div>
-                    </div>
-                    {isFirst && (
-                      <div className="bg-[#39E58C]/20 px-2.5 py-1 rounded-full">
-                        <span className="text-[8px] font-black text-[#39E58C] uppercase tracking-widest">Start</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : patrolledToday.length > 0 ? (
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-[#39E58C]/20 rounded-full flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[#39E58C] text-[18px]">verified</span>
-              </div>
-              <div>
-                <p className="font-black text-white text-[13px] tracking-tight">All priority areas covered!</p>
-                <p className="text-[10px] text-white/50 font-medium">Great work — no more critical hotspots today.</p>
-              </div>
             </div>
           ) : (
             <div className="flex items-center gap-3 opacity-60">

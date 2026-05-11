@@ -76,6 +76,15 @@ DLSUD_LOCATIONS = {
     "DLSU-D Faculty/Staff Parking":         {"lat": 14.3244490, "lng": 120.9586005},
     "DLSU-D Student/Faculty/Staff Parking": {"lat": 14.3263091, "lng": 120.9578142},
     "High School Parking":                  {"lat": 14.3259515, "lng": 120.9585919},
+    "DLSU-D ULS Parking":                   {"lat": 14.3265000, "lng": 120.9576000},
+
+    # ── MANUALLY ADDED LOCATIONS ──────────────────────────────────────
+    "Purificacion Borromeo Hall":           {"lat": 14.3223000, "lng": 120.9627000},
+    "Information Technology Department Office": {"lat": 14.3225000, "lng": 120.9628000},
+    "Building Main":                        {"lat": 14.3221000, "lng": 120.9630000},
+    "Mila's Diner":                         {"lat": 14.3211000, "lng": 120.9616000},
+    "National Book Store":                  {"lat": 14.3215500, "lng": 120.9602000},
+    "Bahayang Pag-Asa Center for Streetchildren": {"lat": 14.3268000, "lng": 120.9572000},
 }
 
 # Campus center fallback — used when location name not found
@@ -118,6 +127,7 @@ def get_locations_by_category() -> dict:
             "Magdalo Gate",
         ],
         "Academic Buildings": [
+            "Building Main",
             "CTH Building A",
             "CTH Building B",
             "Doctor Fe Del Mundo Hall",
@@ -126,6 +136,7 @@ def get_locations_by_category() -> dict:
             "Francisco Barzaga Hall",
             "Gregoria De Jesus Hall",
             "ICTC Building",
+            "Information Technology Department Office",
             "Julian Felipe Hall",
             "Ladislao Diwa Hall",
             "LDH Kubo",
@@ -134,6 +145,7 @@ def get_locations_by_category() -> dict:
             "Mariano Trias Hall",
             "MTH Covered Court",
             "Paulo Campos Hall",
+            "Purificacion Borromeo Hall",
             "Santiago Alvarez Hall",
             "Severino de las Alas Hall",
             "Vito Belarmino Hall",
@@ -146,12 +158,14 @@ def get_locations_by_category() -> dict:
             "High School Chapel",
         ],
         "Facilities & Landmarks": [
+            "Bahayang Pag-Asa Center for Streetchildren",
             "Botanical Garden Park",
             "DLSU-D Grandstand",
             "GMH Quadrangle",
             "Guest House",
             "Ladies Dormitory Complex",
             "Motor Pool",
+            "National Book Store",
             "Residencia La Salle",
             "Ugnayang La Salle",
             "University Student Government",
@@ -173,11 +187,13 @@ def get_locations_by_category() -> dict:
         "Food & Canteen Area": [
             "Cafe Museo",
             "Food Square Extension",
+            "Mila's Diner",
             "University Food Square",
         ],
         "Parking": [
             "DLSU-D Faculty/Staff Parking",
             "DLSU-D Student/Faculty/Staff Parking",
+            "DLSU-D ULS Parking",
             "High School Parking",
         ],
     }
