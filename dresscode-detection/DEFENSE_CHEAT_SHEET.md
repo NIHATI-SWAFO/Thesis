@@ -1,4 +1,4 @@
-# Enhanced UWear — Thesis Defense Cheat Sheet
+# SWAFOTECH Dress Code Detection — Thesis Defense Cheat Sheet
 > Quick-reference Q&A guide for the panel defense.  
 > Based on actual project data and configuration.
 
@@ -260,11 +260,11 @@ This is well above the 30 FPS minimum required for smooth real-time webcam proce
 
 ## COMPARISON WITH BASELINE
 
-**Q: How does Enhanced UWear compare to the original UWear system?**
+**Q: How does SWAFOTECH Dress Code Detection compare to the original UWear system?**
 
-A: Enhanced UWear surpasses the UWear baseline across all metrics:
+A: SWAFOTECH Dress Code Detection surpasses the UWear baseline across all metrics:
 
-| Metric | Enhanced UWear | UWear Baseline | Improvement |
+| Metric | SWAFOTECH Dress Code Detection | UWear Baseline | Improvement |
 |---|---|---|---|
 | mAP@0.50 | **0.911** | 0.788 | +12.3% |
 | Precision | **0.865** | 0.734 | +13.1% |

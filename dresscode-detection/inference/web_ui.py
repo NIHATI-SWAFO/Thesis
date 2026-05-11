@@ -2,8 +2,7 @@ import os
 import sys
 import cv2
 from pathlib import Path
-from flask import Flask, render_template_string, Response, request
-
+from flask import Flask, render_template_string, Response, request, jsonify
 try:
     from ultralytics import YOLO
 except ImportError:
@@ -24,6 +23,7 @@ CONFIDENCE_THRESHOLD = 0.35
 # Global state for the web controls
 CURRENT_MODE = "CIVILIAN_MODE"
 YEAR_LEVEL = 1
+LATEST_COMPLIANCE = None
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -74,6 +74,9 @@ def generate_frames():
         compliance = assess_compliance(detections, CURRENT_MODE, YEAR_LEVEL)
         compliance["detection_mode"] = f"{CURRENT_MODE} (Yr {YEAR_LEVEL})"
 
+        global LATEST_COMPLIANCE
+        LATEST_COMPLIANCE = compliance
+
         # 4. Draw Overlay
         annotated_frame = draw_detections(frame, detections, compliance)
 
@@ -94,54 +97,302 @@ HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Enhanced UWear - Live Web UI</title>
+    <title>SWAFO Module 1 - Dress Code Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; margin: 0; padding: 0; }
-        .header { background-color: #0b4528; color: white; padding: 20px; text-align: center; }
-        .container { max-width: 1200px; margin: 20px auto; padding: 20px; text-align: center; }
-        .video-container { border: 4px solid #333; border-radius: 8px; overflow: hidden; display: inline-block; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-        img { display: block; max-width: 100%; height: auto; }
-        .controls { margin-top: 20px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: inline-block; }
-        .control-group { margin: 10px 0; font-size: 18px; }
-        select, button { padding: 10px 15px; font-size: 16px; margin-left: 10px; border-radius: 4px; border: 1px solid #ccc; }
-        button { background-color: #0b4528; color: white; cursor: pointer; font-weight: bold; }
-        button:hover { background-color: #0f5e36; }
+        :root {
+            --primary: #0b4528;
+            --primary-dark: #072e1a;
+            --danger: #dc3545;
+            --danger-dark: #b02a37;
+            --success: #198754;
+            --bg-light: #f8f9fa;
+            --border: #e9ecef;
+            --text-main: #212529;
+            --text-muted: #6c757d;
+        }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-light); 
+            margin: 0; 
+            padding: 0; 
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .header { 
+            background-color: white; 
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .controls-form {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        select {
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            background-color: white;
+            outline: none;
+            cursor: pointer;
+        }
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .video-section {
+            flex: 1;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--bg-light);
+        }
+        .video-wrapper {
+            background: black;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .video-wrapper img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+        .status-panel {
+            width: 400px;
+            background: white;
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.03);
+        }
+        .status-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: #fff;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        .status-badge.compliant {
+            background-color: #d1e7dd;
+            color: var(--success);
+        }
+        .status-badge.non-compliant {
+            background-color: #f8d7da;
+            color: var(--danger);
+        }
+        .status-badge.waiting {
+            background-color: #e2e3e5;
+            color: var(--text-muted);
+        }
+        .violation-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            background: #fafafa;
+        }
+        .violation-item {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--danger);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .violation-title {
+            font-weight: 600;
+            color: var(--danger);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-transform: capitalize;
+        }
+        .violation-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            line-height: 1.4;
+        }
+        .violation-ref {
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: #f8f9fa;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+        .action-section {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border);
+            background: #fff;
+        }
+        .record-btn {
+            width: 100%;
+            padding: 1rem;
+            background-color: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(220, 53, 69, 0.2);
+        }
+        .record-btn:hover {
+            background-color: var(--danger-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 8px rgba(220, 53, 69, 0.3);
+        }
+        .record-btn:disabled {
+            background-color: #ccc;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Enhanced UWear - Live Dress Code Monitor</h1>
+        <h1><i class="fa-solid fa-camera"></i> SWAFO Module 1: Live Dress Code Monitor</h1>
+        <form class="controls-form" action="/update_settings" method="post" target="hidden-iframe">
+            <select name="mode" id="mode" onchange="this.form.submit()">
+                <option value="UNIFORM_MODE" {% if current_mode == 'UNIFORM_MODE' %}selected{% endif %}>Uniform Mode (Mon/Tue/Thu/Fri)</option>
+                <option value="CIVILIAN_MODE" {% if current_mode == 'CIVILIAN_MODE' %}selected{% endif %}>Civilian Mode (Wash Days)</option>
+            </select>
+            <select name="year" id="year" onchange="this.form.submit()">
+                <option value="1" {% if year_level == 1 %}selected{% endif %}>1st - 3rd Year</option>
+                <option value="4" {% if year_level == 4 %}selected{% endif %}>4th Year</option>
+            </select>
+        </form>
     </div>
     
-    <div class="container">
-        <div class="video-container">
-            <!-- This image tag reads the live MJPEG stream -->
-            <img src="/video_feed" width="1280" height="720" alt="Live Camera Feed">
+    <div class="main-container">
+        <div class="video-section">
+            <div class="video-wrapper">
+                <img src="/video_feed" alt="Live Camera Feed">
+            </div>
         </div>
-
-        <div class="controls">
-            <form action="/update_settings" method="post" target="hidden-iframe">
-                <div class="control-group">
-                    <label for="mode"><strong>Detection Mode:</strong></label>
-                    <select name="mode" id="mode" onchange="this.form.submit()">
-                        <option value="UNIFORM_MODE" {% if current_mode == 'UNIFORM_MODE' %}selected{% endif %}>UNIFORM_MODE (Mon/Tue/Thu/Fri)</option>
-                        <option value="CIVILIAN_MODE" {% if current_mode == 'CIVILIAN_MODE' %}selected{% endif %}>CIVILIAN_MODE (Wash Days)</option>
-                    </select>
+        
+        <div class="status-panel">
+            <div class="status-header">
+                <h3 style="margin-top:0; margin-bottom: 0.75rem; color: var(--text-main);">Live Assessment</h3>
+                <div id="status-badge" class="status-badge waiting">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Initializing...
                 </div>
-                <div class="control-group">
-                    <label for="year"><strong>Student Year Level:</strong></label>
-                    <select name="year" id="year" onchange="this.form.submit()">
-                        <option value="1" {% if year_level == 1 %}selected{% endif %}>1st - 3rd Year</option>
-                        <option value="4" {% if year_level == 4 %}selected{% endif %}>4th Year (Always Civilian)</option>
-                    </select>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;" id="detection-mode">Mode: Loading...</div>
+            </div>
+            
+            <div class="violation-list" id="violation-list">
+                <div style="text-align: center; color: var(--text-muted); margin-top: 3rem;">
+                    <i class="fa-solid fa-video" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4;"></i>
+                    <p>Awaiting camera feed...</p>
                 </div>
-            </form>
-            <p style="color: #666; font-size: 14px; margin-top: 15px;">Change settings above to instantly update the live camera rules.</p>
+            </div>
+            
+            <div class="action-section">
+                <button id="record-btn" class="record-btn" disabled onclick="recordViolation()">
+                    <i class="fa-solid fa-file-signature"></i> Record Violation
+                </button>
+            </div>
         </div>
     </div>
     
-    <!-- Hidden iframe to prevent page reload on form submit -->
     <iframe name="hidden-iframe" style="display:none;"></iframe>
+
+    <script>
+        function updateStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.compliance_status === "WAITING") return;
+                    
+                    const badge = document.getElementById('status-badge');
+                    const list = document.getElementById('violation-list');
+                    const btn = document.getElementById('record-btn');
+                    const modeText = document.getElementById('detection-mode');
+                    
+                    modeText.innerText = `Current Rule: ${data.detection_mode}`;
+                    
+                    if (data.compliance_status === "COMPLIANT") {
+                        badge.className = 'status-badge compliant';
+                        badge.innerHTML = '<i class="fa-solid fa-circle-check"></i> COMPLIANT';
+                        list.innerHTML = `
+                            <div style="text-align: center; color: var(--success); margin-top: 3rem;">
+                                <i class="fa-solid fa-shield-check" style="font-size: 3.5rem; margin-bottom: 1rem; opacity: 0.9;"></i>
+                                <h4 style="margin-bottom: 0.5rem; font-size: 1.1rem;">No Violations Detected</h4>
+                                <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0;">Student attire adheres to the handbook.</p>
+                            </div>
+                        `;
+                        btn.disabled = true;
+                    } else {
+                        badge.className = 'status-badge non-compliant';
+                        badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> NON-COMPLIANT (${data.violation_count})`;
+                        
+                        let html = '';
+                        data.violations.forEach(v => {
+                            const formattedTitle = v.class.replace(/_/g, ' ');
+                            html += `
+                                <div class="violation-item">
+                                    <div class="violation-title">
+                                        <i class="fa-solid fa-circle-exclamation"></i> ${formattedTitle}
+                                    </div>
+                                    <span class="violation-ref">Sec ${v.handbook_ref}</span>
+                                    <div class="violation-desc">${v.description}</div>
+                                </div>
+                            `;
+                        });
+                        list.innerHTML = html;
+                        btn.disabled = false;
+                    }
+                })
+                .catch(err => console.error('Error fetching status:', err));
+        }
+
+        function recordViolation() {
+            alert("PLACEHOLDER: This will lock the camera frame and redirect to the SWAFO Module 2 Adjudication Flow to formally log the offense.");
+        }
+
+        // Poll every 500ms
+        setInterval(updateStatus, 500);
+    </script>
 </body>
 </html>
 """
@@ -158,6 +409,12 @@ def index():
 def video_feed():
     # Returns the streaming response using our generator
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/api/status')
+def api_status():
+    if LATEST_COMPLIANCE:
+        return jsonify(LATEST_COMPLIANCE)
+    return jsonify({"compliance_status": "WAITING", "violations": []})
 
 @app.route('/update_settings', methods=['POST'])
 def update_settings():

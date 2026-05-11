@@ -1,12 +1,12 @@
 """
-Enhanced UWear — Dress Code Detection & Compliance Module
+SWAFOTECH Dress Code Detection — Dress Code Detection & Compliance Module
 ==========================================================
 Standalone inference module aligned with the DLSU-D School Uniform
 and Dress Code Policy (effective September 1, 2025).
 
 Supports two compliance modes:
-  • UNIFORM_MODE  — Mon/Tue/Thu/Fri for 1st–3rd year students
-  • CIVILIAN_MODE — Wed/Sat (all) + Mon–Sat for 4th year students
+  • UNIFORM_MODE  — Mon/Tue/Thu for 1st–3rd year students
+  • CIVILIAN_MODE — Wed/Fri/Sat (all) + Mon–Sat for 4th year students
 
 Usage:
   .venv\\Scripts\\python.exe inference/detect.py --image path/to/image.jpg
@@ -66,10 +66,10 @@ CLASS_NAMES = {
 UNIFORM_TOPS    = {0}                   # uniform_top
 UNIFORM_BOTTOMS = {1}                   # uniform_bottom
 CIVILIAN_TOPS   = {2, 3}               # short_sleeve, long_sleeve
-CIVILIAN_BOTTOMS = {4, 5, 6}           # trousers, shorts, skirt
+CIVILIAN_BOTTOMS = {4, 6}              # trousers, skirt
 FOOTWEAR_SHOES  = {7}                   # shoes
 FOOTWEAR_SLIPPERS = {8}                # slippers
-PROHIBITED = {9, 10, 11, 12, 13}       # all prohibited items
+PROHIBITED = {5, 9, 10, 11, 12, 13}    # all prohibited items (including shorts)
 
 ALL_TOPS = UNIFORM_TOPS | CIVILIAN_TOPS | {11, 12, 13}  # includes prohibited tops
 ALL_BOTTOMS = UNIFORM_BOTTOMS | CIVILIAN_BOTTOMS | {9, 10}  # includes prohibited bottoms
@@ -82,6 +82,7 @@ VIOLATION_REFS = {
     "prohibited_sleeveless":        {"code": "27.1.2.4",  "desc": "Sleeveless blouses, sling tops, or spaghetti straps prohibited"},
     "prohibited_crop_halter":       {"code": "27.1.2.9",  "desc": "Halter blouses and crop tops are not allowed"},
     "prohibited_midriff_offshoulder": {"code": "27.1.2.6", "desc": "Midriff tops, hanging blouses, and off-shoulder tops prohibited"},
+    "civilian_bottom_shorts":       {"code": "27.1.2",    "desc": "Shorts are strictly prohibited on campus premises"},
     "not_in_uniform_top":           {"code": "27.1.2",    "desc": "Not wearing prescribed school uniform top on uniform day"},
     "not_in_uniform_bottom":        {"code": "27.1.2",    "desc": "Not wearing prescribed school uniform bottom on uniform day"},
     "civilian_on_uniform_day":      {"code": "27.1.2",    "desc": "Wearing civilian attire on designated uniform day"},
@@ -94,7 +95,7 @@ CLASS_COLORS = {
     "civilian_top_short_sleeve":    (200, 160, 0),     # teal
     "civilian_top_long_sleeve":     (200, 160, 0),     # teal
     "civilian_bottom_trousers":     (200, 160, 0),     # teal
-    "civilian_bottom_shorts":       (200, 160, 0),     # teal
+    "civilian_bottom_shorts":       (0, 0, 220),       # red (prohibited)
     "civilian_bottom_skirt":        (200, 160, 0),     # teal
     "footwear_shoes":               (180, 130, 0),     # dark teal
     "footwear_slippers":            (0, 0, 220),       # red
@@ -114,8 +115,8 @@ def assess_compliance(detected_classes: list[dict], mode: str, year_level: int) 
     Evaluate dress code compliance based on detected garments.
 
     Modes:
-      UNIFORM_MODE  — 1st–3rd year on Mon/Tue/Thu/Fri
-      CIVILIAN_MODE — Wed/Sat (all) + 4th year (all weekdays)
+      UNIFORM_MODE  — 1st–3rd year on Mon/Tue/Thu
+      CIVILIAN_MODE — Wed/Fri/Sat (all) + 4th year (all weekdays)
 
     Args:
         detected_classes: list of {"class_id": int, "class_name": str, "confidence": float, "bbox": list}
@@ -405,15 +406,15 @@ def auto_detect_mode(year_level: int) -> str:
     day of the week and student year level.
 
     Schedule (September 1, 2025 Policy):
-      1st–3rd Year: Mon/Tue/Thu/Fri = Uniform, Wed/Sat = Wash Day
+      1st–3rd Year: Mon/Tue/Thu = Uniform, Wed/Fri/Sat = Wash Day
       4th Year:     All days = Civilian (may opt to wear uniform)
     """
     if year_level >= 4:
         return "CIVILIAN_MODE"
 
     day = datetime.now().weekday()  # 0=Mon, 6=Sun
-    # Mon=0, Tue=1 → Uniform | Wed=2 → Wash | Thu=3, Fri=4 → Uniform | Sat=5 → Wash | Sun=6 → N/A
-    uniform_days = {0, 1, 3, 4}
+    # Mon=0, Tue=1 → Uniform | Wed=2 → Wash | Thu=3 → Uniform | Fri=4 → Wash | Sat=5 → Wash | Sun=6 → N/A
+    uniform_days = {0, 1, 3}
 
     if day in uniform_days:
         return "UNIFORM_MODE"

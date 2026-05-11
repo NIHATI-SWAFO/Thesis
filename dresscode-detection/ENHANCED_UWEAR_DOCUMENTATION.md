@@ -1,4 +1,4 @@
-# Enhanced UWear — Dress Code Detection System
+# SWAFOTECH Dress Code Detection — Dress Code Detection System
 > **Full Technical Documentation**
 > Institution: De La Salle University-Dasmariñas (DLSU-D)
 > Module: SWAFO Violation Management — Module 1
@@ -8,7 +8,7 @@
 
 ## 1. Project Overview
 
-Enhanced UWear is an AI-powered dress code compliance detection system built for DLSU-D. It uses a YOLO11 object detection model trained on 14 garment classes to determine whether a student is compliant with the DLSU-D School Uniform and Dress Code Policy (effective September 1, 2025).
+SWAFOTECH Dress Code Detection is an AI-powered dress code compliance detection system built for DLSU-D. It uses a YOLO11 object detection model trained on 14 garment classes to determine whether a student is compliant with the DLSU-D School Uniform and Dress Code Policy (effective September 1, 2025).
 
 ### System Architecture
 
@@ -59,6 +59,17 @@ Enhanced UWear is an AI-powered dress code compliance detection system built for
 | Precision | 0.7336 |
 | Recall | 0.7881 |
 
+### 2.1 SWAFOTECH Dress Code Detection Results (Current Study)
+
+| Metric | Value |
+|---|---|
+| **Best mAP@0.5** | **0.911 (91.1%)** |
+| **mAP@0.5-0.95** | **0.736** |
+| **Precision (Macro Avg)** | **0.87** |
+| **Recall (Macro Avg)** | **0.86** |
+| **F1-Score (Macro Avg)** | **0.86** |
+| **Accuracy** | **0.86** |
+
 ### UWear Critical Limitations
 
 | Limitation | Impact |
@@ -75,7 +86,7 @@ Enhanced UWear is an AI-powered dress code compliance detection system built for
 
 ## 3. Research Gaps Addressed
 
-| Gap | UWear (2024) | Enhanced UWear (2026) |
+| Gap | UWear (2024) | SWAFOTECH Dress Code Detection (2026) |
 |---|---|---|
 | Uniform-specific detection | ❌ None | ✅ `uniform_top`, `uniform_bottom` |
 | Policy-aware compliance | ❌ None | ✅ UNIFORM_MODE vs CIVILIAN_MODE |
@@ -272,14 +283,14 @@ Training set grew from 66,003 → 82,036 images after augmentation.
 
 ### 9.1 Overall Metrics vs UWear Baseline
 
-| Metric | Enhanced UWear | UWear Baseline | Delta | Status |
+| Metric | SWAFOTECH Dress Code Detection | UWear Baseline | Delta | Status |
 |---|---|---|---|---|
 | **mAP@0.5** | **0.9031** | 0.7883 | **+0.1148** | ✅ PASS |
 | **mAP@0.5:0.95** | **0.7316** | Not reported | — | — |
 | **Precision** | **0.8560** | 0.7336 | **+0.1224** | ✅ PASS |
 | **Recall** | **0.8573** | 0.7881 | **+0.0692** | ✅ PASS |
 
-> **Enhanced UWear beats the UWear baseline by +11.48 percentage points in mAP@0.5.**
+> **SWAFOTECH Dress Code Detection beats the UWear baseline by +11.48 percentage points in mAP@0.5.**
 
 ### 9.2 Per-Class Average Precision (AP@0.5) — Test Set
 
@@ -326,7 +337,7 @@ All 4 augmented minority classes achieved excellent results:
 
 ### 9.5 Comparison with UWear's Weak Classes
 
-| Class | UWear AP | Enhanced UWear AP | Improvement |
+| Class | UWear AP | SWAFOTECH Dress Code Detection AP | Improvement |
 |---|---|---|---|
 | Skirt | ~0.0 (misidentified as background) | **0.8656** | ✅ Fully resolved |
 | Uniform top | N/A (not detected) | **0.9919** | ✅ New capability |
