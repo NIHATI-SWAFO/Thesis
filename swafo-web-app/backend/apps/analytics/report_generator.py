@@ -288,11 +288,22 @@ def generate_college_report(college: str) -> bytes:
                          'Other colleges are confidential per SWAFO data privacy policy.'))
 
     coll_rows = [['College', 'Violations']]
-    for c in ALL_COLLEGES:
+    # Ensure the requested college is at least in the list even if not in the hardcoded acronyms
+    display_colleges = list(ALL_COLLEGES)
+    if college not in display_colleges:
+        display_colleges.append(college)
+        
+    for c in sorted(display_colleges):
         val = str(by_college_totals.get(c, '')) if c == college else ''
         coll_rows.append([c, val])
+    
     coll_rows.append(['TOTAL — All Colleges', str(total_inst)])
-    college_row_idx = next(i for i, r in enumerate(coll_rows) if r[0] == college)
+    
+    try:
+        college_row_idx = next(i for i, r in enumerate(coll_rows) if r[0] == college)
+    except StopIteration:
+        college_row_idx = None
+        
     story.append(tbl_style(coll_rows, [13.5*cm, 3.4*cm], hl_row=college_row_idx))
     story.append(Spacer(1, 0.4*cm))
 
