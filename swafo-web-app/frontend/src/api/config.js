@@ -5,7 +5,7 @@
  * local development and production (Vercel/Railway).
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://thesis-production-1816.up.railway.app';
 
 export const API_ENDPOINTS = {
   // Auth
