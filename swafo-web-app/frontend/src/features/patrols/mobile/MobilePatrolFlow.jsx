@@ -327,42 +327,80 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
   const handleSaveImage = async () => {
     if (!exportRef.current) return;
     setIsExporting(true);
-    try {
-      const canvas = await html2canvas(exportRef.current, {
+
+    const capture = async (scaleValue) => {
+      return await html2canvas(exportRef.current, {
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false, // Taint blocks toDataURL/toBlob in Safari
         backgroundColor: isNight ? '#111111' : '#F5F5F5',
-        scale: 2 // Higher resolution
+        scale: scaleValue,
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Safari Fix: Remove backdrop-blur and other problematic filters during capture
+          const filtered = clonedDoc.querySelectorAll('*');
+          filtered.forEach(el => {
+            const style = window.getComputedStyle(el);
+            if (style.backdropFilter !== 'none') el.style.backdropFilter = 'none';
+            if (style.filter !== 'none') el.style.filter = 'none';
+          });
+          
+          // Ensure ignored elements are truly gone
+          const ignored = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
+          ignored.forEach(el => el.style.display = 'none');
+        }
       });
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-      
+    };
+
+    try {
+      // Small delay for UI stability
+      await new Promise(r => setTimeout(r, 200));
+
+      let canvas;
       try {
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
-        const file = new File([blob], `Patrol_Summary_${new Date().getTime()}.jpg`, { type: 'image/jpeg' });
-        
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Try high quality first
+        canvas = await capture(2);
+      } catch (err) {
+        console.warn("High-res capture failed, retrying with standard quality", err);
+        // Fallback to standard quality
+        canvas = await capture(1);
+      }
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.95));
+      if (!blob) throw new Error("Blob creation failed");
+
+      const filename = `Patrol_${new Date().getTime()}.png`;
+      const file = new File([blob], filename, { type: 'image/png' });
+
+      // Share API (Primary for mobile Safari/iOS)
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
           await navigator.share({
             files: [file],
-            title: 'Patrol Summary'
+            title: 'Patrol Summary',
+            text: 'SWAFO Patrol Session Details'
           });
-        } else {
-          // Fallback for desktop or unsupported browsers
-          const link = document.createElement('a');
-          link.download = file.name;
-          link.href = dataUrl;
-          link.click();
+          setIsExporting(false);
+          return;
+        } catch (shareErr) {
+          if (shareErr.name === 'AbortError') {
+            setIsExporting(false);
+            return;
+          }
         }
-      } catch (shareErr) {
-        console.log("Share failed or cancelled:", shareErr);
-        // Fallback just in case
-        const link = document.createElement('a');
-        link.download = `Patrol_Summary_${new Date().getTime()}.jpg`;
-        link.href = dataUrl;
-        link.click();
       }
+
+      // Download Fallback
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
     } catch (err) {
-      console.error("Failed to export image:", err);
+      console.error("Export failed:", err);
+      alert("Save failed. Try a screenshot or check your connection.");
     } finally {
       setIsExporting(false);
     }
