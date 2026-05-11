@@ -292,7 +292,8 @@ const FullMapScreen = ({ onBack, trailCoords = [] }) => {
 };
 
 
-const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoords, distanceKm }) => {
+const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoords, distanceKm, capturedPhotos = [] }) => {
+  const navigate = useNavigate();
   const exportRef = useRef(null);
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -333,11 +334,33 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
         backgroundColor: isNight ? '#111111' : '#F5F5F5',
         scale: 2 // Higher resolution
       });
-      const dataUrl = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = `Patrol_Summary_${new Date().getTime()}.png`;
-      link.href = dataUrl;
-      link.click();
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      
+      try {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], `Patrol_Summary_${new Date().getTime()}.jpg`, { type: 'image/jpeg' });
+        
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Patrol Summary'
+          });
+        } else {
+          // Fallback for desktop or unsupported browsers
+          const link = document.createElement('a');
+          link.download = file.name;
+          link.href = dataUrl;
+          link.click();
+        }
+      } catch (shareErr) {
+        console.log("Share failed or cancelled:", shareErr);
+        // Fallback just in case
+        const link = document.createElement('a');
+        link.download = `Patrol_Summary_${new Date().getTime()}.jpg`;
+        link.href = dataUrl;
+        link.click();
+      }
     } catch (err) {
       console.error("Failed to export image:", err);
     } finally {
@@ -432,10 +455,24 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
     };
   }, [trailCoords, mapStyle]);
 
+  const lastPhoto = capturedPhotos.length > 0 ? (capturedPhotos[0].url || capturedPhotos[0]) : null;
+  
   return (
-    <div ref={exportRef} className={`flex-1 relative flex flex-col h-full font-manrope animate-fade-in`}>
-      {/* Background Map */}
-      <div ref={mapContainerRef} className="absolute inset-0 z-0" />
+    <div ref={exportRef} className={`fixed inset-0 z-[9000] flex flex-col font-manrope animate-fade-in bg-black overflow-hidden`}>
+      {/* Background Image (Last Evidence) */}
+      {lastPhoto ? (
+        <div className="absolute inset-0 z-0">
+          <img src={lastPhoto} alt="Patrol Background" className="w-full h-full object-cover opacity-60 scale-105" />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+        </div>
+      ) : (
+        <div ref={mapContainerRef} className="absolute inset-0 z-0" />
+      )}
+
+      {/* Optional Map Overlay if photo exists (small inset map or just stay as photo) */}
+      {lastPhoto && trailCoords?.length > 1 && (
+         <div ref={mapContainerRef} className="absolute inset-0 z-[1] opacity-40 pointer-events-none" />
+      )}
 
       {/* Top Gradient for text readability */}
       <div className={`absolute top-0 left-0 right-0 h-40 bg-gradient-to-b ${isNight ? 'from-black/80' : 'from-white/80'} to-transparent z-10`} />
@@ -452,8 +489,8 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
           </button>
           
           <button onClick={handleSaveImage} disabled={isExporting} data-html2canvas-ignore className={`px-4 h-10 ${glassBg} backdrop-blur-md border rounded-full shadow-lg flex items-center gap-2 ${textColor} active:scale-90 transition-transform`}>
-            {isExporting ? <span className="material-symbols-outlined text-[18px] animate-spin">sync</span> : <span className="material-symbols-outlined text-[18px]">ios_share</span>}
-            <span className="font-bold text-[13px]">{isExporting ? 'Saving...' : 'Share'}</span>
+            {isExporting ? <span className="material-symbols-outlined text-[18px] animate-spin">sync</span> : <span className="material-symbols-outlined text-[18px]">download</span>}
+            <span className="font-bold text-[13px]">{isExporting ? 'Saving...' : 'Save'}</span>
           </button>
         </div>
 
@@ -979,18 +1016,39 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
         )}
 
         <div className="space-y-8 px-1">
-          <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl shadow-md flex items-center justify-center text-[#1A5C3A]"><span className="material-symbols-outlined text-[24px]">assignment</span></div><h3 className="font-black text-[18px] tracking-tight">Patrol Details</h3></div>
+          <div className="flex items-center gap-3">
+            <div className="w-[42px] h-[42px] bg-white border-[1.5px] border-[#1A5C3A] rounded-[14px] shadow-sm flex items-center justify-center text-[#1A5C3A]">
+              <span className="material-symbols-outlined text-[20px]">assignment</span>
+            </div>
+            <h3 className="font-bold text-[20px] text-[#0D1A0F] tracking-tight">Patrol Details</h3>
+          </div>
           <div className="space-y-6">
 
             {/* Row 1: Date + Time — moved to top */}
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2.5">
-                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest pl-1">PATROL DATE</label>
-                <input type="date" value={formData.patrol_date} onChange={e => setFormData({ ...formData, patrol_date: e.target.value })} className="h-14 bg-white rounded-[20px] shadow-sm px-5 font-bold text-gray-800 text-[14px] border border-gray-50 outline-none" />
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">PATROL DATE</label>
+                <div className="relative w-full">
+                  <input 
+                    type="date" 
+                    value={formData.patrol_date} 
+                    onChange={e => setFormData({ ...formData, patrol_date: e.target.value })} 
+                    className="w-full h-[52px] bg-white rounded-[20px] shadow-[0_2px_8px_rgba(0,0,0,0.04)] pl-4 pr-10 font-bold text-[#0D1A0F] text-[14px] border border-gray-100 outline-none appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer bg-transparent" 
+                  />
+                  <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-800 text-[18px] pointer-events-none">calendar_today</span>
+                </div>
               </div>
               <div className="flex flex-col gap-2.5">
-                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest pl-1">START TIME</label>
-                <input type="time" value={formData.start_time} onChange={e => handleTimeChange(e.target.value)} className="h-14 bg-white rounded-[20px] shadow-sm px-5 font-bold text-gray-800 text-[14px] border border-gray-50 outline-none" />
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">START TIME</label>
+                <div className="relative w-full">
+                  <input 
+                    type="time" 
+                    value={formData.start_time} 
+                    onChange={e => handleTimeChange(e.target.value)} 
+                    className="w-full h-[52px] bg-white rounded-[20px] shadow-[0_2px_8px_rgba(0,0,0,0.04)] pl-4 pr-10 font-bold text-[#0D1A0F] text-[14px] border border-gray-100 outline-none appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer bg-transparent" 
+                  />
+                  <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-800 text-[20px] pointer-events-none">schedule</span>
+                </div>
               </div>
             </div>
 
@@ -2108,6 +2166,7 @@ const PatrolHistoryArchive = ({ onBack, sessionData: propData }) => {
 // SESSION DETAILS — Strava-style patrol result card
 // ────────────────────────────────────────────────────────────
 const PatrolSessionDetails = ({ onBack, sessionData }) => {
+  const navigate = useNavigate();
   const areaName   = sessionData?.location   || 'Campus Patrol';
   const shiftLabel = sessionData?.shift_type ? `${sessionData.shift_type} Patrol` : 'Patrol Session';
   const isNight    = sessionData?.shift_type === 'Evening';
@@ -2503,7 +2562,7 @@ export default function MobilePatrolFlow({ initialScreen = 'selectArea' }) {
   const [selectedImage, setSelectedImage] = useState(null); // Full screen image viewer
   const galleryInputRef = useRef(null);
   const now = new Date();
-  const [formData, setFormData] = useState(savedState?.formData || { shift_type: now.getHours() < 12 ? 'Morning' : now.getHours() < 18 ? 'Afternoon' : 'Evening', patrol_date: now.toISOString().split('T')[0], start_time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`, notes: '' });
+  const [formData, setFormData] = useState(savedState?.formData || { shift_type: (now.getHours() >= 4 && now.getHours() < 12) ? 'Morning' : (now.getHours() >= 12 && now.getHours() < 16) ? 'Afternoon' : 'Evening', patrol_date: now.toISOString().split('T')[0], start_time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`, notes: '' });
 
   useEffect(() => {
     const handleOpenImage = (e) => setSelectedImage(e.detail);
@@ -2525,6 +2584,10 @@ export default function MobilePatrolFlow({ initialScreen = 'selectArea' }) {
   // Forcefully reset EVERYTHING if the user navigates back to 'Select Area'
   useEffect(() => {
     if (location.pathname.endsWith('select')) {
+      if (isPatrolActive) {
+        navigate('/officer/patrols/live', { replace: true });
+        return;
+      }
       setIsPatrolActive(false);
       setSeconds(0);
       setDistanceKm(0);
@@ -2534,7 +2597,7 @@ export default function MobilePatrolFlow({ initialScreen = 'selectArea' }) {
       setActiveSession({});
       sessionStorage.removeItem('swafo_live_patrol_state');
     }
-  }, [location.pathname]);
+  }, [location.pathname, isPatrolActive, navigate]);
 
   const handleStartPatrol = async () => {
     // Force reset all tracking state when a new patrol officially starts!
@@ -2697,7 +2760,7 @@ export default function MobilePatrolFlow({ initialScreen = 'selectArea' }) {
 
       {(location.pathname.endsWith('select') || initialScreen === 'selectArea') && <SelectAreaScreen onConfirm={() => navigate('/officer/patrols/live')} onBack={() => navigate('/officer/patrols')} formData={formData} setFormData={setFormData} />}
       {location.pathname.endsWith('live') && <LiveMapScreen onEnd={handleEndPatrol} onExpand={() => navigate('/officer/patrols/expanded-map')} onBack={() => navigate('/officer/patrols/select')} seconds={seconds} isPatrolActive={isPatrolActive} setIsPatrolActive={handleStartPatrol} capturedPhotos={capturedPhotos} onCamera={() => setShowPhotoMenu(true)} distanceKm={distanceKm} setDistanceKm={setDistanceKm} setTrailCoords={setTrailCoords} trailCoords={trailCoords} formData={formData} violationCount={violationCount} setViolationCount={setViolationCount} />}
-      {location.pathname.endsWith('summary') && <DynamicSummaryScreen onSave={handleSaveToHistory} onBack={() => navigate('/officer/patrols/live')} sessionData={activeSession} isSaving={isSaving} trailCoords={trailCoords} distanceKm={distanceKm} />}
+      {location.pathname.endsWith('summary') && <DynamicSummaryScreen onSave={handleSaveToHistory} onBack={() => navigate('/officer/patrols/live')} sessionData={activeSession} isSaving={isSaving} trailCoords={trailCoords} distanceKm={distanceKm} capturedPhotos={capturedPhotos} />}
       {location.pathname.endsWith('expanded-map') && <FullMapScreen onBack={() => navigate('/officer/patrols/live')} trailCoords={trailCoords} />}
       {location.pathname.includes('patrol-history/') && (() => {
         // Read the patrol clicked in PatrolMonitoring (stored in sessionStorage)

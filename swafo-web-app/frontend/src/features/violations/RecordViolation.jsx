@@ -229,6 +229,18 @@ export default function RecordViolation() {
         setLastLoggedId(result.id);
         setShowSuccess(true);
         fetchStudentHistory(foundStudent.user_details?.email);
+
+        // Auto-increment the active patrol's violation counter
+        try {
+          const savedState = JSON.parse(sessionStorage.getItem('swafo_live_patrol_state'));
+          if (savedState && savedState.isPatrolActive) {
+            savedState.violationCount = (savedState.violationCount || 0) + 1;
+            sessionStorage.setItem('swafo_live_patrol_state', JSON.stringify(savedState));
+          }
+        } catch (e) {
+          console.error("Failed to update patrol state", e);
+        }
+
       } else {
         const errorData = await response.json();
         alert(`FAILED: ${JSON.stringify(errorData)}`);

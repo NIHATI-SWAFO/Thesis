@@ -434,7 +434,7 @@ class OfficerDashboardAPIView(APIView):
 
             # 8. Patrol Stats
             active_patrols_count = PatrolSession.objects.filter(end_time__isnull=True).count()
-            total_patrols = PatrolSession.objects.count()
+            total_patrols = PatrolSession.objects.filter(status=PatrolSession.Status.COMPLETED).count()
             total_photos = PatrolSession.objects.aggregate(total=Sum('photos_count'))['total'] or 0
             
             # Average duration in minutes

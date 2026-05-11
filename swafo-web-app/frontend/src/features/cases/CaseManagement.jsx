@@ -267,18 +267,18 @@ export default function CaseManagement({ role }) {
 
   return (
     <div className="animate-fade-in-up pb-10 px-4">
-      <div className="flex flex-col gap-6 mb-12">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[36px] font-pjs font-extrabold text-[#003624] tracking-tight">
+      <div className="flex flex-col gap-6 mb-12 px-1">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <h1 className="text-[32px] md:text-[36px] font-pjs font-extrabold text-[#003624] tracking-tight text-center md:text-left">
             Case Management
           </h1>
 
-          <div className="flex p-1.5 bg-emerald-50/50 rounded-2xl border border-emerald-100/50 shadow-sm">
-            <button onClick={() => setFilterTab('all')} className={`px-8 py-2.5 rounded-xl text-[14px] font-bold transition-all ${filterTab === 'all' ? 'bg-[#003624] text-white shadow-lg' : 'text-emerald-700'}`}>
-              {role === 'admin' ? 'All Institutional Cases' : 'All Cases'}
+          <div className="flex p-1.5 bg-emerald-50/50 rounded-2xl border border-emerald-100/50 shadow-sm w-full md:w-auto">
+            <button onClick={() => setFilterTab('all')} className={`flex-1 md:px-8 py-2.5 rounded-xl text-[12px] md:text-[14px] font-bold transition-all ${filterTab === 'all' ? 'bg-[#003624] text-white shadow-lg' : 'text-emerald-700'}`}>
+              {role === 'admin' ? 'Institutional' : 'All Cases'}
             </button>
-            <button onClick={() => setFilterTab('mine')} className={`px-8 py-2.5 rounded-xl text-[14px] font-bold transition-all ${filterTab === 'mine' ? 'bg-[#003624] text-white shadow-lg' : 'text-emerald-700'}`}>
-              {role === 'admin' ? 'My Adjudications' : 'My Assignments'}
+            <button onClick={() => setFilterTab('mine')} className={`flex-1 md:px-8 py-2.5 rounded-xl text-[12px] md:text-[14px] font-bold transition-all ${filterTab === 'mine' ? 'bg-[#003624] text-white shadow-lg' : 'text-emerald-700'}`}>
+              {role === 'admin' ? 'My Decisons' : 'Assigned'}
             </button>
           </div>
         </div>
@@ -286,8 +286,8 @@ export default function CaseManagement({ role }) {
 
       {role === 'admin' && violations.some(v => v.requires_director_decision && !['CLOSED', 'DISMISSED', 'DECISION_RENDERED'].includes(v.status)) && (
         <div className="mb-12 animate-in slide-in-from-top-4 duration-500">
-          <div className="bg-rose-50 border border-rose-100 rounded-[2.5rem] p-10 flex flex-col md:flex-row items-center gap-10 shadow-xl shadow-rose-900/5">
-            <div className="w-20 h-20 rounded-3xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-200">
+          <div className="bg-rose-50 border border-rose-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 md:gap-10 shadow-xl shadow-rose-900/5 text-center md:text-left">
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-200">
               <span className="material-symbols-outlined text-[40px] fill-1">gavel</span>
             </div>
             <div className="flex-1">
@@ -320,43 +320,43 @@ export default function CaseManagement({ role }) {
         const openLoad = stats.total === 0 ? 0 : Math.round((stats.open / stats.total) * 100);
 
         return (
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 mb-12">
             {/* Card 1: Total Cases */}
-            <div className="bg-white p-10 rounded-[2.5rem] shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-gray-50 flex flex-col gap-4 hover:translate-y-[-4px] transition-all duration-300">
-              <span className="text-[12px] font-pjs font-black text-slate-400 tracking-widest uppercase">TOTAL CASES</span>
-              <span className="text-[52px] font-pjs font-bold text-[#003624] leading-none tracking-tighter">{stats.total.toLocaleString()}</span>
-              <div className={`flex items-center gap-2 font-black text-[13px] mt-2 ${growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                <span className="material-symbols-outlined text-[20px]">{growth >= 0 ? 'trending_up' : 'trending_down'}</span>
-                {growth >= 0 ? `+${growth}%` : `${growth}%`} from last month
+            <div className="bg-white p-6 md:p-10 rounded-[1.5rem] md:rounded-[2.5rem] shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-gray-50 flex flex-col gap-4 hover:translate-y-[-4px] transition-all duration-300">
+              <span className="text-[10px] md:text-[12px] font-pjs font-black text-slate-400 tracking-widest uppercase">TOTAL CASES</span>
+              <span className="text-[42px] md:text-[52px] font-pjs font-bold text-[#003624] leading-none tracking-tighter">{stats.total.toLocaleString()}</span>
+              <div className={`flex items-center gap-2 font-black text-[12px] md:text-[13px] mt-2 ${growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                <span className="material-symbols-outlined text-[18px] md:text-[20px]">{growth >= 0 ? 'trending_up' : 'trending_down'}</span>
+                {growth >= 0 ? `+${growth}%` : `${growth}%`}
               </div>
             </div>
 
             {/* Card 2: Open Cases */}
-            <div className="bg-white p-10 rounded-[2.5rem] shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-gray-50 flex flex-col gap-4 hover:translate-y-[-4px] transition-all duration-300">
-              <span className="text-[12px] font-pjs font-black text-slate-400 tracking-widest uppercase">OPEN CASES</span>
-              <span className="text-[52px] font-pjs font-bold text-[#003624] leading-none tracking-tighter">{stats.open.toLocaleString()}</span>
+            <div className="bg-white p-6 md:p-10 rounded-[1.5rem] md:rounded-[2.5rem] shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-gray-50 flex flex-col gap-4 hover:translate-y-[-4px] transition-all duration-300">
+              <span className="text-[10px] md:text-[12px] font-pjs font-black text-slate-400 tracking-widest uppercase">OPEN CASES</span>
+              <span className="text-[42px] md:text-[52px] font-pjs font-bold text-[#003624] leading-none tracking-tighter">{stats.open.toLocaleString()}</span>
               <div className="w-full h-1.5 bg-slate-100 rounded-full mt-4 overflow-hidden">
                 <div className="h-full bg-rose-500 rounded-full transition-all duration-1000" style={{ width: `${openLoad}%` }}></div>
               </div>
             </div>
 
             {/* Card 3: Awaiting Decision */}
-            <div className="bg-white p-10 rounded-[2.5rem] shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-gray-50 flex flex-col gap-4 hover:translate-y-[-4px] transition-all duration-300">
-              <span className="text-[12px] font-pjs font-black text-slate-400 tracking-widest uppercase">AWAITING DECISION</span>
-              <span className="text-[52px] font-pjs font-bold text-[#003624] leading-none tracking-tighter">{stats.awaiting.toLocaleString()}</span>
-              <div className={`flex items-center gap-2 font-black text-[13px] mt-2 ${majorUnderReview > 0 ? 'text-red-500' : 'text-emerald-600/60'}`}>
-                <span className="material-symbols-outlined text-[20px]">{majorUnderReview > 0 ? 'gavel' : 'hourglass_top'}</span>
-                {majorUnderReview > 0 ? `${majorUnderReview} High Priority` : 'Queue Status Normal'}
+            <div className="bg-white p-6 md:p-10 rounded-[1.5rem] md:rounded-[2.5rem] shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-gray-50 flex flex-col gap-4 hover:translate-y-[-4px] transition-all duration-300">
+              <span className="text-[10px] md:text-[12px] font-pjs font-black text-slate-400 tracking-widest uppercase">AWAITING</span>
+              <span className="text-[42px] md:text-[52px] font-pjs font-bold text-[#003624] leading-none tracking-tighter">{stats.awaiting.toLocaleString()}</span>
+              <div className={`flex items-center gap-2 font-black text-[11px] md:text-[13px] mt-2 ${majorUnderReview > 0 ? 'text-red-500' : 'text-emerald-600/60'}`}>
+                <span className="material-symbols-outlined text-[18px] md:text-[20px]">{majorUnderReview > 0 ? 'gavel' : 'hourglass_top'}</span>
+                {majorUnderReview > 0 ? 'Priority' : 'Normal'}
               </div>
             </div>
 
             {/* Card 4: Closed / Dismissed */}
-            <div className="bg-white p-10 rounded-[2.5rem] shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-gray-50 flex flex-col gap-4 hover:translate-y-[-4px] transition-all duration-300">
-              <span className="text-[12px] font-pjs font-black text-slate-400 tracking-widest uppercase">COMPLETED</span>
-              <span className="text-[52px] font-pjs font-bold text-[#003624] leading-none tracking-tighter">{stats.closed.toLocaleString()}</span>
-              <div className="flex items-center gap-2 text-emerald-600 font-black text-[13px] mt-2">
-                <span className="material-symbols-outlined text-[20px]">verified</span>
-                {resolutionRate}% Resolution Rate
+            <div className="bg-white p-6 md:p-10 rounded-[1.5rem] md:rounded-[2.5rem] shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-gray-50 flex flex-col gap-4 hover:translate-y-[-4px] transition-all duration-300">
+              <span className="text-[10px] md:text-[12px] font-pjs font-black text-slate-400 tracking-widest uppercase">COMPLETED</span>
+              <span className="text-[42px] md:text-[52px] font-pjs font-bold text-[#003624] leading-none tracking-tighter">{stats.closed.toLocaleString()}</span>
+              <div className="flex items-center gap-2 text-emerald-600 font-black text-[12px] md:text-[13px] mt-2">
+                <span className="material-symbols-outlined text-[18px] md:text-[20px]">verified</span>
+                {resolutionRate}% Rate
               </div>
             </div>
           </div>
@@ -422,8 +422,8 @@ export default function CaseManagement({ role }) {
               </button>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left border-collapse min-w-[1000px]">
                 <thead>
                   <tr className="bg-slate-50/30">
                     <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Case ID</th>
@@ -629,11 +629,11 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-[2.5rem] w-full max-w-[800px] h-fit my-auto overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.3)] border border-white/20 animate-in zoom-in-95 duration-300"
+        className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] w-full max-w-[800px] h-fit my-auto overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.3)] border border-white/20 animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header Section */}
-        <div className="bg-[#003624] p-10 pb-8 text-white relative overflow-hidden">
+        <div className="bg-[#003624] p-6 md:p-10 pb-8 text-white relative overflow-hidden">
           <div className="flex justify-between items-start mb-6">
             <div>
               <p className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1">Case ID</p>
@@ -674,9 +674,9 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
           )}
 
           {/* Identity & Time Bar */}
-          <div className="flex items-center gap-6 p-4 bg-black/20 rounded-[1.5rem] border border-white/5 backdrop-blur-md">
+          <div className="flex flex-col md:flex-row md:items-center gap-6 p-4 md:p-6 bg-black/20 rounded-[1.5rem] border border-white/5 backdrop-blur-md">
             <div className="flex items-center gap-4 flex-1">
-              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-emerald-500/30">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-emerald-500/30">
                 <img
                   src={`https://ui-avatars.com/api/?name=${caseData.student_details?.user_details?.full_name}&background=003624&color=fff`}
                   alt="avatar"
@@ -684,32 +684,29 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                 />
               </div>
               <div className="flex flex-col">
-                <span className="text-[16px] font-bold text-white">{caseData.student_details?.user_details?.full_name}</span>
-                <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">STUDENT NO: {caseData.student_details?.student_number}</span>
-                {caseData.student_details?.course && (
-                  <span className="text-[11px] font-semibold text-emerald-400/80 mt-0.5">{caseData.student_details.course}</span>
-                )}
+                <span className="text-[14px] md:text-[16px] font-bold text-white leading-tight">{caseData.student_details?.user_details?.full_name}</span>
+                <span className="text-[10px] md:text-[11px] font-black text-white/40 uppercase tracking-widest mt-0.5">ID: {caseData.student_details?.student_number}</span>
               </div>
             </div>
 
-            <div className="h-10 w-[1px] bg-white/10"></div>
+            <div className="hidden md:block h-10 w-[1px] bg-white/10"></div>
 
-            <div className="flex items-center gap-6 px-4">
+            <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 px-1 md:px-4 border-t md:border-t-0 border-white/5 pt-4 md:pt-0">
               <div className="flex items-center gap-3 text-white/70">
-                <span className="material-symbols-outlined text-[20px] text-emerald-400">calendar_today</span>
-                <span className="text-[14px] font-bold">{date}</span>
+                <span className="material-symbols-outlined text-[18px] md:text-[20px] text-emerald-400">calendar_today</span>
+                <span className="text-[12px] md:text-[14px] font-bold">{date}</span>
               </div>
               <div className="flex items-center gap-3 text-white/70">
-                <span className="material-symbols-outlined text-[20px] text-emerald-400">schedule</span>
-                <span className="text-[14px] font-bold">{time}</span>
+                <span className="material-symbols-outlined text-[18px] md:text-[20px] text-emerald-400">schedule</span>
+                <span className="text-[12px] md:text-[14px] font-bold">{time}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Details Section */}
-        <div className="p-10 space-y-10 bg-white">
-          <div className="bg-[#F0F4F4]/50 rounded-[2rem] p-8 border-l-4 border-emerald-500">
+        <div className="p-6 md:p-10 space-y-8 md:space-y-10 bg-white">
+          <div className="bg-[#F0F4F4]/50 rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 border-l-4 border-emerald-500">
             <p className="text-[16px] font-manrope font-medium text-slate-700 leading-relaxed italic">
               "{caseData.description || 'No detailed account provided.'}"
             </p>

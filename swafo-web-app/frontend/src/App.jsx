@@ -56,7 +56,7 @@ function App() {
           <Route path="patrols/summary" element={<MobilePatrolFlow initialScreen="dynamicSummary" />} />
           <Route path="patrols/history/:id" element={<MobilePatrolFlow initialScreen="archive" />} />
           
-          <Route path="reports" element={<ReportsAnalytics />} />
+          <Route path="analytics" element={<ReportsAnalytics />} />
           <Route path="patrol-history" element={<PatrolHistory />} />
           <Route path="patrol-history/:id" element={<MobilePatrolFlow initialScreen="archive" />} />
           <Route path="patrol-history/:id/session" element={<MobilePatrolFlow initialScreen="archive" />} />

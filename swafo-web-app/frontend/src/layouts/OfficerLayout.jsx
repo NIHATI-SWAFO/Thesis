@@ -110,37 +110,77 @@ export default function OfficerLayout() {
         </header>
 
         {/* Scrollable Page Content */}
-        <main className="flex-1 overflow-y-auto px-0 lg:px-10 py-0 lg:py-8 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto px-4 py-6 lg:px-10 lg:py-8 pb-[100px] lg:pb-8 custom-scrollbar">
           <Outlet />
         </main>
 
-        {/* MOBILE BOTTOM NAV (Image 1 Replica) */}
+        {/* MOBILE BOTTOM NAV */}
         {!hideBottomNav && (
-          <div className="lg:hidden fixed bottom-0 left-0 right-0 h-[100px] bg-white border-t border-gray-100 flex items-center justify-around px-2 z-[5000] shadow-[0_-10px_30px_rgba(0,0,0,0.03)] pb-4">
-            <button onClick={() => navigate('/officer/dashboard')} className="flex flex-col items-center gap-1.5 px-4 group active:scale-95 transition-all">
-              <span className={`material-symbols-outlined text-[26px] ${location.pathname.includes('dashboard') ? 'text-[#1A5C3A] font-black' : 'text-gray-300'}`}>grid_view</span>
-              <span className={`text-[9px] font-black uppercase tracking-widest ${location.pathname.includes('dashboard') ? 'text-[#1A5C3A]' : 'text-gray-300'}`}>DASHBOARD</span>
-            </button>
-            
-            <div className="relative -top-8">
-              <button onClick={() => navigate('/officer/patrols')} className="w-[84px] h-[84px] bg-[#1A5C3A] rounded-full border-[7px] border-white shadow-2xl shadow-[#1A5C3A]/30 flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-transform">
-                <span className="material-symbols-outlined text-white text-[34px] fill-1">visibility</span>
-              </button>
-              <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-black text-[#1A5C3A] uppercase tracking-widest">PATROL</span>
-            </div>
-
-            <button onClick={() => navigate('/officer/violations/new')} className="flex flex-col items-center gap-1.5 px-4 group active:scale-95 transition-all">
-              <span className={`material-symbols-outlined text-[26px] ${location.pathname.includes('violations/new') ? 'text-[#1A5C3A] font-black' : 'text-gray-300'}`}>warning</span>
-              <span className={`text-[9px] font-black uppercase tracking-widest ${location.pathname.includes('violations/new') ? 'text-[#1A5C3A]' : 'text-gray-300'}`}>VIOLATION</span>
-            </button>
-
-            <button className="flex flex-col items-center gap-1.5 px-4 opacity-40">
-              <span className="material-symbols-outlined text-[26px] text-gray-300">folder</span>
-              <span className={`text-[9px] font-black uppercase tracking-widest text-gray-300`}>CASES</span>
-            </button>
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 h-[90px] bg-white border-t border-gray-100 flex items-center justify-around px-2 z-[5000] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] pb-6">
+            <NavButton 
+              active={location.pathname.includes('dashboard')} 
+              onClick={() => navigate('/officer/dashboard')}
+              icon="dashboard"
+              label="HOME"
+            />
+            <NavButton 
+              active={location.pathname.includes('cases')} 
+              onClick={() => navigate('/officer/cases')}
+              icon="folder"
+              label="CASES"
+            />
+            <NavButton 
+              active={location.pathname.includes('patrols')} 
+              onClick={() => navigate('/officer/patrols')}
+              icon="visibility"
+              label="PATROL"
+              isCenter={true}
+            />
+            <NavButton 
+              active={location.pathname.includes('analytics')} 
+              onClick={() => navigate('/officer/analytics')}
+              icon="analytics"
+              label="STATS"
+            />
+            <NavButton 
+              active={location.pathname.includes('violations/new')} 
+              onClick={() => navigate('/officer/violations/new')}
+              icon="warning"
+              label="RECORD"
+            />
+            <NavButton 
+              active={location.pathname.includes('students')} 
+              onClick={() => navigate('/officer/students')}
+              icon="groups"
+              label="STUDENTS"
+            />
           </div>
         )}
       </div>
     </div>
   );
 }
+
+function NavButton({ active, onClick, icon, label, isCenter = false }) {
+  return (
+    <button 
+      onClick={onClick} 
+      className={`relative flex flex-col items-center transition-all duration-300 ${active ? '-top-7' : 'top-0'} ${isCenter && !active ? 'opacity-80' : 'opacity-100'}`}
+    >
+      {active ? (
+        <div className="flex flex-col items-center animate-in zoom-in-75 duration-300">
+          <div className="w-[72px] h-[72px] bg-[#1A5C3A] rounded-full border-[6px] border-white shadow-2xl flex items-center justify-center mb-1 active:scale-90 transition-transform">
+            <span className="material-symbols-outlined text-white text-[32px] fill-1">{icon}</span>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-tighter text-[#1A5C3A] whitespace-nowrap">{label}</span>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-1 group active:scale-95 transition-all">
+          <span className="material-symbols-outlined text-[28px] text-slate-400 group-hover:text-slate-600 transition-colors">{icon}</span>
+          <span className="text-[10px] font-black uppercase tracking-tighter text-slate-400 group-hover:text-slate-600 transition-colors">{label}</span>
+        </div>
+      )}
+    </button>
+  );
+}
+

@@ -206,75 +206,79 @@ export default function StudentRecords({ role = 'officer' }) {
       )}
 
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-10 gap-6">
-        <div>
-          <h1 className="text-[36px] font-pjs font-extrabold text-[#003624] tracking-tight mb-2">
+        <div className="px-1">
+          <h1 className="text-[28px] md:text-[36px] font-pjs font-extrabold text-[#003624] tracking-tight mb-2">
             Institutional Student Records
           </h1>
-          <div className="flex items-center gap-3">
-             <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-200">
+          <div className="flex items-start md:items-center gap-3">
+             <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-200 shrink-0">
                {isAdmin ? 'Director Access' : 'Officer Access'}
              </span>
-             <p className="text-[14px] text-gray-500 font-manrope font-medium italic">
+             <p className="text-[12px] md:text-[14px] text-gray-500 font-manrope font-medium italic">
                Master compliance registry and behavioral risk management.
              </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 w-full xl:w-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
           {/* College Filter Dropdown */}
           <select
             value={collegeFilter}
             onChange={e => { setCollegeFilter(e.target.value); setCurrentPage(1); }}
-            className="h-14 pl-5 pr-10 bg-white border border-slate-100 rounded-2xl text-[13px] font-bold text-slate-600 focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all shadow-sm appearance-none"
+            className="h-14 w-full sm:w-auto pl-5 pr-10 bg-white border border-slate-100 rounded-2xl text-[13px] font-bold text-slate-600 focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all shadow-sm appearance-none"
           >
             <option value="">All Colleges</option>
             {colleges.map(c => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
-
-          <div className="relative flex-1 xl:w-[340px]">
-            <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 text-[20px]">search</span>
-            <input
-              type="text"
-              placeholder="Search by name, ID, or course..."
-              className="w-full pl-13 pr-6 py-4 bg-white border border-slate-100 rounded-2xl text-[14px] font-bold focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all shadow-sm"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+          
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-[300px] xl:w-[340px]">
+              <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 text-[20px]">search</span>
+              <input
+                type="text"
+                placeholder="Search students..."
+                className="w-full pl-13 pr-6 py-4 bg-white border border-slate-100 rounded-2xl text-[14px] font-bold focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all shadow-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <button className="w-14 h-14 shrink-0 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all shadow-sm">
+              <span className="material-symbols-outlined">tune</span>
+            </button>
           </div>
-          <button className="w-14 h-14 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all shadow-sm">
-            <span className="material-symbols-outlined">tune</span>
-          </button>
         </div>
       </div>
 
       {/* Compliance Filtering Tabs */}
-      <div className="flex items-center gap-2 mb-8 bg-slate-100/50 p-1.5 rounded-2xl w-fit">
-        {[
-          { id: 'ALL', label: 'All Students', count: stats.total },
-          { id: 'COMPLIANT', label: '🟢 Compliant', count: stats.compliant },
-          { id: 'UNDER_REVIEW', label: '⚪ Under Review', count: stats.underReview },
-          { id: 'NON_COMPLIANT', label: '🔴 Non-Compliant', count: stats.nonCompliant },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => { setActiveTab(tab.id); setCurrentPage(1); }}
-            className={`px-6 py-3 rounded-xl text-[13px] font-black uppercase tracking-widest transition-all ${
-              activeTab === tab.id 
-                ? 'bg-white text-[#003624] shadow-md border border-slate-100' 
-                : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            {tab.label} <span className="ml-2 opacity-40 font-bold">{tab.count}</span>
-          </button>
-        ))}
+      <div className="w-full overflow-x-auto scrollbar-hide mb-8">
+        <div className="flex items-center gap-2 bg-slate-100/50 p-1.5 rounded-2xl w-fit min-w-full md:min-w-0">
+          {[
+            { id: 'ALL', label: 'All Students', count: stats.total },
+            { id: 'COMPLIANT', label: '🟢 Compliant', count: stats.compliant },
+            { id: 'UNDER_REVIEW', label: '⚪ Review', count: stats.underReview },
+            { id: 'NON_COMPLIANT', label: '🔴 Warning', count: stats.nonCompliant },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); setCurrentPage(1); }}
+              className={`px-4 md:px-6 py-3 rounded-xl text-[12px] md:text-[13px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                activeTab === tab.id 
+                  ? 'bg-white text-[#003624] shadow-md border border-slate-100' 
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              {tab.label} <span className="ml-1 opacity-40 font-bold">{tab.count}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Main Data View */}
-      <div className="bg-white rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,54,36,0.04)] border border-slate-50 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+      <div className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,54,36,0.04)] border border-slate-50 overflow-hidden">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left border-collapse min-w-[900px] md:min-w-0">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100">
                 <th className="py-6 px-10 text-[11px] font-black text-slate-400 uppercase tracking-widest">Student / Identification</th>
@@ -399,10 +403,10 @@ export default function StudentRecords({ role = 'officer' }) {
         </div>
 
         {/* Institutional Pagination */}
-        <div className="px-10 py-8 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex flex-col">
-             <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Pagination Control</span>
-             <p className="text-[13px] font-bold text-[#003624]">Showing {currentData.length} of {filteredStudents.length} Institutional Records</p>
+        <div className="px-6 md:px-10 py-8 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex flex-col items-center md:items-start text-center md:text-left">
+             <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Pagination Control</span>
+             <p className="text-[12px] md:text-[13px] font-bold text-[#003624]">Showing {currentData.length} of {filteredStudents.length} Records</p>
           </div>
           
           <div className="flex items-center gap-2">

@@ -218,15 +218,15 @@ function DetailPanel({ patrol: p }) {
         </div>
 
         {/* Metric tiles */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { icon: 'timer',        label: 'Total Time',  val: `${mins}m`   },
             { icon: 'photo_camera', label: 'Photos',      val: photos       },
             { icon: 'trending_up',  label: 'Score',       val: `${sc}%`     },
           ].map(m => (
-            <div key={m.label} className="bg-[#1A3825] rounded-[18px] py-5 flex flex-col items-center gap-1">
-              <span className="material-symbols-outlined text-[#39E58C] text-[22px]">{m.icon}</span>
-              <p className="font-black text-[22px] text-white leading-none">{m.val}</p>
+            <div key={m.label} className="bg-[#1A3825] rounded-[18px] py-4 md:py-5 flex flex-col items-center gap-1">
+              <span className="material-symbols-outlined text-[#39E58C] text-[20px] md:text-[22px]">{m.icon}</span>
+              <p className="font-black text-[20px] md:text-[22px] text-white leading-none">{m.val}</p>
               <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">{m.label}</p>
             </div>
           ))}
@@ -238,7 +238,7 @@ function DetailPanel({ patrol: p }) {
 
         {/* Session Overview */}
         <Section label="Session Overview">
-          <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6">
             <InfoRow icon="login"      label="Time Started" val={fmtTime(startIso)} />
             <InfoRow icon="logout"     label="Time Ended"   val={fmtTime(endIso)} />
             <InfoRow icon="badge"      label="Officer"      val={officer} />
@@ -349,9 +349,9 @@ function PatrolDetail({ patrol, onBack, patrols, onSelect }) {
       {/* back button */}
       <button
         onClick={onBack}
-        className="absolute top-4 left-4 z-50 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center"
+        className="absolute top-5 left-5 z-[60] w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 active:scale-90 transition-all shadow-xl"
       >
-        <span className="material-symbols-outlined text-white text-[20px]">arrow_back</span>
+        <span className="material-symbols-outlined text-white text-[24px]">arrow_back</span>
       </button>
       <DetailPanel patrol={patrol} />
 

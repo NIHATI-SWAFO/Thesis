@@ -52,16 +52,16 @@ export default function StudentProfile() {
         </div>
 
         {/* Info Content */}
-        <div className="flex-grow pb-2">
-          <h1 className="text-[2.25rem] font-pjs font-bold text-[#1a1a1a] leading-tight mb-1.5 tracking-tight">
+        <div className="flex-grow pb-2 text-center md:text-left">
+          <h1 className="text-[28px] md:text-[2.25rem] font-pjs font-bold text-[#1a1a1a] leading-tight mb-2 tracking-tight">
             {fullName}
           </h1>
-          <div className="flex flex-wrap items-center gap-3 text-portal-text-muted font-manrope font-semibold text-lg">
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-portal-text-muted font-manrope font-semibold text-sm md:text-lg">
             <span className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-portal-primary/60 text-[20px]">school</span>
+              <span className="material-symbols-outlined text-portal-primary/60 text-[16px] md:text-[20px]">school</span>
               Year {yearLevel}
             </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-200" />
+            <span className="hidden md:block w-1.5 h-1.5 rounded-full bg-emerald-200" />
             <span>{course}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-200" />
             <span className="text-portal-primary/70 font-bold">ID: {studentId}</span>

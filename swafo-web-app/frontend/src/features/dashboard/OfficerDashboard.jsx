@@ -247,7 +247,8 @@ export default function OfficerDashboard() {
            </button>
         </div>
 
-        <div className="w-full px-10 pb-10 pt-4">
+        <div className="w-full px-4 lg:px-10 pb-10 pt-4 overflow-x-auto custom-scrollbar">
+          <div className="min-w-[700px]">
            {/* Table Header */}
            <div className="grid grid-cols-5 py-4 px-6 rounded-2xl bg-slate-50/80 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
               <div className="col-span-2">Student Identity</div>
@@ -275,12 +276,12 @@ export default function OfficerDashboard() {
                     <div className="col-span-2 flex items-center gap-4">
                         <div className="w-11 h-11 rounded-full bg-[#064e3b] text-white font-bold text-[13px] flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">{initials}</div>
                         <div className="flex flex-col">
-                            <span className="font-pjs font-bold text-[15px] text-slate-800">{fullName}</span>
+                            <span className="font-pjs font-bold text-[15px] text-slate-800 truncate">{fullName}</span>
                             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">{v.student_details?.student_number}</span>
                         </div>
                     </div>
                     <div className="col-span-1">
-                        <span className="text-[13px] font-black text-slate-600 uppercase tracking-tighter">{v.rule_details?.category || 'General'}</span>
+                        <span className="text-[13px] font-black text-slate-600 uppercase tracking-tighter truncate block">{v.rule_details?.category || 'General'}</span>
                     </div>
                     <div className="col-span-1 text-[13px] font-bold text-slate-400">{time}</div>
                     <div className="col-span-1 text-right">
@@ -293,6 +294,7 @@ export default function OfficerDashboard() {
               })}
               {recent_violations.length === 0 && <p className="text-center text-gray-400 py-10">No recent activity detected.</p>}
            </div>
+          </div>
         </div>
       </div>
     </div>

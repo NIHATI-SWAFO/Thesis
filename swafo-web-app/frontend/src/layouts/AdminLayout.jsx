@@ -26,7 +26,7 @@ export default function AdminLayout() {
     <div className="flex h-screen bg-[#f8fafc] font-manrope">
       
       {/* ══════════════════════════════ SIDEBAR ══════════════════════════════ */}
-      <aside className="fixed left-0 top-0 h-screen w-[280px] z-50 bg-[#003624] flex flex-col py-10 shadow-2xl">
+      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-[280px] z-50 bg-[#003624] flex-col py-10 shadow-2xl">
         
         {/* Brand */}
         <div className="px-10 mb-12 flex items-center gap-4">
@@ -90,10 +90,28 @@ export default function AdminLayout() {
       </aside>
 
       {/* ══════════════════════════════ CONTENT AREA ══════════════════════════════ */}
-      <div className="flex-1 ml-[280px] flex flex-col h-full overflow-hidden">
+      <div className="flex-1 lg:ml-[280px] flex flex-col h-full overflow-hidden shrink-0">
         
-        {/* Topbar */}
-        <header className="h-[80px] px-12 bg-white flex items-center justify-between z-30 shadow-sm relative">
+        {/* MOBILE HEADER */}
+        <header className="lg:hidden h-[80px] bg-[#003624] flex items-center justify-between px-6 shrink-0 z-[5001]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white border border-white/20 shadow-md">
+              <span className="material-symbols-outlined text-[20px] fill-1">admin_panel_settings</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-pjs font-extrabold text-white text-[18px] tracking-tight leading-none mb-1">DIRECTOR</span>
+              <span className="font-manrope text-[9px] uppercase tracking-[0.2em] text-emerald-400/80 font-black leading-none">Command Center</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+               <span className="material-symbols-outlined text-[18px]">person</span>
+            </div>
+          </div>
+        </header>
+
+        {/* Topbar (Desktop) */}
+        <header className="hidden lg:flex h-[80px] px-12 bg-white items-center justify-between z-30 shadow-sm relative shrink-0">
           <div className="flex flex-col">
              <h2 className="text-[16px] font-pjs font-extrabold text-[#003624] tracking-tight leading-none mb-1 uppercase">Institutional Oversight</h2>
              <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">Global Campus Status</p>
@@ -117,10 +135,62 @@ export default function AdminLayout() {
         </header>
 
         {/* Scrollable Page Content */}
-        <main className="flex-1 overflow-y-auto bg-[#f8fafc] px-12 py-10">
+        <main className="flex-1 overflow-y-auto bg-[#f8fafc] px-4 py-6 lg:px-12 lg:py-10 pb-[100px] lg:pb-10 custom-scrollbar">
           <Outlet />
         </main>
+
+        {/* MOBILE BOTTOM NAV */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 h-[90px] bg-white border-t border-gray-100 flex items-center justify-around px-2 z-[5000] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] pb-6">
+          <NavButton 
+            active={location.pathname.includes('dashboard')} 
+            onClick={() => navigate('/admin/dashboard')}
+            icon="monitoring"
+            label="OVERVIEW"
+          />
+          <NavButton 
+            active={location.pathname.includes('cases')} 
+            onClick={() => navigate('/admin/cases')}
+            icon="gavel"
+            label="CASES"
+          />
+          <NavButton 
+            active={location.pathname.includes('analytics')} 
+            onClick={() => navigate('/admin/analytics')}
+            icon="analytics"
+            label="STATS"
+            isCenter={true}
+          />
+          <NavButton 
+            active={location.pathname.includes('students')} 
+            onClick={() => navigate('/admin/students')}
+            icon="groups"
+            label="STUDENTS"
+          />
+        </div>
       </div>
     </div>
+  );
+}
+
+function NavButton({ active, onClick, icon, label, isCenter = false }) {
+  return (
+    <button 
+      onClick={onClick} 
+      className={`relative flex flex-col items-center transition-all duration-300 ${active ? '-top-7' : 'top-0'} ${isCenter && !active ? 'opacity-80' : 'opacity-100'}`}
+    >
+      {active ? (
+        <div className="flex flex-col items-center animate-in zoom-in-75 duration-300">
+          <div className="w-[72px] h-[72px] bg-[#1A5C3A] rounded-full border-[6px] border-white shadow-2xl flex items-center justify-center mb-1 active:scale-90 transition-transform">
+            <span className="material-symbols-outlined text-white text-[32px] fill-1">{icon}</span>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-tighter text-[#1A5C3A] whitespace-nowrap">{label}</span>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-1 group active:scale-95 transition-all">
+          <span className="material-symbols-outlined text-[28px] text-slate-400 group-hover:text-slate-600 transition-colors">{icon}</span>
+          <span className="text-[10px] font-black uppercase tracking-tighter text-slate-400 group-hover:text-slate-600 transition-colors">{label}</span>
+        </div>
+      )}
+    </button>
   );
 }

@@ -32,7 +32,7 @@ export default function StudentLayout() {
       
       {/* ══════════════════════════════ SIDEBAR ══════════════════════════════ */}
       {/* ══════════════════════════════ SIDEBAR ══════════════════════════════ */}
-      <aside className="fixed left-0 top-0 h-screen w-[270px] z-50 bg-[#F7F9FB] flex flex-col py-10 shadow-[20px_0_60px_rgba(0,0,0,0.03)] border-r border-emerald-50/50 rounded-r-[3.5rem]">
+      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-[270px] z-50 bg-[#F7F9FB] flex-col py-10 shadow-[20px_0_60px_rgba(0,0,0,0.03)] border-r border-emerald-50/50 rounded-r-[3.5rem]">
         
         {/* Brand */}
         <div className="px-8 mb-10 flex items-center gap-3">
@@ -87,10 +87,30 @@ export default function StudentLayout() {
       </aside>
 
       {/* ══════════════════════════════ CONTENT AREA ══════════════════════════════ */}
-      <div className="flex-1 ml-[270px] flex flex-col h-full overflow-hidden">
+      <div className="flex-1 lg:ml-[270px] flex flex-col h-full overflow-hidden shrink-0">
         
-        {/* Topbar */}
-        <header className="h-[72px] px-8 bg-white flex items-center justify-between z-30 relative shadow-[0_4px_30px_rgba(0,0,0,0.06)]">
+        {/* MOBILE HEADER */}
+        <header className="lg:hidden h-[80px] bg-white border-b border-gray-50 flex items-center justify-between px-6 shrink-0 z-[5001]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#003624] flex items-center justify-center text-white shadow-md">
+              <span className="material-symbols-outlined text-[20px] fill-1">school</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-pjs font-extrabold text-[#003624] text-[18px] tracking-tight leading-none mb-1">SWAFO</span>
+              <span className="font-manrope text-[9px] uppercase tracking-[0.2em] text-emerald-600 font-bold leading-none">Student Portal</span>
+            </div>
+          </div>
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-[#003624] border border-emerald-100/50 shadow-sm"
+          >
+            <span className="material-symbols-outlined text-[20px]">notifications</span>
+            <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 border-2 border-white"></div>
+          </button>
+        </header>
+
+        {/* Topbar (Desktop) */}
+        <header className="hidden lg:flex h-[72px] px-8 bg-white items-center justify-between z-30 relative shadow-[0_4px_30px_rgba(0,0,0,0.06)] shrink-0">
           {/* Search */}
           <div className="flex-1 max-w-[500px] relative">
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-portal-text-muted/40 text-[20px]">search</span>
@@ -189,11 +209,69 @@ export default function StudentLayout() {
         </header>
 
         {/* Scrollable Page Content */}
-        <main className="flex-1 overflow-y-auto px-8 py-8 pt-10 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto px-4 py-6 lg:px-8 lg:py-8 lg:pt-10 custom-scrollbar pb-[100px] lg:pb-8">
           <Outlet />
         </main>
+
+        {/* MOBILE BOTTOM NAV */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 h-[90px] bg-white border-t border-gray-100 flex items-center justify-around px-2 z-[5000] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] pb-6">
+          <NavButton 
+            active={location.pathname.includes('dashboard')} 
+            onClick={() => navigate('/student/dashboard')}
+            icon="dashboard"
+            label="HOME"
+          />
+          <NavButton 
+            active={location.pathname.includes('violations')} 
+            onClick={() => navigate('/student/violations')}
+            icon="gavel"
+            label="RECORDS"
+          />
+          <NavButton 
+            active={location.pathname.includes('chatbot')} 
+            onClick={() => navigate('/student/chatbot')}
+            icon="chat_bubble"
+            label="AI CURATOR"
+            isCenter={true}
+          />
+          <NavButton 
+            active={location.pathname.includes('handbook')} 
+            onClick={() => navigate('/student/handbook')}
+            icon="book_4"
+            label="GUIDE"
+          />
+          <NavButton 
+            active={location.pathname.includes('profile')} 
+            onClick={() => navigate('/student/profile')}
+            icon="person"
+            label="PROFILE"
+          />
+        </div>
       </div>
     </div>
+  );
+}
+
+function NavButton({ active, onClick, icon, label, isCenter = false }) {
+  return (
+    <button 
+      onClick={onClick} 
+      className={`relative flex flex-col items-center transition-all duration-300 ${active ? '-top-7' : 'top-0'} ${isCenter && !active ? 'opacity-80' : 'opacity-100'}`}
+    >
+      {active ? (
+        <div className="flex flex-col items-center animate-in zoom-in-75 duration-300">
+          <div className="w-[72px] h-[72px] bg-[#1A5C3A] rounded-full border-[6px] border-white shadow-2xl flex items-center justify-center mb-1 active:scale-90 transition-transform">
+            <span className="material-symbols-outlined text-white text-[32px] fill-1">{icon}</span>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-tighter text-[#1A5C3A] whitespace-nowrap">{label}</span>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-1 group active:scale-95 transition-all">
+          <span className="material-symbols-outlined text-[28px] text-slate-400 group-hover:text-slate-600 transition-colors">{icon}</span>
+          <span className="text-[10px] font-black uppercase tracking-tighter text-slate-400 group-hover:text-slate-600 transition-colors">{label}</span>
+        </div>
+      )}
+    </button>
   );
 }
 

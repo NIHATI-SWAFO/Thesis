@@ -23,8 +23,8 @@ class PatrolSessionViewSet(viewsets.ModelViewSet):
         now = timezone.now()
         today = timezone.localtime(now).date()
 
-        # 1. TOTAL PATROLS — every patrol ever saved in history (any status)
-        total_patrols = PatrolSession.objects.count()
+        # 1. TOTAL PATROLS — every patrol successfully saved in history (COMPLETED)
+        total_patrols = PatrolSession.objects.filter(status=PatrolSession.Status.COMPLETED).count()
 
         # 2. COMPLETED TODAY — completed within the last 24 rolling hours
         since_24h = now - timedelta(hours=24)

@@ -73,8 +73,8 @@ export default function PatrolMonitoring() {
       const todayStr   = now.toDateString();                          // e.g. "Thu May 01 2025"
       const oneWeekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
-      // Total Patrols — every patrol ever saved (any status)
-      const totalPatrols = merged.length;
+      // Total Patrols — only patrols successfully saved/completed
+      const totalPatrols = merged.filter(p => p.status === 'COMPLETED').length;
 
       // Completed Today — status COMPLETED and end_time falls on today's calendar date
       // (midnight 12:00am → 11:59pm, not a rolling 24h window)
@@ -131,7 +131,14 @@ export default function PatrolMonitoring() {
   };
 
 
+  const savedState = JSON.parse(sessionStorage.getItem('swafo_live_patrol_state') || 'null');
+  const isPatrolActive = savedState?.isPatrolActive === true;
+
   const handleStartNewPatrol = () => {
+    if (isPatrolActive) {
+      navigate('/officer/patrols/live');
+      return;
+    }
     sessionStorage.removeItem('swafo_live_patrol_state');
     localStorage.removeItem('swafo_active_session');
     navigate('/officer/patrols/select');
@@ -171,7 +178,7 @@ export default function PatrolMonitoring() {
           </div>
         </div>
 
-        <button onClick={handleStartNewPatrol} className="w-full h-[60px] bg-[#1A5C3A] rounded-[24px] shadow-xl flex items-center justify-center gap-2.5 text-white font-black text-[16px] tracking-tight mb-10"><span className="material-symbols-outlined text-[20px]">verified</span> Start New Patrol</button>
+        <button onClick={handleStartNewPatrol} className="w-full h-[60px] bg-[#1A5C3A] rounded-[24px] shadow-xl flex items-center justify-center gap-2.5 text-white font-black text-[16px] tracking-tight mb-10"><span className="material-symbols-outlined text-[20px]">{isPatrolActive ? 'play_arrow' : 'verified'}</span> {isPatrolActive ? 'Resume Active Patrol' : 'Start New Patrol'}</button>
 
         <div className="mb-10">
           <div className="flex justify-between items-center mb-5 px-1">

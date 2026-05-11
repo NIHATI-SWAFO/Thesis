@@ -226,8 +226,8 @@ export default function AdminDashboard() {
               </div>
            </div>
            
-           <div className="flex-1 overflow-x-auto">
-              <table className="w-full">
+           <div className="flex-1 overflow-x-auto custom-scrollbar pb-4">
+              <table className="w-full min-w-[600px]">
                  <thead>
                     <tr className="border-b border-gray-50">
                        <th className="text-left py-4 px-2 text-[10px] font-black text-slate-300 uppercase tracking-widest">Principal Party</th>
