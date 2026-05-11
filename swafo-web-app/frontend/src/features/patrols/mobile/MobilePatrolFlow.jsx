@@ -336,13 +336,16 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
         scale: scaleValue,
         logging: false,
         onclone: (clonedDoc) => {
-          // Safari Fix: Remove backdrop-blur and other problematic filters during capture
-          const filtered = clonedDoc.querySelectorAll('*');
-          filtered.forEach(el => {
-            const style = window.getComputedStyle(el);
-            if (style.backdropFilter !== 'none') el.style.backdropFilter = 'none';
-            if (style.filter !== 'none') el.style.filter = 'none';
-          });
+          // Safari Fix: Aggressively remove all filters and backdrop-filters as they cause crashes during capture
+          const all = clonedDoc.getElementsByTagName("*");
+          for (let i = 0; i < all.length; i++) {
+            const el = all[i];
+            if (el instanceof HTMLElement) {
+              el.style.backdropFilter = 'none';
+              el.style.webkitBackdropFilter = 'none';
+              el.style.filter = 'none';
+            }
+          }
           
           // Ensure ignored elements are truly gone
           const ignored = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
