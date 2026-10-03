@@ -9,7 +9,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://thesis-production-
 
 export const API_ENDPOINTS = {
   // Auth
-  AUTH_MOCK_LOGIN: `${API_BASE_URL}/api/auth/mock-login/`,
+  AUTH_MOCK_LOGIN: `${API_BASE_URL}/api/users/mock-login/`,
   
   // Users
   SEARCH_USERS: `${API_BASE_URL}/api/users/search/`,
@@ -46,6 +46,21 @@ export const API_ENDPOINTS = {
   // Handbook
   HANDBOOK_RULES: `${API_BASE_URL}/api/handbook/rules/`,
   SMART_SEARCH: `${API_BASE_URL}/api/handbook/smart-search/`,
+
+  // Freedom Wall Endpoints
+  FW_STUDENT_SUBMIT: `${API_BASE_URL}/api/freedom-wall/submit/`,
+  FW_MY_SUBMISSIONS: `${API_BASE_URL}/api/freedom-wall/my-submissions/`,
+  FW_MANAGE_LIST: `${API_BASE_URL}/api/freedom-wall/manage/`,
+  FW_MANAGE_DETAIL: (id) => `${API_BASE_URL}/api/freedom-wall/manage/${id}/`,
+  FW_MANAGE_RESPOND: (id) => `${API_BASE_URL}/api/freedom-wall/manage/${id}/respond/`,
+  FW_MANAGE_REFER: (id) => `${API_BASE_URL}/api/freedom-wall/manage/${id}/refer/`,
+  FW_ANALYTICS: `${API_BASE_URL}/api/freedom-wall/analytics/`,
+  FW_COMMUNITY: `${API_BASE_URL}/api/freedom-wall/community/`,
+  FW_COMMUNITY_DETAIL: (id) => `${API_BASE_URL}/api/freedom-wall/community/${id}/`,
+  FW_COMMUNITY_REACT: (id) => `${API_BASE_URL}/api/freedom-wall/community/${id}/react/`,
+  FW_COMMUNITY_COMMENT: (id) => `${API_BASE_URL}/api/freedom-wall/community/${id}/comment/`,
+  FW_COMMUNITY_COMMENT_DELETE: (id) => `${API_BASE_URL}/api/freedom-wall/community/comment/${id}/delete/`,
+  FW_COMMUNITY_CREATE: `${API_BASE_URL}/api/freedom-wall/community/post/`,
 };
 
 export default API_BASE_URL;

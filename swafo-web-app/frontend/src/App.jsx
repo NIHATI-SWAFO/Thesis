@@ -7,6 +7,10 @@ import StudentViolations from './features/violations/StudentViolations';
 import StudentHandbook from './features/handbook/StudentHandbook';
 import StudentSettings from './features/settings/StudentSettings';
 import ChatBot from './features/chatbot/ChatBot';
+import StudentSubmissionForm from './features/freedom_wall/StudentSubmissionForm';
+import StudentFreedomWallDashboard from './features/freedom_wall/StudentFreedomWallDashboard';
+import StudentCreatePost from "./features/freedom_wall/StudentCreatePost";
+import DirectorFreedomWall from './features/freedom_wall/DirectorFreedomWall';
 import OfficerLayout from './layouts/OfficerLayout';
 import OfficerDashboard from './features/dashboard/OfficerDashboard';
 import PatrolMonitoring from './features/patrols/PatrolMonitoring';
@@ -24,6 +28,7 @@ import LiveNavigation from './features/maps/LiveNavigation';
 
 
 import { AuthProvider } from './context/AuthContext';
+import SwafoDevTools from './components/dev/SwafoDevTools';
 
 function App() {
   return (
@@ -42,6 +47,10 @@ function App() {
            <Route path="violations" element={<StudentViolations />} />
           <Route path="handbook" element={<StudentHandbook />} />
           <Route path="chatbot" element={<ChatBot />} />
+          {/* Freedom Wall Feature */}
+          <Route path="freedom-wall" element={<StudentFreedomWallDashboard />} />
+          <Route path="freedom-wall/post" element={<StudentCreatePost />} />
+          <Route path="freedom-wall/submit" element={<StudentSubmissionForm />} />
           <Route path="settings" element={<StudentSettings />} />
         </Route>
 
@@ -82,6 +91,7 @@ function App() {
           <Route path="patrols" element={<PatrolHistory role="admin" />} />
           <Route path="analytics" element={<ReportsAnalytics role="admin" />} />
           <Route path="handbook" element={<StudentHandbook role="admin" />} />
+          <Route path="freedom-wall" element={<DirectorFreedomWall />} />
           <Route path="campus-map" element={<MapTrial />} />
           <Route path="live-navigation" element={<LiveNavigation />} />
           <Route path="users" element={<div className="p-12"><h1 className="text-3xl font-black text-[#003624] mb-4">User Management</h1><p className="text-gray-500 font-bold uppercase tracking-widest text-[11px]">Control student and officer access levels.</p><div className="mt-12 p-20 border-2 border-dashed border-emerald-100 rounded-[3rem] text-center text-emerald-200 font-black uppercase tracking-widest">Interface Module Loading...</div></div>} />
@@ -91,6 +101,9 @@ function App() {
         {/* Default Redirect */}
         <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+        
+        {/* Global Dev Tools Widget */}
+        <SwafoDevTools />
       </AuthProvider>
     </BrowserRouter>
   );

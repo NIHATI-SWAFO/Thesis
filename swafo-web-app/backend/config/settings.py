@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     'apps.patrols',
     'apps.analytics',
     'apps.ai_assistant',
+    'apps.freedom_wall',
 ]
 
 MIDDLEWARE = [
@@ -196,6 +197,8 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type

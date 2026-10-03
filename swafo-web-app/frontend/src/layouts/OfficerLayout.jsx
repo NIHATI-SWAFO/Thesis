@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMsal } from "@azure/msal-react";
 import { useAuth } from '../context/AuthContext';
+import NotificationBell from '../components/common/NotificationBell';
 
 const navItems = [
   { name: 'Dashboard', path: '/officer/dashboard', icon: 'dashboard' },
@@ -89,6 +90,7 @@ export default function OfficerLayout() {
             <span className="font-pjs font-black text-[#1A5C3A] text-[18px] tracking-tight">Patrol Monitoring</span>
           </div>
           <div className="flex items-center gap-3">
+             <NotificationBell isDarkBg={false} />
              <div className="flex flex-col items-end">
                 <span className="text-[13px] font-black text-[#000000] leading-none mb-1">Officer Timothy</span>
                 <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">SWAFO Officer</span>
@@ -104,6 +106,7 @@ export default function OfficerLayout() {
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search academic records, handbook..." className="block w-full rounded-2xl border border-white/10 bg-white/10 py-3 pl-12 pr-4 text-white text-[13px] font-manrope font-semibold placeholder:text-white/30 outline-none" />
           </div>
           <div className="flex items-center gap-4 ml-6 pl-8 border-l border-white/10">
+            <NotificationBell isDarkBg={true} />
             <div className="flex flex-col items-end"><span className="text-[14px] font-pjs font-bold text-white mb-1">Officer Timothy</span><span className="text-[10px] text-emerald-400/80 font-black uppercase">SWAFO Officer</span></div>
             <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-white border border-white/20"><span className="material-symbols-outlined text-[28px]">account_circle</span></div>
           </div>
