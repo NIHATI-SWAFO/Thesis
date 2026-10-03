@@ -7,6 +7,7 @@ const navItems = [
   { name: 'Dashboard', path: '/student/dashboard', icon: 'dashboard' },
   { name: 'Academic Profile', path: '/student/profile', icon: 'account_circle' },
   { name: 'Violation Records', path: '/student/violations', icon: 'gavel' },
+  { name: 'SWAFO Connect', path: '/student/freedom-wall', icon: 'campaign' },
   { name: 'Campus Handbook', path: '/student/handbook', icon: 'menu_book' },
   { name: 'ChatBot', path: '/student/chatbot', icon: 'chat_bubble' },
   { name: 'Settings', path: '/student/settings', icon: 'settings' },

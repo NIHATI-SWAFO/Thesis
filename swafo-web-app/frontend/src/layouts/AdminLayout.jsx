@@ -8,6 +8,7 @@ const adminNavItems = [
   { name: 'Patrol Oversight', path: '/admin/patrols', icon: 'history', isInProgress: true },
   { name: 'Institutional Analytics', path: '/admin/analytics', icon: 'analytics' },
   { name: 'Handbook Master', path: '/admin/handbook', icon: 'menu_book' },
+  { name: 'SWAFO Connect', path: '/admin/freedom-wall', icon: 'campaign' },
   { name: 'User Management', path: '/admin/users', icon: 'manage_accounts' },
   { name: 'Campus Map', path: '/admin/campus-map', icon: 'map' },
 ];
@@ -26,7 +27,7 @@ export default function AdminLayout() {
     <div className="flex h-screen bg-[#f8fafc] font-manrope">
       
       {/* ══════════════════════════════ SIDEBAR ══════════════════════════════ */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-[280px] z-50 bg-[#003624] flex-col py-10 shadow-2xl">
+      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-[280px] z-50 bg-[#003624] flex-col py-10 border-r border-emerald-900/50">
         
         {/* Brand */}
         <div className="px-10 mb-12 flex items-center gap-4">

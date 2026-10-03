@@ -37,41 +37,78 @@ export const AuthProvider = ({ children }) => {
                 name: mockUser.name,
                 email: mockUser.email,
                 role: mockUser.role || 'STUDENT',
-                isMock: true
+                isMock: true,
+                token: mockUser.token
             });
         } else {
             setCurrentUser(null);
         }
     }, [accounts, mockUser]);
 
-    const loginAsMock = (student) => {
-        const user = { 
-            name: student.user_details.full_name, 
-            email: student.user_details.email,
-            role: 'STUDENT'
-        };
-        localStorage.setItem('swafo_mock_user', JSON.stringify(user));
-        setMockUser(user);
+    const loginAsMock = async (student) => {
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://thesis-production-1816.up.railway.app'}/api/users/mock-login/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: student.user_details.email })
+            });
+            const data = await res.json();
+            
+            const user = { 
+                name: student.user_details.full_name, 
+                email: student.user_details.email,
+                role: 'STUDENT',
+                token: data.access || null
+            };
+            localStorage.setItem('swafo_mock_user', JSON.stringify(user));
+            setMockUser(user);
+        } catch (error) {
+            console.error("Mock login failed", error);
+        }
     };
 
-    const loginAsOfficer = (officerName, email) => {
-        const user = { 
-            name: officerName, 
-            email: email,
-            role: 'OFFICER'
-        };
-        localStorage.setItem('swafo_mock_user', JSON.stringify(user));
-        setMockUser(user);
+    const loginAsOfficer = async (officerName, email) => {
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://thesis-production-1816.up.railway.app'}/api/users/mock-login/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
+            });
+            const data = await res.json();
+
+            const user = { 
+                name: officerName, 
+                email: email,
+                role: 'OFFICER',
+                token: data.access || null
+            };
+            localStorage.setItem('swafo_mock_user', JSON.stringify(user));
+            setMockUser(user);
+        } catch (error) {
+            console.error("Officer mock login failed", error);
+        }
     };
 
-    const loginAsAdmin = (adminName, email) => {
-        const user = { 
-            name: adminName, 
-            email: email,
-            role: 'ADMIN'
-        };
-        localStorage.setItem('swafo_mock_user', JSON.stringify(user));
-        setMockUser(user);
+    const loginAsAdmin = async (adminName, email) => {
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://thesis-production-1816.up.railway.app'}/api/users/mock-login/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
+            });
+            const data = await res.json();
+
+            const user = { 
+                name: adminName, 
+                email: email,
+                role: 'ADMIN',
+                token: data.access || null
+            };
+            localStorage.setItem('swafo_mock_user', JSON.stringify(user));
+            setMockUser(user);
+        } catch (error) {
+            console.error("Admin mock login failed", error);
+        }
     };
 
     const logout = () => {

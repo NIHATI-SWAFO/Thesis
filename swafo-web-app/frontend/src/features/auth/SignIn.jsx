@@ -27,68 +27,58 @@ export default function SignIn() {
   };
 
   return (
-    <div className="flex min-h-screen bg-white font-sans text-gray-900 selection:bg-[#a5d6a7] selection:text-[#0b2918]">
-      {/* =====================================================================
-          LEFT EXPERIential PANE
-          ===================================================================== */}
-      <div className="relative hidden w-[55%] lg:flex flex-col">
-        {/* Absolute Background Image with Cover */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${signinBg})` }}
-        />
-        {/* Precision overlay to match the exact dark academic green of the target */}
-        <div className="absolute inset-0 bg-[#0c2f1f]/85 mix-blend-multiply" />
-        <div className="absolute inset-0 bg-[#061d12]/40" /> 
-        
-        {/* Top Absolute Logo Area */}
-        <div className="absolute top-12 left-16 flex items-center space-x-4 z-10">
-          <div className="bg-white/10 p-1.5 rounded-full backdrop-blur-md border border-white/20">
-            <img src={swafoLogo} alt="SWAFO" className="h-10 w-10 rounded-full" />
-          </div>
-          <span className="font-semibold text-lg tracking-wide text-white/95">Student Welfare and Formation Office</span>
+    <div className="relative min-h-screen flex items-center justify-center lg:justify-between px-8 lg:px-24 font-sans text-gray-900 selection:bg-[#a5d6a7] selection:text-[#0b2918]">
+      {/* Background & Overlays */}
+      <div 
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${signinBg})` }}
+      />
+      <div className="fixed inset-0 bg-[#0c2f1f]/85 mix-blend-multiply" />
+      <div className="fixed inset-0 bg-[#061d12]/60" /> 
+      
+      {/* Top Logo */}
+      <div className="absolute top-12 left-8 lg:left-24 flex items-center space-x-4 z-20">
+        <div className="bg-white/10 p-1.5 rounded-full backdrop-blur-md border border-white/20">
+          <img src={swafoLogo} alt="SWAFO" className="h-10 w-10 rounded-full" />
         </div>
+        <span className="font-semibold text-lg tracking-wide text-white/95 drop-shadow-md">Student Welfare and Formation Office</span>
+      </div>
 
-        {/* Centered Content Block */}
-        <div className="relative z-10 flex-1 flex flex-col justify-center px-16 xl:px-24">
-          <div className="max-w-[600px] -mt-12">
-            <h1 className="text-[5.5rem] font-bold tracking-tighter mb-8 leading-[0.95] text-white">
-              Curing Campus<br />
-              <span className="text-[#a1dbba]">Integrity.</span>
-            </h1>
-            
-            <p className="text-[1.15rem] text-white/75 mb-10 leading-[1.8] max-w-[520px] font-medium">
-              The Student Welfare and Formation Office is a unit under the Office of Student Services (OSS) tasked with maintaining student discipline and facilitating holistic formation.
-            </p>
-            
-            <div className="inline-flex items-center rounded-md bg-white/5 px-4 py-2.5 backdrop-blur-md border border-white/10 shadow-2xl">
-              <ShieldCheck className="mr-3 h-[18px] w-[18px] text-[#a1dbba]" />
-              <span className="text-[11px] font-bold tracking-[0.1em] text-white/90 uppercase">Secure Academic Environment</span>
-            </div>
-          </div>
+      {/* Left Text Content */}
+      <div className="relative z-10 hidden lg:flex flex-col max-w-[600px] mt-16">
+        <h1 className="text-[5.5rem] font-bold tracking-tighter mb-8 leading-[0.95] text-white drop-shadow-xl">
+          Curing Campus<br />
+          <span className="text-[#a1dbba]">Integrity.</span>
+        </h1>
+        
+        <p className="text-[1.15rem] text-white/85 mb-10 leading-[1.8] max-w-[520px] font-medium drop-shadow-md">
+          The Student Welfare and Formation Office is a unit under the Office of Student Services (OSS) tasked with maintaining student discipline and facilitating holistic formation.
+        </p>
+        
+        <div className="inline-flex items-center rounded-md bg-white/10 px-4 py-2.5 backdrop-blur-md border border-white/20 shadow-2xl self-start">
+          <ShieldCheck className="mr-3 h-[18px] w-[18px] text-[#a1dbba]" />
+          <span className="text-[11px] font-bold tracking-[0.1em] text-white/90 uppercase">Secure Academic Environment</span>
         </div>
       </div>
 
-      {/* =====================================================================
-          RIGHT INTERACTION PANE
-          ===================================================================== */}
-      <div className="flex w-full flex-col justify-between px-8 py-10 lg:w-[45%] lg:px-12 xl:px-0 relative">
-        <div className="flex-1 flex flex-col justify-center max-w-[440px] mx-auto w-full pt-4">
+      {/* Right Interaction Pane (Glass Card) */}
+      <div className="relative z-10 flex w-full max-w-[600px] flex-col rounded-[2rem] bg-white/95 px-8 py-6 lg:px-12 lg:py-8 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur-xl border border-white/60">
+        <div className="flex-1 flex flex-col justify-center mx-auto w-full">
             
             {/* Form Header */}
-            <div className="flex flex-col items-center mb-10 text-center">
-              <div className="relative mb-8">
+            <div className="flex flex-col items-center mb-6 text-center">
+              <div className="relative mb-4">
                 <div className="absolute inset-0 rounded-full blur-[20px] bg-[#14422c]/10" />
-                <img src={swafoLogo} alt="SWAFO Logo" className="relative w-[90px] h-[90px] rounded-full shadow-sm border border-gray-100" />
+                <img src={swafoLogo} alt="SWAFO Logo" className="relative w-[64px] h-[64px] rounded-full shadow-sm border border-gray-100" />
               </div>
-              <h2 className="text-[2.25rem] font-extrabold text-[#111827] mb-2 tracking-tight">Sign In</h2>
-              <p className="text-base text-gray-500 font-medium">
+              <h2 className="text-[2rem] font-extrabold text-[#111827] mb-1 tracking-tight">Sign In</h2>
+              <p className="text-[13px] text-gray-500 font-medium">
                 Access your {activeTab === 'admin' ? 'Director command center' : activeTab === 'officer' ? 'administrative workstation' : 'student portal'}
               </p>
             </div>
 
             {/* Premium Apple-Style Segmented Control */}
-            <div className="relative flex rounded-xl p-[5px] bg-[#f2f4f6] mb-10 border border-[#e5e7eb] shadow-inner">
+            <div className="relative flex rounded-xl p-[5px] bg-[#f2f4f6] mb-6 border border-[#e5e7eb] shadow-inner">
               {/* Highlight Slider */}
               <div 
                 className={`absolute inset-y-[5px] w-[calc(33.33%-5px)] bg-white rounded-lg shadow-sm border border-gray-200/80 transition-transform duration-300 ease-out ${
@@ -96,7 +86,7 @@ export default function SignIn() {
                 }`}
               />
               <button
-                className={`relative z-10 flex-1 py-2.5 text-[14px] font-bold transition-colors duration-200 ${
+                className={`relative z-10 flex-1 py-2 text-[14px] font-bold transition-colors duration-200 ${
                   activeTab === 'admin' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
                 }`}
                 onClick={() => setActiveTab('admin')}
@@ -104,7 +94,7 @@ export default function SignIn() {
                 Admin
               </button>
               <button
-                className={`relative z-10 flex-1 py-2.5 text-[14px] font-bold transition-colors duration-200 ${
+                className={`relative z-10 flex-1 py-2 text-[14px] font-bold transition-colors duration-200 ${
                   activeTab === 'officer' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
                 }`}
                 onClick={() => setActiveTab('officer')}
@@ -112,7 +102,7 @@ export default function SignIn() {
                 Officer
               </button>
               <button
-                className={`relative z-10 flex-1 py-2.5 text-[14px] font-bold transition-colors duration-200 ${
+                className={`relative z-10 flex-1 py-2 text-[14px] font-bold transition-colors duration-200 ${
                   activeTab === 'student' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
                 }`}
                 onClick={() => setActiveTab('student')}
@@ -122,31 +112,31 @@ export default function SignIn() {
             </div>
 
             {/* Forms Container */}
-            <div className="min-h-[320px]">
+            <div className="min-h-[280px]">
               {activeTab === 'admin' ? (
-                <form className="flex flex-col space-y-6 animate-in fade-in duration-300" onSubmit={(e) => {
+                <form className="flex flex-col space-y-4 animate-in fade-in duration-300" onSubmit={(e) => {
                   e.preventDefault();
                   navigate('/admin/dashboard');
                 }}>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <label className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 ml-1">Director Email</label>
                     <div className="relative group">
                       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
                         <ShieldCheck className="h-[20px] w-[20px] text-gray-400 group-focus-within:text-[#113a26] transition-colors" />
                       </div>
-                      <input type="text" className="block w-full rounded-xl border-0 bg-[#f4f5f7] py-4 pl-[3.25rem] pr-4 text-gray-900 ring-1 ring-inset ring-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#113a26] hover:bg-[#eef0f2] focus:hover:bg-white transition-all text-[15px] font-medium" placeholder="Director Account" />
+                      <input type="text" className="block w-full rounded-xl border-0 bg-[#f4f5f7] py-3.5 pl-[3.25rem] pr-4 text-gray-900 ring-1 ring-inset ring-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#113a26] hover:bg-[#eef0f2] focus:hover:bg-white transition-all text-[15px] font-medium" placeholder="Director Account" />
                     </div>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <label className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 ml-1">Master Password</label>
                     <div className="relative group">
                       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
                         <Lock className="h-[20px] w-[20px] text-gray-400 group-focus-within:text-[#113a26] transition-colors" />
                       </div>
-                      <input type="password" placeholder="••••••••" className="block w-full rounded-xl border-0 bg-[#f4f5f7] py-4 pl-[3.25rem] pr-4 text-gray-900 ring-1 ring-inset ring-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#113a26] hover:bg-[#eef0f2] focus:hover:bg-white transition-all text-[15px] font-medium" />
+                      <input type="password" placeholder="••••••••" className="block w-full rounded-xl border-0 bg-[#f4f5f7] py-3.5 pl-[3.25rem] pr-4 text-gray-900 ring-1 ring-inset ring-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#113a26] hover:bg-[#eef0f2] focus:hover:bg-white transition-all text-[15px] font-medium" />
                     </div>
                   </div>
-                  <button type="submit" className="group relative flex w-full items-center justify-center rounded-xl bg-[#0f3422] px-4 py-4 text-[15px] font-bold text-white shadow-lg shadow-[#0f3422]/20 hover:bg-[#15462e] transition-all duration-200">
+                  <button type="submit" className="group relative flex w-full items-center justify-center rounded-xl bg-[#0f3422] px-4 py-3.5 text-[15px] font-bold text-white shadow-lg shadow-[#0f3422]/20 hover:bg-[#15462e] transition-all duration-200">
                     <span>Access Director Portal</span>
                     <ArrowRight className="absolute right-6 h-5 w-5 text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
                   </button>
@@ -157,12 +147,12 @@ export default function SignIn() {
                   <DirectorQuickLogin />
                 </form>
               ) : activeTab === 'officer' ? (
-                <form className="flex flex-col space-y-6 animate-in fade-in duration-300" onSubmit={(e) => {
+                <form className="flex flex-col space-y-4 animate-in fade-in duration-300" onSubmit={(e) => {
                   e.preventDefault();
                   navigate('/officer/dashboard');
                 }}>
                   {/* ID Input */}
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <label className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 ml-1">
                       ID / School Email Address
                     </label>
@@ -172,14 +162,14 @@ export default function SignIn() {
                       </div>
                       <input
                         type="text"
-                        className="block w-full rounded-xl border-0 bg-[#f4f5f7] py-4 pl-[3.25rem] pr-4 text-gray-900 ring-1 ring-inset ring-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#113a26] hover:bg-[#eef0f2] focus:hover:bg-white transition-all text-[15px] font-medium"
+                        className="block w-full rounded-xl border-0 bg-[#f4f5f7] py-3.5 pl-[3.25rem] pr-4 text-gray-900 ring-1 ring-inset ring-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#113a26] hover:bg-[#eef0f2] focus:hover:bg-white transition-all text-[15px] font-medium"
                         placeholder="EG: dnr0291@dlsud.edu.ph"
                       />
                     </div>
                   </div>
 
                   {/* Password Input */}
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <label className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 ml-1">
                       Password
                     </label>
@@ -189,7 +179,7 @@ export default function SignIn() {
                       </div>
                       <input
                         type={showPassword ? 'text' : 'password'}
-                        className="block w-full rounded-xl border-0 bg-[#f4f5f7] py-4 pl-[3.25rem] pr-12 text-gray-900 ring-1 ring-inset ring-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#113a26] hover:bg-[#eef0f2] focus:hover:bg-white transition-all text-[15px] font-medium placeholder:font-sans placeholder:font-normal placeholder:text-gray-400"
+                        className="block w-full rounded-xl border-0 bg-[#f4f5f7] py-3.5 pl-[3.25rem] pr-12 text-gray-900 ring-1 ring-inset ring-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#113a26] hover:bg-[#eef0f2] focus:hover:bg-white transition-all text-[15px] font-medium placeholder:font-sans placeholder:font-normal placeholder:text-gray-400"
                         placeholder="••••••••"
                       />
                       <button
@@ -209,7 +199,7 @@ export default function SignIn() {
                   {/* Submit Button */}
                   <button
                     type="submit"
-                    className="group relative flex w-full items-center justify-center rounded-xl bg-[#0f3422] px-4 py-4 text-[15px] font-bold text-white shadow-lg shadow-[#0f3422]/20 hover:bg-[#15462e] hover:shadow-xl hover:shadow-[#0f3422]/30 active:scale-[0.99] transition-all duration-200 outline-none focus:ring-4 focus:ring-[#0f3422]/20"
+                    className="group relative flex w-full items-center justify-center rounded-xl bg-[#0f3422] px-4 py-3.5 text-[15px] font-bold text-white shadow-lg shadow-[#0f3422]/20 hover:bg-[#15462e] hover:shadow-xl hover:shadow-[#0f3422]/30 active:scale-[0.99] transition-all duration-200 outline-none focus:ring-4 focus:ring-[#0f3422]/20"
                   >
                     <span>Sign In</span>
                     <ArrowRight className="absolute right-6 h-5 w-5 text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
@@ -258,12 +248,11 @@ export default function SignIn() {
               )}
             </div>
         </div>
-        
-        {/* Footer */}
-        <div className="w-full flex justify-between absolute bottom-8 left-0 px-8 lg:px-12 xl:px-24">
-          <a href="#" className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-gray-800 transition-colors">Privacy Policy</a>
-          <a href="#" className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-gray-800 transition-colors">Terms of Service</a>
-        </div>
+      </div>
+      {/* Footer */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-8 z-10">
+        <a href="#" className="text-[11px] font-extrabold uppercase tracking-widest text-white/60 hover:text-white transition-colors">Privacy Policy</a>
+        <a href="#" className="text-[11px] font-extrabold uppercase tracking-widest text-white/60 hover:text-white transition-colors">Terms of Service</a>
       </div>
     </div>
   );
@@ -276,8 +265,8 @@ function DirectorQuickLogin() {
   return (
     <button 
       type="button"
-      onClick={() => {
-        loginAsAdmin("Director Ruel Elias", "admin@dlsud.edu.ph");
+      onClick={async () => {
+        await loginAsAdmin("Director Ruel Elias", "admin@dlsud.edu.ph");
         navigate('/admin/dashboard');
       }}
       className="w-full px-5 py-4 bg-[#0f3422] border border-emerald-900 rounded-xl text-[14px] font-pjs font-bold text-white flex items-center justify-between hover:bg-[#15462e] transition-all"
@@ -320,8 +309,8 @@ function MockLoginSection() {
           {students.length > 0 ? students.map((s) => (
             <button
               key={s.id}
-              onClick={() => {
-                loginAsMock(s);
+              onClick={async () => {
+                await loginAsMock(s);
                 navigate('/student/dashboard');
               }}
               className="w-full text-left px-5 py-4 border-b border-gray-50 hover:bg-emerald-50 transition-colors group"
@@ -373,8 +362,8 @@ function OfficerQuickLogin() {
           {officers.map((off, i) => (
             <button
               key={i}
-              onClick={() => {
-                loginAsOfficer(off.name, off.email);
+              onClick={async () => {
+                await loginAsOfficer(off.name, off.email);
                 navigate('/officer/dashboard');
               }}
               className="w-full text-left px-5 py-4 border-b border-gray-50 hover:bg-emerald-50 transition-colors"

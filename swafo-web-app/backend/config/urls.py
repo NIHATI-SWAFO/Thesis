@@ -45,4 +45,11 @@ urlpatterns = [
     path('api/ai/', include('apps.ai_assistant.urls')),
     path('api/analytics/', include('apps.analytics.urls')),
     path('api/patrols/', include('apps.patrols.urls')),
+    path('api/freedom-wall/', include('apps.freedom_wall.urls')),
 ]
+
+from django.conf import settings
+from django.conf.urls.static import static
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
