@@ -1,11 +1,13 @@
 import { useAuth } from "../../context/AuthContext";
 import { useState, useEffect } from "react";
 import { API_ENDPOINTS } from "../../api/config";
+import BarcodeRegistrationModal from "../../components/BarcodeRegistrationModal";
 
 export default function StudentProfile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showBarcodeModal, setShowBarcodeModal] = useState(false);
 
   const email = user?.email;
 
@@ -168,6 +170,42 @@ export default function StudentProfile() {
         <div className="lg:col-span-6">
           <SectionCard title="Digital ID & Documents" icon="badge" subtitle="Access verified academic certificates">
              <div className="space-y-3">
+               {/* Barcode Registration Item */}
+               <div 
+                 onClick={() => setShowBarcodeModal(true)}
+                 className="flex items-center justify-between p-3.5 rounded-2xl border border-emerald-100 bg-white/70 hover:bg-emerald-50/60 transition-all cursor-pointer group shadow-sm"
+               >
+                 <div className="flex items-center gap-3.5">
+                   <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#006b5d] flex items-center justify-center border border-emerald-100/50 shadow-sm group-hover:scale-105 transition-transform">
+                     <span className="material-symbols-outlined text-[22px]">barcode_scanner</span>
+                   </div>
+                   <div>
+                     <div className="flex items-center gap-2">
+                       <h5 className="font-pjs font-bold text-[#003624] text-[14px]">
+                         Physical ID Barcode
+                       </h5>
+                       {profile?.barcode_value ? (
+                         <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-[#006b5d] text-[10px] font-bold uppercase tracking-wider">
+                           Linked
+                         </span>
+                       ) : (
+                         <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-wider">
+                           Action Needed
+                         </span>
+                       )}
+                     </div>
+                     <p className="text-[12px] font-manrope font-medium text-portal-text-muted mt-0.5">
+                       {profile?.barcode_value ? `Barcode: ${profile.barcode_value}` : 'Upload ID image or scan barcode'}
+                     </p>
+                   </div>
+                 </div>
+                 <button className="w-9 h-9 rounded-full bg-emerald-100/60 text-[#006b5d] group-hover:bg-[#003624] group-hover:text-white flex items-center justify-center transition-all shadow-sm">
+                   <span className="material-symbols-outlined text-[18px]">
+                     {profile?.barcode_value ? 'edit' : 'add'}
+                   </span>
+                 </button>
+               </div>
+
                <DocumentLink title="Digital Student ID" subtitle="Last synced 2 hours ago" icon="id_card" actionIcon="visibility" />
                <DocumentLink title="Transcript of Records" subtitle="Ready for download (Unofficial)" icon="description" actionIcon="download" />
              </div>
@@ -175,6 +213,16 @@ export default function StudentProfile() {
         </div>
 
       </div>
+
+      {/* Barcode Registration Modal */}
+      <BarcodeRegistrationModal
+        isOpen={showBarcodeModal}
+        onClose={() => setShowBarcodeModal(false)}
+        profile={profile}
+        onSuccess={(newBarcode) => {
+          setProfile(prev => ({ ...prev, barcode_value: newBarcode }));
+        }}
+      />
     </div>
   );
 }

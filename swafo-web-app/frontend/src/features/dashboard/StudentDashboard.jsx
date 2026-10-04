@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { API_ENDPOINTS } from "../../api/config";
+import BarcodeRegistrationModal from "../../components/BarcodeRegistrationModal";
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -11,6 +12,7 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedViolation, setSelectedViolation] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showBarcodeModal, setShowBarcodeModal] = useState(false);
 
   const displayName = profile?.user?.full_name || user?.name || 'Student';
   const firstName = displayName.split(' ')[0];
@@ -103,6 +105,37 @@ export default function StudentDashboard() {
         </div>
       </section>
 
+      {/* ═══════════════════════ BARCODE REGISTRATION PROMPT BANNER ═══════════════════════ */}
+      {profile && !profile.barcode_value && (
+        <section className="bg-gradient-to-r from-[#003624] to-[#015237] text-white p-5 md:p-6 rounded-[2rem] shadow-lg border border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shrink-0">
+              <span className="material-symbols-outlined text-[28px]">barcode_scanner</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="font-pjs font-bold text-[16px] leading-tight">
+                  Link Physical ID Barcode
+                </h4>
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold uppercase tracking-wider">
+                  Recommended
+                </span>
+              </div>
+              <p className="font-manrope text-[12px] text-emerald-100/70 mt-1 max-w-xl">
+                Upload a photo or scan your physical DLSU-D ID barcode to activate instant officer scanning during campus patrols.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowBarcodeModal(true)}
+            className="shrink-0 bg-white hover:bg-emerald-50 text-[#003624] font-pjs font-black text-[12px] px-6 py-3 rounded-xl uppercase tracking-wider transition-all active:scale-95 shadow-md flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-[18px]">add_a_photo</span>
+            Register Barcode
+          </button>
+        </section>
+      )}
+
       {/* Stats row removed for brevity in display, but remains functional in code */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6 px-1">
         <StatCard icon="history" label="Violation History" value={totalCount.toString().padStart(2, '0')} iconBg="bg-slate-100" iconColor="text-slate-600" delay="1" />
@@ -186,6 +219,16 @@ export default function StudentDashboard() {
         </div>,
         document.body
       )}
+
+      {/* Barcode Registration Modal */}
+      <BarcodeRegistrationModal
+        isOpen={showBarcodeModal}
+        onClose={() => setShowBarcodeModal(false)}
+        profile={profile}
+        onSuccess={(newBarcode) => {
+          setProfile(prev => ({ ...prev, barcode_value: newBarcode }));
+        }}
+      />
     </div>
   );
 }

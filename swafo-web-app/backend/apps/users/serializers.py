@@ -23,7 +23,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'student_number', 'user_details', 'course', 'year_level',
             'violation_count', 'is_repeat_offender', 'has_pending_violations',
-            'clearance_status', 'risk_score',
+            'clearance_status', 'risk_score', 'barcode_value',
         ]
 
     # ─── Basic Counts ──────────────────────────────────────────────

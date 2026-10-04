@@ -53,8 +53,8 @@ export default function RecordViolation() {
       if (response.ok) {
         const data = await response.json();
         if (Array.isArray(data) && data.length > 0) {
-          // Prefer exact student_number match, else take first result
-          const exact = data.find(s => s.student_number === scannedValue) || data[0];
+          // Prefer exact barcode_value or student_number match, else take first result
+          const exact = data.find(s => s.barcode_value === scannedValue || s.student_number === scannedValue) || data[0];
           setFoundStudent(exact);
           fetchStudentHistory(exact.user_details?.email);
           setMobileStep('confirm');

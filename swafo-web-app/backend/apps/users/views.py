@@ -1,6 +1,6 @@
 from rest_framework import permissions, generics
 from rest_framework.views import APIView
-from django.db.models import Count
+from django.db.models import Count, Q
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -29,20 +29,61 @@ class MockLoginView(APIView):
 class StudentSearchView(APIView):
     permission_classes = [permissions.AllowAny]
     def get(self, request):
-        query = request.query_params.get('q', None)
+        query = request.query_params.get('q', '').strip()
         if not query:
             return Response({"error": "Search query is required"}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Check if it's an ID search or Name search
-        if query.isdigit() and len(query) >= 5:
-            # Likely a student ID
-            students = StudentProfile.objects.filter(student_number__icontains=query)
-        else:
-            # Likely a name search
-            students = StudentProfile.objects.filter(user__full_name__icontains=query)
-            
+        # Priority 1: Exact match on barcode_value
+        exact_barcode = StudentProfile.objects.filter(barcode_value__iexact=query)
+        if exact_barcode.exists():
+            return Response(StudentProfileSerializer(exact_barcode, many=True).data)
+
+        # Priority 2: Exact match on student_number
+        exact_sn = StudentProfile.objects.filter(student_number__iexact=query)
+        if exact_sn.exists():
+            return Response(StudentProfileSerializer(exact_sn, many=True).data)
+
+        # Priority 3: Fuzzy search across barcode, student_number, full_name, and email
+        students = StudentProfile.objects.filter(
+            Q(barcode_value__icontains=query) |
+            Q(student_number__icontains=query) |
+            Q(user__full_name__icontains=query) |
+            Q(user__email__icontains=query)
+        ).distinct()[:10]
+        
         serializer = StudentProfileSerializer(students, many=True)
         return Response(serializer.data)
+
+class UpdateBarcodeView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        student_number = request.data.get('student_number', '').strip()
+        email = request.data.get('email', '').strip()
+        barcode_value = request.data.get('barcode_value', '').strip()
+
+        if not barcode_value:
+            return Response({"error": "barcode_value is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        student = None
+        if student_number:
+            student = StudentProfile.objects.filter(student_number=student_number).first()
+        elif email:
+            student = StudentProfile.objects.filter(user__email__iexact=email).first()
+
+        if not student:
+            return Response({"error": "Student record not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        student.barcode_value = barcode_value
+        student.save()
+
+        return Response({
+            "success": True,
+            "message": "Barcode successfully linked to student profile.",
+            "student_number": student.student_number,
+            "barcode_value": student.barcode_value,
+            "profile": StudentProfileSerializer(student).data
+        })
 
 class ProfileByEmailView(APIView):
     permission_classes = [permissions.AllowAny]
