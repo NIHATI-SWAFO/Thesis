@@ -46,6 +46,7 @@ export const API_ENDPOINTS = {
   // Handbook
   HANDBOOK_RULES: `${API_BASE_URL}/api/handbook/rules/`,
   SMART_SEARCH: `${API_BASE_URL}/api/handbook/smart-search/`,
+  AI_CHAT: `${API_BASE_URL}/api/ai/chat/`,
 
   // Freedom Wall Endpoints
   FW_STUDENT_SUBMIT: `${API_BASE_URL}/api/freedom-wall/submit/`,

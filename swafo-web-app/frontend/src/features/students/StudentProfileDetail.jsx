@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { API_ENDPOINTS } from '../../api/config';
 
 export default function StudentProfileDetail({ role = 'officer' }) {
   const { id } = useParams();
@@ -12,12 +13,12 @@ export default function StudentProfileDetail({ role = 'officer' }) {
     const fetchData = async () => {
       try {
         // 1. Fetch Student Profile
-        const profileResp = await fetch(`http://127.0.0.1:8000/api/users/search/?q=${id}`);
+        const profileResp = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${id}`);
         const profiles = await profileResp.json();
         const profile = profiles.length > 0 ? profiles[0] : null;
 
         // 2. Fetch Violation History
-        const historyResp = await fetch(`http://127.0.0.1:8000/api/violations/list/?student_id=${id}`);
+        const historyResp = await fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?student_id=${id}`);
         const historyData = await historyResp.json();
 
         setStudentData(profile);

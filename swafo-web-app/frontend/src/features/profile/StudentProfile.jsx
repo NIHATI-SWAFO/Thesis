@@ -1,5 +1,6 @@
 import { useAuth } from "../../context/AuthContext";
 import { useState, useEffect } from "react";
+import { API_ENDPOINTS } from "../../api/config";
 
 export default function StudentProfile() {
   const { user } = useAuth();
@@ -10,7 +11,7 @@ export default function StudentProfile() {
 
   useEffect(() => {
     if (email) {
-      fetch(`http://localhost:8000/api/users/profile-by-email/?email=${email}`)
+      fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${email}`)
         .then(res => res.json())
         .then(data => {
           if (!data.error) {
