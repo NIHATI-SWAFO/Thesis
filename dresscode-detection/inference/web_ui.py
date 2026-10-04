@@ -524,63 +524,46 @@ HTML_TEMPLATE = """
             background: #fafcfb;
         }
 
+        /* ════════════════════════ LIVE STATUS CARD ════════════════════════ */
+        .status-container {
+            padding: 1.25rem 1.75rem;
+            border-bottom: 1px solid var(--border-light);
+            background: #fafcfb;
+        }
+
         .status-banner {
             border-radius: var(--radius-lg);
-            padding: 1.15rem 1.25rem;
+            padding: 1.15rem 1.35rem;
             display: flex;
             align-items: center;
             gap: 1rem;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.25s ease;
+            background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-surface) 100%);
+            color: #ffffff;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            box-shadow: 0 4px 16px rgba(0, 54, 36, 0.15);
             position: relative;
             overflow: hidden;
         }
 
         .status-banner.waiting {
-            background: #f1f5f9;
-            border: 1.5px solid #cbd5e1;
-            color: #475569;
-        }
-
-        .status-banner.compliant {
-            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-            border: 1.5px solid #a7f3d0;
-            color: var(--success-text);
-            box-shadow: 0 8px 20px -6px rgba(5, 150, 105, 0.15);
-        }
-
-        .status-banner.non-compliant {
-            background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
-            border: 1.5px solid #fecdd3;
-            color: var(--danger-text);
-            box-shadow: 0 8px 20px -6px rgba(225, 29, 72, 0.18);
+            background: #1e293b;
+            border-color: #334155;
+            color: #e2e8f0;
         }
 
         .status-icon-wrap {
-            width: 48px;
-            height: 48px;
-            border-radius: var(--radius-md);
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            font-size: 1.75rem;
-        }
-
-        .compliant .status-icon-wrap {
-            background: #ffffff;
-            color: var(--success-accent);
-            box-shadow: 0 4px 10px rgba(5, 150, 105, 0.12);
-        }
-
-        .non-compliant .status-icon-wrap {
-            background: #ffffff;
-            color: var(--danger-accent);
-            box-shadow: 0 4px 10px rgba(225, 29, 72, 0.15);
-        }
-
-        .waiting .status-icon-wrap {
-            background: #ffffff;
-            color: #64748b;
+            font-size: 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.15);
         }
 
         .status-content {
@@ -589,13 +572,14 @@ HTML_TEMPLATE = """
 
         .status-title {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 800;
             letter-spacing: -0.01em;
             line-height: 1.25;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            color: #ffffff;
         }
 
         .status-tag {
@@ -608,20 +592,22 @@ HTML_TEMPLATE = """
         }
 
         .non-compliant .status-tag {
-            background: #f43f5e;
-            color: #ffffff;
+            background: rgba(225, 29, 72, 0.25);
+            color: #fecdd3;
+            border: 1px solid rgba(225, 29, 72, 0.4);
         }
 
         .compliant .status-tag {
-            background: #10b981;
-            color: #ffffff;
+            background: rgba(16, 185, 129, 0.25);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.4);
         }
 
         .status-desc {
             font-size: 0.78rem;
             font-weight: 500;
-            margin-top: 0.3rem;
-            opacity: 0.85;
+            margin-top: 0.25rem;
+            color: rgba(255, 255, 255, 0.75);
             line-height: 1.35;
         }
 
@@ -711,37 +697,24 @@ HTML_TEMPLATE = """
             background: #94a3b8;
         }
 
-        /* Elegant Violation Card Cells */
+        /* ════════════════════════ ELEGANT INSTITUTIONAL VIOLATION CELLS ════════════════════════ */
         .violation-card {
             background: #ffffff;
-            border: 1.5px solid var(--danger-border);
-            border-radius: var(--radius-lg);
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
             padding: 1.15rem 1.25rem;
-            box-shadow: 0 4px 15px -3px rgba(225, 29, 72, 0.06);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 14px -2px rgba(0, 30, 20, 0.03);
+            transition: all 0.2s ease;
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .violation-card::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: linear-gradient(180deg, #f43f5e 0%, #be123c 100%);
-            border-top-left-radius: var(--radius-lg);
-            border-bottom-left-radius: var(--radius-lg);
+            gap: 0.55rem;
+            position: relative;
         }
 
         .violation-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px -5px rgba(225, 29, 72, 0.12);
-            border-color: #fda4af;
+            border-color: #cbd5e1;
+            box-shadow: 0 6px 20px -3px rgba(0, 30, 20, 0.08);
+            transform: translateY(-1px);
         }
 
         .violation-card-header {
@@ -755,66 +728,77 @@ HTML_TEMPLATE = """
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.68rem;
             font-weight: 700;
-            padding: 0.25rem 0.55rem;
-            background: #fff1f2;
-            color: var(--danger-accent);
-            border: 1px solid #fecdd3;
+            padding: 0.22rem 0.55rem;
+            background: #f8fafc;
+            color: #334155;
+            border: 1px solid #e2e8f0;
             border-radius: 6px;
-            letter-spacing: 0.05em;
-            display: flex;
+            letter-spacing: 0.04em;
+            display: inline-flex;
             align-items: center;
             gap: 0.35rem;
         }
 
+        .violation-handbook-pill .material-symbols-outlined {
+            font-size: 13px;
+            color: var(--brand-accent);
+        }
+
         .violation-type-badge {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 0.65rem;
-            font-weight: 800;
+            font-size: 0.68rem;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
+            letter-spacing: 0.05em;
             color: #94a3b8;
         }
 
         .violation-card-title {
             font-family: 'Plus Jakarta Sans', sans-serif;
             font-size: 0.95rem;
-            font-weight: 800;
-            color: #881337;
+            font-weight: 700;
+            color: #0f172a;
             letter-spacing: -0.01em;
-            line-height: 1.3;
+            line-height: 1.35;
             display: flex;
             align-items: center;
-            gap: 0.45rem;
+            gap: 0.5rem;
         }
 
-        .violation-card-title .material-symbols-outlined {
-            font-size: 1.15rem;
-            color: var(--danger-accent);
+        .violation-status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background-color: #e11d48;
+            flex-shrink: 0;
+            box-shadow: 0 0 6px rgba(225, 29, 72, 0.5);
         }
 
         .violation-card-desc {
-            font-size: 0.8rem;
+            font-size: 0.82rem;
             line-height: 1.45;
             color: #475569;
-            font-weight: 500;
+            font-weight: 400;
         }
 
         .violation-card-footer {
-            margin-top: 0.25rem;
-            padding-top: 0.5rem;
-            border-top: 1px dashed #fee2e2;
-            display: flex;
+            margin-top: 0.2rem;
+            display: inline-flex;
             align-items: center;
-            justify-content: space-between;
-            font-size: 0.7rem;
+            gap: 0.4rem;
+            background: #f8fafc;
+            border: 1px solid #edf2f7;
+            border-radius: 8px;
+            padding: 0.35rem 0.65rem;
+            font-size: 0.72rem;
             font-weight: 600;
-            color: #9f1239;
+            color: #475569;
+            width: fit-content;
         }
 
-        .violation-card-footer span {
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
+        .violation-card-footer .material-symbols-outlined {
+            font-size: 13px;
+            color: #64748b;
         }
 
         /* Compliant Empty State */
@@ -1139,29 +1123,28 @@ HTML_TEMPLATE = """
 
                         let cardsHtml = '';
                         data.violations.forEach((v, idx) => {
-                            const cleanClass = v.class.replace(/_/g, ' ').toUpperCase();
+                            const words = v.class.replace(/_/g, ' ').split(' ');
+                            const formattedTitle = words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
                             cardsHtml += `
                                 <div class="violation-card">
                                     <div class="violation-card-header">
                                         <div class="violation-handbook-pill">
-                                            <span class="material-symbols-outlined" style="font-size: 14px;">gavel</span>
+                                            <span class="material-symbols-outlined">menu_book</span>
                                             <span>SEC ${v.handbook_ref}</span>
                                         </div>
-                                        <span class="violation-type-badge">${v.severity || 'MINOR OFFENSE'}</span>
+                                        <span class="violation-type-badge">${v.severity ? v.severity.replace(/_/g, ' ') : 'Minor Offense'}</span>
                                     </div>
 
                                     <div class="violation-card-title">
-                                        <span class="material-symbols-outlined">error</span>
-                                        <span>${cleanClass}</span>
+                                        <span class="violation-status-dot"></span>
+                                        <span>${formattedTitle}</span>
                                     </div>
 
                                     <p class="violation-card-desc">${v.description}</p>
 
                                     <div class="violation-card-footer">
-                                        <span>
-                                            <span class="material-symbols-outlined" style="font-size: 14px;">report_problem</span>
-                                            Mandated Sanction: 1st Instance Written Warning
-                                        </span>
+                                        <span class="material-symbols-outlined">gavel</span>
+                                        <span>Sanction: 1st Instance Written Warning</span>
                                     </div>
                                 </div>
                             `;
