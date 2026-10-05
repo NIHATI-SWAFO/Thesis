@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { API_ENDPOINTS } from "../../api/config";
+import BarcodeRegistrationModal from "../../components/BarcodeRegistrationModal";
 
 export default function StudentProfile() {
   const { user } = useAuth();
@@ -10,10 +11,12 @@ export default function StudentProfile() {
   const [loading, setLoading] = useState(true);
   const [showIdModal, setShowIdModal] = useState(false);
   const [showDocNotice, setShowDocNotice] = useState(null);
+  const [showBarcodeModal, setShowBarcodeModal] = useState(false);
 
   const email = user?.email;
 
-  useEffect(() => {
+
+  const fetchProfile = () => {
     if (email) {
       fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${email}`)
         .then(res => res.json())
@@ -25,6 +28,10 @@ export default function StudentProfile() {
         .catch(err => console.error("Profile fetch error:", err))
         .finally(() => setLoading(false));
     }
+  };
+
+  useEffect(() => {
+    fetchProfile();
   }, [email]);
 
   if (loading) {
@@ -165,7 +172,7 @@ export default function StudentProfile() {
                 </div>
                 <div>
                   <h3 className="font-pjs font-bold text-base text-slate-900 leading-tight">Institutional Enrollment Data</h3>
-                  <p className="text-xs text-slate-400 font-manrope">Verified records from Registrar & SWAFO office</p>
+                  <p className="text-xs text-slate-400 font-manrope">Verified records from Registrar &amp; SWAFO office</p>
                 </div>
               </div>
             </div>
@@ -231,6 +238,55 @@ export default function StudentProfile() {
         {/* RIGHT COLUMN: Official Documents & Security */}
         <div className="lg:col-span-5 space-y-6">
           
+          {/* Academic Standing & Privileges Card */}
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-5 sm:p-7">
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#003624] flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[20px]">analytics</span>
+                </div>
+                <div>
+                  <h3 className="font-pjs font-bold text-base text-slate-900 leading-tight">Academic Standing &amp; Privileges</h3>
+                  <p className="text-xs text-slate-400 font-manrope">DLSU-D Student Handbook 2022–2027</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <StatusRow label="Enrollment" status="Active" type="success" />
+              {(() => {
+                const rs = profile?.risk_standing || {
+                  standing: 'Good Standing',
+                  tier: 'LOW',
+                  clearance_impact: 'CLEARED',
+                  honors_eligibility: 'ELIGIBLE',
+                  gmc_status: 'AVAILABLE',
+                  handbook_citation: 'Section 14',
+                };
+
+                const typeMap = {
+                  LOW: 'success',
+                  MODERATE: 'warning',
+                  HIGH: 'orange',
+                  CRITICAL: 'error',
+                };
+                const standingType = typeMap[rs.tier] || 'success';
+                const clearanceType = rs.clearance_impact === 'CLEARED' ? 'success' : rs.clearance_impact === 'HOLD' ? 'error' : 'warning';
+                const honorsType = rs.honors_eligibility === 'ELIGIBLE' ? 'success' : rs.honors_eligibility === 'UNDER_REVIEW' ? 'warning' : 'error';
+                const gmcType = rs.gmc_status === 'AVAILABLE' ? 'success' : rs.gmc_status === 'DEFERRED' ? 'warning' : 'error';
+
+                return (
+                  <>
+                    <StatusRow label="Behavioral Standing" status={rs.standing} type={standingType} />
+                    <StatusRow label="Clearance (§14)" status={rs.clearance_impact} type={clearanceType} />
+                    <StatusRow label="Dean's List / Honors" status={rs.honors_eligibility.replace('_', ' ')} type={honorsType} />
+                    <StatusRow label="Good Moral (GMC)" status={rs.gmc_status} type={gmcType} />
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+
           {/* Documents & Identification Card */}
           <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-5 sm:p-7">
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
@@ -239,13 +295,38 @@ export default function StudentProfile() {
                   <span className="material-symbols-outlined text-[20px]">id_card</span>
                 </div>
                 <div>
-                  <h3 className="font-pjs font-bold text-base text-slate-900 leading-tight">Identity & Credentials</h3>
-                  <p className="text-xs text-slate-400 font-manrope">Digital campus pass & certificates</p>
+                  <h3 className="font-pjs font-bold text-base text-slate-900 leading-tight">Identity &amp; Credentials</h3>
+                  <p className="text-xs text-slate-400 font-manrope">Digital campus pass &amp; certificates</p>
                 </div>
               </div>
             </div>
 
             <div className="space-y-3">
+              {/* Barcode Registration Item */}
+              <div 
+                onClick={() => setShowBarcodeModal(true)}
+                className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 hover:bg-emerald-50/50 border border-slate-100 hover:border-emerald-200 transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-emerald-700 shadow-xs border border-emerald-50 shrink-0">
+                    <span className="material-symbols-outlined text-[18px]">barcode_scanner</span>
+                  </div>
+                  <div className="min-w-0">
+                    <h5 className="font-pjs font-bold text-xs text-slate-800 group-hover:text-[#003624] leading-tight truncate">
+                      Physical ID Barcode
+                    </h5>
+                    <p className="text-[10.5px] text-slate-400 font-manrope truncate mt-0.5">
+                      {profile?.barcode_value ? `Barcode: ${profile.barcode_value}` : 'Upload ID image or scan barcode'}
+                    </p>
+                  </div>
+                </div>
+                <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors shrink-0 ${
+                  profile?.barcode_value ? 'bg-emerald-100 text-[#006b5d]' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {profile?.barcode_value ? 'Linked · Manage' : 'Register ID'}
+                </span>
+              </div>
+
               <DocRow 
                 icon="badge"
                 title="Digital Student ID Card"
@@ -263,9 +344,16 @@ export default function StudentProfile() {
               <DocRow 
                 icon="verified"
                 title="Good Moral Character Status"
-                subtitle={violationCount === 0 ? "Eligible for automatic issuance" : "Under review"}
+                subtitle={profile?.risk_standing?.gmc_status === 'AVAILABLE' ? "Eligible for automatic issuance" : "Under review"}
                 actionText="Check"
                 onClick={() => setShowDocNotice("Good Moral Certificate")}
+              />
+              <DocRow 
+                icon="description"
+                title="Transcript of Records"
+                subtitle={profile?.risk_standing?.clearance_impact === 'HOLD' ? 'Locked — Section 14 Clearance Hold' : 'Ready for request'}
+                actionText={profile?.risk_standing?.clearance_impact === 'HOLD' ? 'Locked' : 'Request'}
+                onClick={() => setShowDocNotice("Transcript Clearance Status")}
               />
             </div>
           </div>
@@ -278,7 +366,7 @@ export default function StudentProfile() {
                   <span className="material-symbols-outlined text-[20px]">security</span>
                 </div>
                 <div>
-                  <h3 className="font-pjs font-bold text-base text-slate-900 leading-tight">Access & Privacy</h3>
+                  <h3 className="font-pjs font-bold text-base text-slate-900 leading-tight">Access &amp; Privacy</h3>
                   <p className="text-xs text-slate-400 font-manrope">University single sign-on credentials</p>
                 </div>
               </div>
@@ -308,6 +396,7 @@ export default function StudentProfile() {
         </div>
 
       </div>
+
 
       {/* ══════════════════════════ DIGITAL ID MODAL ══════════════════════════ */}
       {showIdModal && createPortal(
@@ -397,6 +486,17 @@ export default function StudentProfile() {
         document.body
       )}
 
+      {/* Barcode Registration Modal */}
+      <BarcodeRegistrationModal
+        isOpen={showBarcodeModal}
+        onClose={() => setShowBarcodeModal(false)}
+        profile={profile}
+        onSuccess={(newBarcode) => {
+          setProfile(prev => ({ ...prev, barcode_value: newBarcode }));
+          fetchProfile();
+        }}
+      />
+
     </div>
   );
 }
@@ -464,3 +564,21 @@ function DocRow({ icon, title, subtitle, actionText, onClick, to }) {
 
   return <div onClick={onClick}>{content}</div>;
 }
+
+function StatusRow({ label, status, type }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="font-manrope font-semibold text-portal-text text-[14px]">{label}</span>
+      <span className={`px-4 py-1.5 rounded-2xl text-[12px] font-bold font-pjs uppercase tracking-tight shadow-sm ${
+        type === 'success' ? 'bg-[#d1fadf] text-[#006b5d]' : 
+        type === 'warning' ? 'bg-amber-100 text-amber-800' :
+        type === 'orange' ? 'bg-orange-100 text-orange-800' :
+        type === 'error' ? 'bg-red-100 text-red-700' :
+        'bg-slate-100 text-slate-600'
+      }`}>
+        {status}
+      </span>
+    </div>
+  );
+}
+

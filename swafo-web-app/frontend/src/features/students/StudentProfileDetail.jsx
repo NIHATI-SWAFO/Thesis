@@ -21,6 +21,7 @@ export default function StudentProfileDetail({ role = 'officer' }) {
 
         // 2. Fetch Violation History
         const historyResp = await fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?student_id=${encodeURIComponent(id)}`);
+
         const historyData = await historyResp.json();
 
         setStudentData(profile);
@@ -76,6 +77,18 @@ export default function StudentProfileDetail({ role = 'officer' }) {
     isRepeatOffender: studentData.is_repeat_offender
   };
 
+  const riskStanding = studentData?.risk_standing || {
+    tier: 'LOW',
+    standing: 'Good Standing',
+    score: studentData?.risk_score || 0,
+    clearance_impact: 'CLEARED',
+    honors_eligibility: 'ELIGIBLE',
+    gmc_status: 'AVAILABLE',
+    handbook_citation: 'Section 14',
+    consequence_summary: "Unrestricted institutional clearance (§14). Eligible for Dean's List and Latin Honors; unconditional Good Moral Certificate issuance.",
+    color: 'emerald',
+  };
+
   return (
     <div className="max-w-[1400px] mx-auto pb-12 sm:pb-24 px-2.5 sm:px-8 animate-fade-in-up font-manrope">
       
@@ -107,18 +120,20 @@ export default function StudentProfileDetail({ role = 'officer' }) {
             <div className="flex justify-between items-start mb-6 sm:mb-10 relative z-10">
               <div className="flex flex-col gap-2">
                 <h3 className="text-[10px] sm:text-[11px] font-pjs font-black text-[#004d33] opacity-50 uppercase tracking-[0.25em]">STUDENT PROFILE</h3>
-                {role === 'admin' && (
-                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-widest border ${student.stats.active === 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
-                      §14 {student.stats.active === 0 ? 'CLEARED' : 'UNCLEARED'}
-                    </span>
-                    {student.stats.total > 0 && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-widest border bg-blue-50 text-blue-600 border-blue-100">
-                        §26.4 FORMATION
-                      </span>
-                    )}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                  <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-widest border ${
+                    riskStanding.clearance_impact === 'CLEARED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                    riskStanding.clearance_impact === 'HOLD' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                    'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}>
+                    §14 {riskStanding.clearance_impact}
+                  </span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-widest border ${
+                    riskStanding.tier === 'LOW' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-700 border-slate-200'
+                  }`}>
+                    {riskStanding.handbook_citation}
+                  </span>
+                </div>
               </div>
               <div className="px-3 py-1 bg-[#f0f9f4] border border-[#dcfce7] text-[#10b981] text-[9.5px] font-black rounded-full tracking-widest shadow-xs uppercase">
                 {student.status}
@@ -164,6 +179,79 @@ export default function StudentProfileDetail({ role = 'officer' }) {
               <SummaryGridBox label="ONGOING" value={student.stats.active} orange />
               <SummaryGridBox label="CLOSED" value={student.stats.closed} green />
             </div>
+          </div>
+
+          {/* Institutional Standing & Privileges Card */}
+          <div className="bg-white rounded-[2.5rem] p-8 border border-[#f1f5f9] shadow-[0_20px_50px_rgba(0,0,0,0.02)] relative overflow-hidden flex flex-col gap-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-[11px] font-pjs font-black text-[#004d33] opacity-40 uppercase tracking-[0.4em] leading-[1.8]">
+                  BEHAVIORAL<br/>STANDING
+                </h3>
+                <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded mt-1 inline-block border border-slate-200">
+                  {riskStanding.handbook_citation}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border block ${
+                  riskStanding.tier === 'LOW' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                  riskStanding.tier === 'CRITICAL' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                  riskStanding.tier === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                  'bg-amber-50 text-amber-800 border-amber-200'
+                }`}>
+                  {riskStanding.standing}
+                </span>
+                <span className="text-[12px] font-black font-mono text-slate-500 mt-1 block">
+                  {studentData.risk_score || 0} pts
+                </span>
+              </div>
+            </div>
+
+            {/* Impact Summary */}
+            <div className={`p-4 rounded-2xl border text-[12px] leading-relaxed font-medium ${
+              riskStanding.tier === 'LOW' ? 'bg-emerald-50/70 border-emerald-100 text-emerald-950' :
+              riskStanding.tier === 'CRITICAL' ? 'bg-rose-50/70 border-rose-200 text-rose-950' :
+              riskStanding.tier === 'HIGH' ? 'bg-orange-50/70 border-orange-200 text-orange-950' :
+              'bg-amber-50/70 border-amber-200 text-amber-950'
+            }`}>
+              {riskStanding.consequence_summary}
+            </div>
+
+            {/* Privileges Matrix */}
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between text-[12px]">
+                <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Institutional Clearance</span>
+                <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                  riskStanding.clearance_impact === 'CLEARED' ? 'bg-emerald-100 text-emerald-800' :
+                  riskStanding.clearance_impact === 'HOLD' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                }`}>
+                  §14 {riskStanding.clearance_impact}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[12px]">
+                <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Dean's List &amp; Honors</span>
+                <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                  riskStanding.honors_eligibility === 'ELIGIBLE' ? 'bg-emerald-100 text-emerald-800' :
+                  riskStanding.honors_eligibility === 'UNDER_REVIEW' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                }`}>
+                  {riskStanding.honors_eligibility.replace('_', ' ')}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[12px]">
+                <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Good Moral Certificate</span>
+                <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                  riskStanding.gmc_status === 'AVAILABLE' ? 'bg-emerald-100 text-emerald-800' :
+                  riskStanding.gmc_status === 'DEFERRED' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                }`}>
+                  {riskStanding.gmc_status}
+                </span>
+              </div>
+            </div>
+
+            {/* Recency notice */}
+            <p className="text-[10px] text-slate-400 text-center italic">
+              Score decays with a 30-day half-life without re-offense.
+            </p>
           </div>
 
         </div>

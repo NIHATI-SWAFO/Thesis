@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../../api/config';
 import { useColleges } from '../../hooks/useColleges';
@@ -85,11 +86,105 @@ export default function StudentRecords({ role = 'officer' }) {
     }).catch(err => console.error("Error updating clearance:", err));
   };
 
-  const getRiskLevel = (score) => {
-    if (score > 75) return { label: 'CRITICAL', color: 'text-rose-600', bar: 'bg-rose-500', badge: 'bg-rose-50 border-rose-100 text-rose-600' };
-    if (score > 50) return { label: 'HIGH', color: 'text-orange-600', bar: 'bg-orange-500', badge: 'bg-orange-50 border-orange-100 text-orange-600' };
-    if (score > 25) return { label: 'MODERATE', color: 'text-amber-600', bar: 'bg-amber-400', badge: 'bg-amber-50 border-amber-100 text-amber-600' };
-    return { label: 'LOW', color: 'text-emerald-600', bar: 'bg-emerald-500', badge: 'bg-emerald-50 border-emerald-100 text-emerald-600' };
+  const getRiskLevel = (score, studentStanding) => {
+    if (studentStanding) {
+      const tier = studentStanding.tier;
+      if (tier === 'CRITICAL') {
+        return {
+          label: 'CRITICAL',
+          standing: studentStanding.standing || 'Disciplinary Probation',
+          citation: studentStanding.handbook_citation || 'Section 27.3.5',
+          consequence: studentStanding.consequence_summary,
+          clearance: studentStanding.clearance_impact,
+          honors: studentStanding.honors_eligibility,
+          color: 'text-rose-600',
+          bar: 'bg-rose-500',
+          badge: 'bg-rose-50 border-rose-200 text-rose-700',
+        };
+      }
+      if (tier === 'HIGH') {
+        return {
+          label: 'HIGH',
+          standing: studentStanding.standing || 'Disciplinary Warning',
+          citation: studentStanding.handbook_citation || 'Section 26.4',
+          consequence: studentStanding.consequence_summary,
+          clearance: studentStanding.clearance_impact,
+          honors: studentStanding.honors_eligibility,
+          color: 'text-orange-600',
+          bar: 'bg-orange-500',
+          badge: 'bg-orange-50 border-orange-200 text-orange-700',
+        };
+      }
+      if (tier === 'MODERATE') {
+        return {
+          label: 'MODERATE',
+          standing: studentStanding.standing || 'Under Review',
+          citation: studentStanding.handbook_citation || 'Section 27.1',
+          consequence: studentStanding.consequence_summary,
+          clearance: studentStanding.clearance_impact,
+          honors: studentStanding.honors_eligibility,
+          color: 'text-amber-600',
+          bar: 'bg-amber-400',
+          badge: 'bg-amber-50 border-amber-200 text-amber-700',
+        };
+      }
+      return {
+        label: 'LOW',
+        standing: studentStanding.standing || 'Good Standing',
+        citation: studentStanding.handbook_citation || 'Section 14',
+        consequence: studentStanding.consequence_summary,
+        clearance: studentStanding.clearance_impact,
+        honors: studentStanding.honors_eligibility,
+        color: 'text-emerald-700',
+        bar: 'bg-emerald-500',
+        badge: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+      };
+    }
+
+    if (score > 75) return { 
+      label: 'CRITICAL', 
+      standing: 'Disciplinary Probation', 
+      citation: 'Section 27.3.5',
+      consequence: 'Clearance placed on HOLD (§14) blocking enrollment and graduation. Honors forfeited; referral to SWAFO Director and SDB (§27.3.5).',
+      clearance: 'HOLD',
+      honors: 'FORFEITED',
+      color: 'text-rose-600', 
+      bar: 'bg-rose-500', 
+      badge: 'bg-rose-50 border-rose-200 text-rose-700' 
+    };
+    if (score > 50) return { 
+      label: 'HIGH', 
+      standing: 'Disciplinary Warning', 
+      citation: 'Section 26.4',
+      consequence: 'Disqualified from Dean\'s List and Latin Honors. Clearance restricted; Good Moral Certificate withheld (§26.4).',
+      clearance: 'RESTRICTED',
+      honors: 'DISQUALIFIED',
+      color: 'text-orange-600', 
+      bar: 'bg-orange-500', 
+      badge: 'bg-orange-50 border-orange-200 text-orange-700' 
+    };
+    if (score > 25) return { 
+      label: 'MODERATE', 
+      standing: 'Under Review', 
+      citation: 'Section 27.1',
+      consequence: 'Conditional clearance. Honors subject to review; Good Moral Certificate deferred pending case resolution (§27.1).',
+      clearance: 'CONDITIONAL',
+      honors: 'UNDER_REVIEW',
+      color: 'text-amber-600', 
+      bar: 'bg-amber-400', 
+      badge: 'bg-amber-50 border-amber-200 text-amber-700' 
+    };
+    return { 
+      label: 'LOW', 
+      standing: 'Good Standing', 
+      citation: 'Section 14',
+      consequence: 'Unrestricted institutional clearance (§14). Eligible for Dean\'s List and Latin Honors; unconditional GMC issuance.',
+      clearance: 'CLEARED',
+      honors: 'ELIGIBLE',
+      color: 'text-emerald-700', 
+      bar: 'bg-emerald-500', 
+      badge: 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+    };
   };
 
   if (loading) {
@@ -108,93 +203,131 @@ export default function StudentRecords({ role = 'officer' }) {
   return (
     <div className="max-w-[1600px] mx-auto animate-fade-in-up pb-12">
 
-      {/* ── Risk Help Modal ───────────────────────────────────────────────── */}
-      {showRiskHelp && (
+      {/* ── Risk Score Explainer Modal ────────────────────────────────────── */}
+      {showRiskHelp && createPortal(
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6 bg-emerald-950/60 backdrop-blur-sm"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-emerald-950/60 backdrop-blur-md"
           onClick={() => setShowRiskHelp(false)}
         >
           <div
-            className="bg-white rounded-2xl sm:rounded-[2.5rem] w-full max-w-[580px] max-h-[92vh] flex flex-col overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.25)] border border-white/20 animate-in zoom-in-95 duration-200"
+            className="bg-white rounded-2xl sm:rounded-[2.5rem] w-full max-w-[620px] max-h-[92vh] flex flex-col overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.35)] border border-white/20 animate-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="bg-[#003624] px-5 sm:px-10 py-5 sm:py-8 flex items-start justify-between shrink-0">
               <div>
-                <p className="text-[10px] font-black text-emerald-400/60 uppercase tracking-[0.25em] sm:tracking-[0.3em] mb-1">Algorithm Transparency</p>
-                <h2 className="text-[18px] sm:text-[22px] font-pjs font-bold text-white leading-tight">Temporal Decay Risk Score</h2>
-                <p className="text-[12px] sm:text-[13px] text-white/50 mt-1 font-medium">How behavioral risk is calculated</p>
+                <p className="text-[10px] font-black text-emerald-400/70 uppercase tracking-[0.25em] sm:tracking-[0.3em] mb-1">Handbook &amp; Algorithm Alignment</p>
+                <h2 className="text-[18px] sm:text-[22px] font-pjs font-bold text-white leading-tight">Temporal Risk Score &amp; Student Standing</h2>
+                <p className="text-[12px] sm:text-[13px] text-white/60 mt-1 font-medium">Evaluation of institutional standing, clearance, and awards</p>
               </div>
               <button
                 onClick={() => setShowRiskHelp(false)}
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all text-white shrink-0 mt-0.5"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all text-white shrink-0 mt-0.5 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="px-5 sm:px-10 py-5 sm:py-8 space-y-5 sm:space-y-7 overflow-y-auto custom-scrollbar">
+            <div className="px-5 sm:px-10 py-5 sm:py-8 space-y-5 sm:space-y-6 overflow-y-auto custom-scrollbar flex-1">
 
               {/* What & Why */}
               <div>
-                <p className="text-[12px] sm:text-[13px] font-bold text-slate-500 leading-relaxed">
-                  A raw violation count treats an incident from <strong className="text-[#003624]">2 years ago</strong> the same as one from <strong className="text-[#003624]">yesterday</strong>. The Risk Score fixes this by measuring <em>how recent and how serious</em> each violation is — giving the Director a number that reflects the student's behavioral state <strong className="text-[#003624]">right now</strong>.
+                <p className="text-[12px] sm:text-[13px] font-medium text-slate-600 leading-relaxed">
+                  Raw violation counts treat an incident from <strong className="text-[#003624]">months ago</strong> identically to one from <strong className="text-[#003624]">yesterday</strong>. The Temporal Decay algorithm measures <em>recency, severity, and resolution status</em> to determine the student's current disciplinary standing and institutional privileges under the Student Handbook.
                 </p>
               </div>
 
               {/* Formula */}
-              <div className="bg-slate-50 rounded-2xl p-4 sm:p-6 border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-3">Formula (per violation)</p>
-                <div className="bg-[#003624] rounded-xl px-4 sm:px-5 py-3 font-mono text-[11px] sm:text-[13px] text-emerald-300 mb-3 sm:mb-4 overflow-x-auto">
+              <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">Approved Proposal Formula</p>
+                <div className="bg-[#003624] rounded-xl px-4 sm:px-5 py-3 font-mono text-[11px] sm:text-[13px] text-emerald-300 mb-3.5 overflow-x-auto">
                   score = severity × e<sup>−0.023 × days_ago</sup> × (1.5 if unresolved)
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-[11px] sm:text-[12px]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 text-[11px] sm:text-[12px]">
                   <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-rose-500 mt-1.5 shrink-0"></span>
-                    <span className="text-slate-600"><strong>Major violation</strong> — 30 pts base</span>
+                    <span className="w-2 h-2 rounded-full bg-rose-500 mt-1 shrink-0"></span>
+                    <span className="text-slate-600"><strong>Major</strong> — 30 pts base</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0"></span>
-                    <span className="text-slate-600"><strong>Minor violation</strong> — 15 pts base</span>
+                    <span className="w-2 h-2 rounded-full bg-amber-500 mt-1 shrink-0"></span>
+                    <span className="text-slate-600"><strong>Minor</strong> — 15 pts base</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-slate-400 mt-1.5 shrink-0"></span>
-                    <span className="text-slate-600"><strong>General</strong> — 10 pts base</span>
+                    <span className="w-2 h-2 rounded-full bg-slate-400 mt-1 shrink-0"></span>
+                    <span className="text-slate-600"><strong>Dress code</strong> — 10 pts base</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-indigo-400 mt-1.5 shrink-0"></span>
+                    <span className="w-2 h-2 rounded-full bg-indigo-500 mt-1 shrink-0"></span>
                     <span className="text-slate-600"><strong>Unresolved</strong> — ×1.5 multiplier</span>
                   </div>
                 </div>
               </div>
 
               {/* Half-life */}
-              <div className="flex items-start gap-3 sm:gap-4 p-4 sm:p-5 bg-blue-50 rounded-2xl border border-blue-100">
-                <span className="material-symbols-outlined text-blue-500 text-[24px] sm:text-[28px] shrink-0 mt-0.5">schedule</span>
+              <div className="flex items-start gap-3.5 p-4 sm:p-5 bg-emerald-50/70 rounded-2xl border border-emerald-100">
+                <span className="material-symbols-outlined text-[#003624] text-[24px] sm:text-[26px] shrink-0 mt-0.5">schedule</span>
                 <div>
-                  <p className="text-[11px] sm:text-[12px] font-black text-blue-800 mb-0.5 sm:mb-1">30-Day Half-Life</p>
-                  <p className="text-[11px] sm:text-[12px] text-blue-700 leading-relaxed">A violation loses <strong>50% of its risk weight every 30 days</strong>. A major incident from 6 months ago weighs only ~0.5 pts. A major incident from yesterday weighs 30 pts. This rewards genuine behavioral improvement over time.</p>
+                  <p className="text-[12px] sm:text-[13px] font-bold text-[#003624] mb-0.5">30-Day Half-Life (Restorative Discipline)</p>
+                  <p className="text-[11px] sm:text-[12px] text-emerald-900/80 leading-relaxed">
+                    A violation loses <strong>50% of its risk weight every 30 days</strong> without re-offense. Sustained compliance naturally restores a student's standing over time.
+                  </p>
                 </div>
               </div>
 
-              {/* Risk Tiers */}
+              {/* Risk Tiers & Student Standing */}
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Interpretation Guide</p>
-                <div className="space-y-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Student Impact &amp; Standing Guide</p>
+                <div className="space-y-2.5">
                   {[
-                    { range: '0 – 25', label: 'LOW', color: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-100', action: 'No action needed. Student is behaviorally stable.' },
-                    { range: '26 – 50', label: 'MODERATE', color: 'bg-amber-400', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-100', action: 'Emerging pattern. Flag for monitoring.' },
-                    { range: '51 – 75', label: 'HIGH', color: 'bg-orange-500', text: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-100', action: 'Active concern. Schedule counseling or intervention.' },
-                    { range: '76 – 100', label: 'CRITICAL', color: 'bg-rose-500', text: 'text-rose-700', bg: 'bg-rose-50', border: 'border-rose-100', action: 'Escalate immediately. Clearance HOLD recommended. §27.3.5 review.' },
+                    { 
+                      range: '0 – 25', 
+                      label: 'LOW', 
+                      standing: 'Good Standing', 
+                      color: 'bg-emerald-500', 
+                      text: 'text-emerald-800', 
+                      bg: 'bg-emerald-50/70', 
+                      border: 'border-emerald-200/60', 
+                      impact: 'Unrestricted clearance (§14). Eligible for Dean\'s List & Latin Honors; unconditional Good Moral Certificate (GMC) issuance.' 
+                    },
+                    { 
+                      range: '26 – 50', 
+                      label: 'MODERATE', 
+                      standing: 'Under Review', 
+                      color: 'bg-amber-400', 
+                      text: 'text-amber-800', 
+                      bg: 'bg-amber-50/70', 
+                      border: 'border-amber-200/60', 
+                      impact: 'Conditional clearance. Good Moral Certificate deferred pending resolution of active obligations. Formal admonition on record.' 
+                    },
+                    { 
+                      range: '51 – 75', 
+                      label: 'HIGH', 
+                      standing: 'Disciplinary Warning', 
+                      color: 'bg-orange-500', 
+                      text: 'text-orange-800', 
+                      bg: 'bg-orange-50/70', 
+                      border: 'border-orange-200/60', 
+                      impact: 'Disqualified from Dean\'s List & Latin Honors (conduct clause). Good Moral Certificate withheld; mandatory SWAFO Formation Program (§26.4).' 
+                    },
+                    { 
+                      range: '76 – 100', 
+                      label: 'CRITICAL', 
+                      standing: 'Disciplinary Probation', 
+                      color: 'bg-rose-500', 
+                      text: 'text-rose-800', 
+                      bg: 'bg-rose-50/70', 
+                      border: 'border-rose-200/60', 
+                      impact: 'Clearance placed on HOLD (§14) blocking enrollment & graduation. Forfeiture of honors; referral to Student Discipline Board (§27.3.5) with risk of suspension or expulsion.' 
+                    },
                   ].map(tier => (
-                    <div key={tier.label} className={`flex items-start sm:items-center gap-3 sm:gap-4 p-3 sm:px-4 sm:py-3 rounded-xl border ${tier.bg} ${tier.border}`}>
-                      <div className={`w-2 h-8 rounded-full ${tier.color} shrink-0 mt-0.5 sm:mt-0`}></div>
-                      <div className="w-18 sm:w-20 shrink-0">
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${tier.text}`}>{tier.label}</span>
-                        <p className="text-[10px] sm:text-[11px] font-bold text-slate-500">{tier.range}</p>
+                    <div key={tier.label} className={`flex items-start gap-3 sm:gap-3.5 p-3 sm:px-4 sm:py-3 rounded-2xl border ${tier.bg} ${tier.border}`}>
+                      <div className={`w-2 sm:w-2.5 h-10 rounded-full ${tier.color} shrink-0 mt-0.5`}></div>
+                      <div className="w-20 sm:w-24 shrink-0">
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${tier.text}`}>{tier.standing}</span>
+                        <p className="text-[10px] font-mono text-slate-400 font-bold">{tier.range} pts</p>
                       </div>
-                      <p className={`text-[10px] sm:text-[11px] font-medium leading-tight sm:leading-normal ${tier.text}`}>{tier.action}</p>
+                      <p className={`text-[10px] sm:text-[11px] font-medium leading-relaxed ${tier.text}`}>{tier.impact}</p>
                     </div>
                   ))}
                 </div>
@@ -202,7 +335,8 @@ export default function StudentRecords({ role = 'officer' }) {
 
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Page Header ───────────────────────────────────────────────────── */}
@@ -297,11 +431,11 @@ export default function StudentRecords({ role = 'officer' }) {
                 <th className="py-6 px-8 lg:px-10 text-[11px] font-black text-slate-400 uppercase tracking-widest">Institutional Compliance</th>
                 <th className="py-6 px-8 lg:px-10 text-[11px] font-black text-slate-400 uppercase tracking-widest">
                   <div className="flex items-center gap-2">
-                    Risk Analysis
+                    Behavioral Standing &amp; Privileges
                     <button
                       onClick={() => setShowRiskHelp(true)}
                       className="w-5 h-5 rounded-full bg-slate-200 text-slate-500 hover:bg-[#003624] hover:text-white transition-all flex items-center justify-center text-[11px] font-black leading-none"
-                      title="How is this score calculated?"
+                      title="How is this standing evaluated?"
                     >
                       ?
                     </button>
@@ -360,23 +494,35 @@ export default function StudentRecords({ role = 'officer' }) {
                     </td>
                     <td className="py-8 px-8 lg:px-10">
                        {(() => {
-                         const risk = getRiskLevel(student.risk_score || 0);
+                         const risk = getRiskLevel(student.risk_score || 0, student.risk_standing);
                          return (
-                           <div className="flex flex-col gap-2 min-w-[160px]">
-                             <div className="flex items-center justify-between">
-                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${risk.badge}`}>
+                           <div 
+                             className="flex flex-col gap-1.5 min-w-[190px] group/risk relative cursor-help"
+                             title={`${risk.standing} (${risk.citation}): ${risk.consequence}`}
+                           >
+                             <div className="flex items-center justify-between gap-2">
+                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${risk.badge}`}>
                                  <span className={`w-1.5 h-1.5 rounded-full ${risk.bar} ${risk.label === 'CRITICAL' ? 'animate-pulse' : ''}`}></span>
-                                 {risk.label}
+                                 {risk.standing}
                                </span>
-                               <span className={`text-[16px] font-black ${risk.color}`}>{student.risk_score || 0}</span>
+                               <span className={`text-[15px] font-black font-mono ${risk.color}`}>{student.risk_score || 0}</span>
                              </div>
                              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                <div 
                                  className={`h-full rounded-full transition-all duration-1000 ease-out ${risk.bar}`}
-                                 style={{ width: `${student.risk_score || 0}%` }}
+                                 style={{ width: `${Math.min(student.risk_score || 0, 100)}%` }}
                                ></div>
                              </div>
-                             <span className="text-[10px] text-slate-400 font-medium">30-day decay · recency-weighted</span>
+                             <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
+                               <span>{risk.citation}</span>
+                               <span>{risk.clearance === 'HOLD' ? 'Clearance HOLD' : risk.honors === 'ELIGIBLE' ? 'Honors Eligible' : 'Honors Review'}</span>
+                             </div>
+
+                             {/* Interactive Hover Tooltip summarizing student impact */}
+                             <div className="absolute left-0 bottom-full mb-2 hidden group-hover/risk:block z-30 w-64 p-3 bg-[#003624] text-white rounded-xl shadow-xl text-[11px] font-manrope pointer-events-none transition-all animate-in fade-in">
+                               <p className="font-bold text-emerald-300 uppercase tracking-wider text-[10px] mb-1">{risk.standing} · {student.risk_score || 0} pts</p>
+                               <p className="text-white/80 leading-relaxed text-[10.5px]">{risk.consequence}</p>
+                             </div>
                            </div>
                          );
                        })()}

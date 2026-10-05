@@ -19,6 +19,8 @@ export const API_ENDPOINTS = {
   USERS_BY_ROLE: (role) => `${API_BASE_URL}/api/users/users/?role=${role}`,
   PROFILE_BY_EMAIL: `${API_BASE_URL}/api/users/profile-by-email/`,
   COLLEGES_LIST: `${API_BASE_URL}/api/users/colleges/`,
+  UPDATE_BARCODE: `${API_BASE_URL}/api/users/update-barcode/`,
+  DECODE_BARCODE: `${API_BASE_URL}/api/users/decode-barcode/`,
 
   
     NOTIFICATIONS: `${API_BASE_URL}/api/users/notifications/`,
@@ -63,6 +65,7 @@ export const API_ENDPOINTS = {
   // Handbook
   HANDBOOK_RULES: `${API_BASE_URL}/api/handbook/rules/`,
   SMART_SEARCH: `${API_BASE_URL}/api/handbook/smart-search/`,
+  AI_CHAT: `${API_BASE_URL}/api/ai/chat/`,
 
   // Freedom Wall Endpoints
   FW_STUDENT_SUBMIT: `${API_BASE_URL}/api/freedom-wall/submit/`,

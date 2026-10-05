@@ -159,7 +159,7 @@ export default function StudentViolations() {
             <span className="text-xs text-slate-400 font-medium">Official Registry</span>
           </div>
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-pjs font-bold text-[#003624] tracking-tight leading-tight">
-            Violation Records & History
+            Violation Records &amp; History
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-manrope mt-1 max-w-2xl leading-relaxed">
             Transparent view of recorded campus incidents, disciplinary actions, and remediation pathways.
@@ -180,7 +180,7 @@ export default function StudentViolations() {
         <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-[10px] sm:text-[11px] font-pjs font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-              Pending Actions
+              Active Obligations
             </p>
             <h3 className="text-2xl sm:text-3xl font-extrabold font-pjs text-slate-900 leading-none">
               {pendingCount.toString().padStart(2, '0')}

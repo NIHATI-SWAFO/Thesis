@@ -174,14 +174,21 @@ def generate_college_report(college: str) -> bytes:
     for s in students_qs:
         ser = StudentProfileSerializer(s)
         score = ser.data.get('risk_score', 0)
+        standing_info = ser.data.get('risk_standing', {})
         if score > 0:
-            leaderboard.append({'name': s.user.full_name, 'id': s.student_number, 'score': score})
+            leaderboard.append({
+                'name': s.user.full_name,
+                'id': s.student_number,
+                'score': score,
+                'standing': standing_info.get('standing', 'Good Standing'),
+                'clearance': standing_info.get('clearance_impact', 'CLEARED'),
+                'tier': standing_info.get('tier', 'LOW'),
+            })
     leaderboard = sorted(leaderboard, key=lambda x: x['score'], reverse=True)[:8]
 
     risk_buckets = {'LOW': 0, 'MODERATE': 0, 'HIGH': 0, 'CRITICAL': 0}
     for e in leaderboard:
-        lbl, _ = _risk_label(e['score'])
-        risk_buckets[lbl] += 1
+        risk_buckets[e['tier']] = risk_buckets.get(e['tier'], 0) + 1
     risk_total = sum(risk_buckets.values())
 
     # Escalation tiers
@@ -296,9 +303,9 @@ def generate_college_report(college: str) -> bytes:
     story.append(tbl_style(coll_rows, [13.5*cm, 3.4*cm], hl_row=college_row_idx))
     story.append(Spacer(1, 0.4*cm))
 
-    # ── 3. Behavioral Risk Score ──────────────────────────────────────────────
-    story.append(section('3.  Behavioral Risk Score',
-                         'Temporal Decay Algorithm — score = severity × e^(−0.023 × days_ago) × 1.5 if unresolved'))
+    # ── 3. Behavioral Risk & Institutional Standing ───────────────────────────
+    story.append(section('3.  Behavioral Risk & Institutional Standing',
+                         'Temporal Decay Algorithm — score = severity × e^(−0.023 × days_ago) × 1.5 if unresolved · DLSU-D Student Handbook 2022–2027'))
 
     # Distribution bar
     story.append(_risk_bar_chart(risk_buckets, risk_total))
@@ -306,11 +313,10 @@ def generate_college_report(college: str) -> bytes:
 
     # Top students table
     if leaderboard:
-        lb_data = [['#', 'Student Name', 'Student No.', 'Score', 'Level']]
+        lb_data = [['#', 'Student Name', 'Student No.', 'Score', 'Handbook Standing', 'Clearance (§14)']]
         for i, e in enumerate(leaderboard, 1):
-            lbl, _ = _risk_label(e['score'])
-            lb_data.append([str(i), e['name'], e['id'], str(e['score']), lbl])
-        story.append(tbl_style(lb_data, [1*cm, 6*cm, 3.5*cm, 2.5*cm, 3.4*cm], hl_last=False))
+            lb_data.append([str(i), e['name'], e['id'], str(e['score']), e['standing'], e['clearance']])
+        story.append(tbl_style(lb_data, [1*cm, 5.5*cm, 3*cm, 2*cm, 3.5*cm, 2.4*cm], hl_last=False))
     story.append(Spacer(1, 0.4*cm))
 
     # ── 4. Escalation Status ──────────────────────────────────────────────────

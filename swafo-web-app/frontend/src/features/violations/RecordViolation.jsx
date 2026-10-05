@@ -54,8 +54,8 @@ export default function RecordViolation() {
       if (response.ok) {
         const data = await response.json();
         if (Array.isArray(data) && data.length > 0) {
-          // Prefer exact student_number match, else take first result
-          const exact = data.find(s => s.student_number === scannedValue) || data[0];
+          // Prefer exact barcode_value or student_number match, else take first result
+          const exact = data.find(s => s.barcode_value === scannedValue || s.student_number === scannedValue) || data[0];
           setFoundStudent(exact);
           fetchStudentHistory(exact.user_details?.email);
           setMobileStep('student');
@@ -729,7 +729,7 @@ export default function RecordViolation() {
                 </div>
               </div>
               <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 ${pastViolations.length > 3 ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-                {pastViolations.length > 3 ? 'High Risk' : 'Standard'}
+                {pastViolations.length > 3 ? 'Disciplinary Review' : 'Good Standing'}
               </div>
             </div>
 

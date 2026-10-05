@@ -17,7 +17,25 @@ venv/
 .env
 db.sqlite3
 
-# Other
+# Large Datasets, Models, and Weights (Protected)
+models/
+runs/
+balanced/
+raw_merged/
+dataset_balanced_clean.zip
+*.zip
+*.pt
+UPLOAD_THIS_TO_RUNPOD/
+primary_dataset_split/
+primary_civilian_remapped/
+primary_uniform_remapped/
+primary_data_extracted_frames/
+primary_data_videos/
+civilian_new annotated/
+uniform_newannotatedprimary/
+inspect_samples_uniform_in_civilian/
+dresscode-detection/dataset/
+
+# Logs & Agent Cache
 **/*.log
 .gemini/
-
