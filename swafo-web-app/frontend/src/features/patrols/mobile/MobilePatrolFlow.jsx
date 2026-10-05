@@ -1545,7 +1545,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
                 <div className="relative w-full">
                   <input 
                     type="date" 
-                    value={formData.patrol_date} 
+                    value={formData.patrol_date || ''} 
                     onChange={e => setFormData({ ...formData, patrol_date: e.target.value })} 
                     className="w-full h-[52px] bg-white rounded-[20px] shadow-[0_2px_8px_rgba(0,0,0,0.04)] pl-4 pr-10 font-bold text-[#0D1A0F] text-[14px] border border-gray-100 outline-none appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer bg-transparent" 
                   />
@@ -1557,7 +1557,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
                 <div className="relative w-full">
                   <input 
                     type="time" 
-                    value={formData.start_time} 
+                    value={formData.start_time || ''} 
                     onChange={e => handleTimeChange(e.target.value)} 
                     className="w-full h-[52px] bg-white rounded-[20px] shadow-[0_2px_8px_rgba(0,0,0,0.04)] pl-4 pr-10 font-bold text-[#0D1A0F] text-[14px] border border-gray-100 outline-none appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer bg-transparent" 
                   />
@@ -1583,7 +1583,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
             {/* Row 3: Notes */}
             <div className="flex flex-col gap-2.5">
               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest pl-1">PATROL NOTES</label>
-              <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="e.g., Check lighting..." className="h-24 bg-white rounded-[20px] shadow-sm p-5 text-[14px] font-medium text-gray-800 outline-none resize-none border border-gray-50" />
+              <textarea value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="e.g., Check lighting..." className="h-24 bg-white rounded-[20px] shadow-sm p-5 text-[14px] font-medium text-gray-800 outline-none resize-none border border-gray-50" />
             </div>
 
           </div>

@@ -51,13 +51,37 @@ export default function DirectorPatrolAssignments() {
     return { 'Content-Type': 'application/json' };
   };
 
+  // Robust fetch helper that auto-recovers from expired or invalid JWT tokens
+  const fetchWithAuth = async (url, options = {}) => {
+    const headers = getHeaders();
+    let response = await fetch(url, { ...options, headers: { ...headers, ...options.headers } });
+    
+    // If token is invalid, expired, or forbidden (Django returns 401 or 403 with token_not_valid)
+    if (response.status === 401 || response.status === 403) {
+      try {
+        const stored = JSON.parse(localStorage.getItem('swafo_mock_user') || '{}');
+        if (stored?.token) {
+          delete stored.token;
+          localStorage.setItem('swafo_mock_user', JSON.stringify(stored));
+        }
+      } catch (e) {}
+
+      const cleanHeaders = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+      delete cleanHeaders['Authorization'];
+      response = await fetch(url, { ...options, headers: cleanHeaders });
+    }
+    return response;
+  };
+
   const fetchAssignments = async () => {
     try {
       setLoading(true);
-      const response = await fetch(API_BASE_URL + '/api/patrols/assignments/current/', { headers: getHeaders() });
+      setError('');
+      const response = await fetchWithAuth(API_BASE_URL + '/api/patrols/assignments/current/');
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'API failed');
       setAssignments(Array.isArray(data) ? data : (data.results || []));
+      setError('');
     } catch (err) {
       console.error(err);
       setError('Failed to load assignments.');
@@ -69,7 +93,7 @@ export default function DirectorPatrolAssignments() {
   const fetchMappings = async () => {
     try {
       setLoadingMappings(true);
-      const response = await fetch(API_BASE_URL + '/api/patrols/zone-mappings/', { headers: getHeaders() });
+      const response = await fetchWithAuth(API_BASE_URL + '/api/patrols/zone-mappings/');
       const data = await response.json();
       if (response.ok) {
         setMappings(Array.isArray(data) ? data : (data.results || []));
@@ -85,9 +109,8 @@ export default function DirectorPatrolAssignments() {
     setMappings(prev => prev.map(m => m.id === mappingId ? { ...m, zone_name: newZone } : m));
     setSavingMappingId(mappingId);
     try {
-      const response = await fetch(API_BASE_URL + '/api/patrols/zone-mappings/' + mappingId + '/', {
+      const response = await fetchWithAuth(API_BASE_URL + '/api/patrols/zone-mappings/' + mappingId + '/', {
         method: 'PATCH',
-        headers: getHeaders(),
         body: JSON.stringify({ zone_name: newZone })
       });
       if (!response.ok) throw new Error('Failed to update mapping');
@@ -108,9 +131,8 @@ export default function DirectorPatrolAssignments() {
     }
     try {
       setResettingMappings(true);
-      const response = await fetch(API_BASE_URL + '/api/patrols/zone-mappings/reset_defaults/', {
-        method: 'POST',
-        headers: getHeaders()
+      const response = await fetchWithAuth(API_BASE_URL + '/api/patrols/zone-mappings/reset_defaults/', {
+        method: 'POST'
       });
       const data = await response.json();
       if (response.ok) {
@@ -138,9 +160,8 @@ export default function DirectorPatrolAssignments() {
     setShowModal(false);
     try {
       setAssigning(true);
-      await fetch(API_BASE_URL + '/api/patrols/assignments/auto_assign/', {
-        method: 'POST',
-        headers: getHeaders()
+      await fetchWithAuth(API_BASE_URL + '/api/patrols/assignments/auto_assign/', {
+        method: 'POST'
       });
       await fetchAssignments();
     } catch (err) {
@@ -154,9 +175,8 @@ export default function DirectorPatrolAssignments() {
   const handleManualZoneChange = async (assignmentId, newZone) => {
     setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, zone: newZone, is_manual: true } : a));
     try {
-      await fetch(API_BASE_URL + '/api/patrols/assignments/' + assignmentId + '/', {
+      await fetchWithAuth(API_BASE_URL + '/api/patrols/assignments/' + assignmentId + '/', {
         method: 'PATCH',
-        headers: getHeaders(),
         body: JSON.stringify({ zone: newZone, is_manual: true })
       });
     } catch (err) {
@@ -230,29 +250,29 @@ export default function DirectorPatrolAssignments() {
 
       {/* Zone Mapping Customization Modal */}
       {showMappingModal && createPortal(
-        <div className="fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-[2rem] shadow-[0_25px_70px_rgba(0,0,0,0.35)] w-full max-w-6xl xl:max-w-7xl max-h-[78vh] h-[78vh] flex flex-col transform scale-100 animate-slide-up border border-gray-100 overflow-hidden my-auto">
+        <div className="fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center p-2.5 sm:p-4 md:p-6 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl sm:rounded-[2rem] shadow-[0_25px_70px_rgba(0,0,0,0.35)] w-full max-w-6xl xl:max-w-7xl max-h-[92vh] h-[92vh] sm:max-h-[78vh] sm:h-[78vh] flex flex-col transform scale-100 animate-slide-up border border-gray-100 overflow-hidden my-auto">
             
             {/* Modal Header */}
-            <div className="p-6 md:px-8 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white flex-shrink-0">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-[#003624] flex-shrink-0 shadow-sm">
-                  <span className="material-symbols-outlined text-2xl font-black">map</span>
+            <div className="p-4 sm:p-6 md:px-8 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 bg-white flex-shrink-0">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-[#003624] flex-shrink-0 shadow-sm">
+                  <span className="material-symbols-outlined text-xl sm:text-2xl font-black">map</span>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-pjs font-black text-[#003624] tracking-tight leading-none">
+                  <h2 className="text-lg sm:text-2xl font-pjs font-black text-[#003624] tracking-tight leading-snug">
                     Zone Customization Editor
                   </h2>
-                  <p className="text-slate-500 text-[13px] font-semibold mt-1">
-                    Review and customize the designated campus locations assigned to each Patrol Zone.
+                  <p className="text-slate-500 text-xs sm:text-[13px] font-semibold mt-0.5 sm:mt-1">
+                    Review and customize designated campus locations for each Patrol Zone.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 self-end md:self-auto">
+              <div className="flex items-center gap-2 sm:gap-3 justify-end w-full md:w-auto">
                 {saveSuccessMsg && (
-                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200 animate-fade-in shadow-xs">
-                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 sm:py-1.5 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 animate-fade-in shadow-xs">
+                    <span className="material-symbols-outlined text-[14px]">check_circle</span>
                     {saveSuccessMsg}
                   </span>
                 )}
@@ -260,16 +280,17 @@ export default function DirectorPatrolAssignments() {
                   onClick={handleResetDefaults}
                   disabled={resettingMappings}
                   title="Reset all zones to official campus defaults"
-                  className="text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs disabled:opacity-50"
+                  className="text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs disabled:opacity-50"
                 >
                   <span className={`material-symbols-outlined text-[16px] ${resettingMappings ? 'animate-spin' : ''}`}>
                     restart_alt
                   </span>
-                  Reset Defaults
+                  <span className="hidden sm:inline">Reset Defaults</span>
+                  <span className="sm:hidden">Reset</span>
                 </button>
                 <button 
                   onClick={() => setShowMappingModal(false)} 
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                 >
                   <span className="material-symbols-outlined text-xl">close</span>
                 </button>
@@ -277,9 +298,9 @@ export default function DirectorPatrolAssignments() {
             </div>
 
             {/* Modal Sub-header / Toolbar */}
-            <div className="bg-slate-50/80 px-6 md:px-8 py-3.5 border-b border-gray-100 flex items-center justify-between gap-4 flex-shrink-0">
+            <div className="bg-slate-50/80 px-4 sm:px-6 md:px-8 py-3 border-b border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4 flex-shrink-0">
               {/* Search Box */}
-              <div className="relative w-full max-w-md">
+              <div className="relative w-full sm:max-w-md">
                 <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">
                   search
                 </span>
@@ -288,7 +309,7 @@ export default function DirectorPatrolAssignments() {
                   value={mappingSearch}
                   onChange={(e) => setMappingSearch(e.target.value)}
                   placeholder="Search building name (e.g. Library, Gate, Hall)..."
-                  className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl pl-10 pr-8 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-slate-400 shadow-xs"
+                  className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl pl-10 pr-8 py-2 sm:py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-slate-400 shadow-xs"
                 />
                 {mappingSearch && (
                   <button onClick={() => setMappingSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">
@@ -300,7 +321,7 @@ export default function DirectorPatrolAssignments() {
               {/* Edit Mode Toggle */}
               <button
                 onClick={() => setIsEditMode(!isEditMode)}
-                className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all shadow-xs ${
+                className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs ${
                   isEditMode
                     ? 'bg-[#003624] text-white shadow-md shadow-[#003624]/20'
                     : 'bg-white text-[#003624] border border-emerald-200 hover:bg-emerald-50/60'
@@ -321,17 +342,107 @@ export default function DirectorPatrolAssignments() {
                   <p className="text-xs font-black uppercase tracking-widest text-slate-400">Loading Campus Locations...</p>
                 </div>
               ) : (
-                <table className="w-full text-left border-collapse text-sm">
-                  <thead className="sticky top-0 bg-slate-50 z-10">
-                    <tr className="border-b border-gray-100">
-                      <th className="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest w-36 whitespace-nowrap">Zone</th>
-                      <th className="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest w-64 md:w-72 whitespace-nowrap">Zone Name</th>
-                      <th className="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">
-                        Locations (Physically Nearby) {isEditMode && <span className="text-emerald-700 font-bold lowercase">— click ⇄ or dropdown to reassign</span>}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
+                <>
+                  {/* Desktop Table View */}
+                  <table className="hidden md:table w-full text-left border-collapse text-sm">
+                    <thead className="sticky top-0 bg-slate-50 z-10">
+                      <tr className="border-b border-gray-100">
+                        <th className="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest w-36 whitespace-nowrap">Zone</th>
+                        <th className="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest w-64 md:w-72 whitespace-nowrap">Zone Name</th>
+                        <th className="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                          Locations (Physically Nearby) {isEditMode && <span className="text-emerald-700 font-bold lowercase">— click ⇄ or dropdown to reassign</span>}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {ZONES.map((zoneString, index) => {
+                        const zoneId = 'Zone ' + (index + 1);
+                        const zoneName = zoneString.replace(zoneId + ': ', '');
+                        const allLocsInZone = groupedMappings[zoneString] || [];
+                        const locsInZone = mappingSearch
+                          ? allLocsInZone.filter(l => l.location_name.toLowerCase().includes(mappingSearch.toLowerCase()))
+                          : allLocsInZone;
+                        
+                        return (
+                          <tr key={zoneString} className="hover:bg-slate-50/60 transition-colors">
+                            <td className="py-5 px-6 align-top whitespace-nowrap w-36">
+                              <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-[11px] font-black tracking-wider uppercase bg-[#003624] text-white whitespace-nowrap shadow-xs">
+                                {zoneId}
+                              </span>
+                            </td>
+                            <td className="py-5 px-6 align-top pr-6 w-64 md:w-72">
+                              <p className="font-pjs font-bold text-[#003624] text-[15px] leading-snug">
+                                {zoneName}
+                              </p>
+                              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mt-1 whitespace-nowrap">
+                                {allLocsInZone.length} {allLocsInZone.length === 1 ? 'Location' : 'Locations'}
+                              </p>
+                            </td>
+                            <td className="py-5 px-6 align-top">
+                              <div className="flex flex-wrap items-center gap-2.5">
+                                {locsInZone.length > 0 ? (
+                                  locsInZone.map(l => (
+                                    <span 
+                                      key={l.id} 
+                                      className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[12px] font-semibold bg-slate-50 text-slate-700 border border-slate-200/80 hover:border-emerald-300 hover:bg-emerald-50/50 hover:text-[#003624] transition-all shadow-xs"
+                                    >
+                                      <span className="material-symbols-outlined text-[15px] text-emerald-600">apartment</span>
+                                      <span>{l.location_name}</span>
+                                      {isEditMode && (
+                                        <button
+                                          onClick={() => setMovingLocation(l)}
+                                          title={`Move ${l.location_name} to another zone`}
+                                          className="ml-0.5 w-5 h-5 rounded-md flex items-center justify-center text-slate-400 hover:text-emerald-700 hover:bg-emerald-100 transition-colors"
+                                        >
+                                          <span className="material-symbols-outlined text-[15px]">swap_horiz</span>
+                                        </button>
+                                      )}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="italic text-slate-400 text-xs py-1">
+                                    {mappingSearch ? 'No locations match search in this zone' : 'No locations currently assigned...'}
+                                  </span>
+                                )}
+
+                                {/* Transfer building into this zone dropdown (Edit Mode) */}
+                                {isEditMode && (
+                                  <div className="relative inline-block my-1">
+                                    <select
+                                      value=""
+                                      onChange={(e) => {
+                                        if (e.target.value) {
+                                          handleUpdateMappingZone(Number(e.target.value), zoneString);
+                                          e.target.value = "";
+                                        }
+                                      }}
+                                      className="appearance-none bg-white border border-dashed border-emerald-400 hover:border-emerald-600 text-emerald-800 hover:bg-emerald-50/50 text-[11px] font-black rounded-xl px-3.5 py-1.5 pr-7 outline-none cursor-pointer transition-all shadow-xs"
+                                    >
+                                      <option value="">+ Move Building Here...</option>
+                                      {mappings
+                                        .filter(m => m.zone_name !== zoneString)
+                                        .sort((a, b) => a.location_name.localeCompare(b.location_name))
+                                        .map(m => (
+                                          <option key={m.id} value={m.id}>
+                                            {m.location_name} (from {m.zone_name.split(':')[0]})
+                                          </option>
+                                        ))}
+                                    </select>
+                                    <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-emerald-600 pointer-events-none text-sm">
+                                      add
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  {/* Mobile Zone List (< md) */}
+                  <div className="block md:hidden divide-y divide-slate-100 p-3 space-y-3">
                     {ZONES.map((zoneString, index) => {
                       const zoneId = 'Zone ' + (index + 1);
                       const zoneName = zoneString.replace(zoneId + ': ', '');
@@ -339,96 +450,91 @@ export default function DirectorPatrolAssignments() {
                       const locsInZone = mappingSearch
                         ? allLocsInZone.filter(l => l.location_name.toLowerCase().includes(mappingSearch.toLowerCase()))
                         : allLocsInZone;
-                      
-                      return (
-                        <tr key={zoneString} className="hover:bg-slate-50/60 transition-colors">
-                          <td className="py-5 px-6 align-top whitespace-nowrap w-36">
-                            <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-[11px] font-black tracking-wider uppercase bg-[#003624] text-white whitespace-nowrap shadow-xs">
-                              {zoneId}
-                            </span>
-                          </td>
-                          <td className="py-5 px-6 align-top pr-6 w-64 md:w-72">
-                            <p className="font-pjs font-bold text-[#003624] text-[15px] leading-snug">
-                              {zoneName}
-                            </p>
-                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mt-1 whitespace-nowrap">
-                              {allLocsInZone.length} {allLocsInZone.length === 1 ? 'Location' : 'Locations'}
-                            </p>
-                          </td>
-                          <td className="py-5 px-6 align-top">
-                            <div className="flex flex-wrap items-center gap-2.5">
-                              {locsInZone.length > 0 ? (
-                                locsInZone.map(l => (
-                                  <span 
-                                    key={l.id} 
-                                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[12px] font-semibold bg-slate-50 text-slate-700 border border-slate-200/80 hover:border-emerald-300 hover:bg-emerald-50/50 hover:text-[#003624] transition-all shadow-xs"
-                                  >
-                                    <span className="material-symbols-outlined text-[15px] text-emerald-600">apartment</span>
-                                    <span>{l.location_name}</span>
-                                    {isEditMode && (
-                                      <button
-                                        onClick={() => setMovingLocation(l)}
-                                        title={`Move ${l.location_name} to another zone`}
-                                        className="ml-0.5 w-5 h-5 rounded-md flex items-center justify-center text-slate-400 hover:text-emerald-700 hover:bg-emerald-100 transition-colors"
-                                      >
-                                        <span className="material-symbols-outlined text-[15px]">swap_horiz</span>
-                                      </button>
-                                    )}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="italic text-slate-400 text-xs py-1">
-                                  {mappingSearch ? 'No locations match search in this zone' : 'No locations currently assigned...'}
-                                </span>
-                              )}
 
-                              {/* Transfer building into this zone dropdown (Edit Mode) */}
-                              {isEditMode && (
-                                <div className="relative inline-block my-1">
-                                  <select
-                                    value=""
-                                    onChange={(e) => {
-                                      if (e.target.value) {
-                                        handleUpdateMappingZone(Number(e.target.value), zoneString);
-                                        e.target.value = "";
-                                      }
-                                    }}
-                                    className="appearance-none bg-white border border-dashed border-emerald-400 hover:border-emerald-600 text-emerald-800 hover:bg-emerald-50/50 text-[11px] font-black rounded-xl px-3.5 py-1.5 pr-7 outline-none cursor-pointer transition-all shadow-xs"
-                                  >
-                                    <option value="">+ Move Building Here...</option>
-                                    {mappings
-                                      .filter(m => m.zone_name !== zoneString)
-                                      .sort((a, b) => a.location_name.localeCompare(b.location_name))
-                                      .map(m => (
-                                        <option key={m.id} value={m.id}>
-                                          {m.location_name} (from {m.zone_name.split(':')[0]})
-                                        </option>
-                                      ))}
-                                  </select>
-                                  <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-emerald-600 pointer-events-none text-sm">
-                                    add
-                                  </span>
-                                </div>
-                              )}
+                      return (
+                        <div key={zoneString} className="bg-slate-50/60 rounded-2xl p-3.5 border border-slate-200/60 space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase bg-[#003624] text-white">
+                                {zoneId}
+                              </span>
+                              <h4 className="font-pjs font-bold text-[#003624] text-[14px]">
+                                {zoneName}
+                              </h4>
                             </div>
-                          </td>
-                        </tr>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">
+                              {allLocsInZone.length} {allLocsInZone.length === 1 ? 'Loc' : 'Locs'}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                            {locsInZone.length > 0 ? (
+                              locsInZone.map(l => (
+                                <span 
+                                  key={l.id} 
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold bg-white text-slate-700 border border-slate-200 shadow-xs"
+                                >
+                                  <span className="material-symbols-outlined text-[13px] text-emerald-600">apartment</span>
+                                  <span>{l.location_name}</span>
+                                  {isEditMode && (
+                                    <button
+                                      onClick={() => setMovingLocation(l)}
+                                      className="ml-0.5 w-4 h-4 rounded flex items-center justify-center text-slate-400 hover:text-emerald-700"
+                                    >
+                                      <span className="material-symbols-outlined text-[14px]">swap_horiz</span>
+                                    </button>
+                                  )}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="italic text-slate-400 text-xs">No locations</span>
+                            )}
+
+                            {isEditMode && (
+                              <div className="relative inline-block w-full mt-1">
+                                <select
+                                  value=""
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      handleUpdateMappingZone(Number(e.target.value), zoneString);
+                                      e.target.value = "";
+                                    }
+                                  }}
+                                  className="w-full appearance-none bg-white border border-dashed border-emerald-400 text-emerald-800 text-[11px] font-black rounded-xl px-3 py-2 pr-7 outline-none"
+                                >
+                                  <option value="">+ Move Building Here...</option>
+                                  {mappings
+                                    .filter(m => m.zone_name !== zoneString)
+                                    .sort((a, b) => a.location_name.localeCompare(b.location_name))
+                                    .map(m => (
+                                      <option key={m.id} value={m.id}>
+                                        {m.location_name} (from {m.zone_name.split(':')[0]})
+                                      </option>
+                                    ))}
+                                </select>
+                                <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-600 pointer-events-none text-sm">
+                                  add
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </div>
+                </>
               )}
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-slate-50/70 px-6 md:px-8 py-4 border-t border-gray-100 flex items-center justify-between flex-shrink-0">
-              <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span>{mappings.length} Campus Buildings assigned across 8 Patrol Zones</span>
+            <div className="bg-slate-50/70 px-4 sm:px-6 md:px-8 py-3.5 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-2.5 flex-shrink-0">
+              <div className="flex items-center gap-2 text-slate-500 text-xs font-bold text-center sm:text-left">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                <span>{mappings.length} Campus Buildings across 8 Zones</span>
               </div>
               <button
                 onClick={() => setShowMappingModal(false)}
-                className="bg-[#003624] hover:bg-[#004f36] text-white px-7 py-2.5 rounded-full font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-[#003624]/20 hover:-translate-y-0.5"
+                className="w-full sm:w-auto bg-[#003624] hover:bg-[#004f36] text-white px-7 py-2.5 rounded-full font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-[#003624]/20 hover:-translate-y-0.5"
               >
                 Close Editor
               </button>
@@ -442,17 +548,17 @@ export default function DirectorPatrolAssignments() {
       {/* Auto Assign Modal */}
       {showModal && createPortal(
         <div className="fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-[2rem] shadow-[0_25px_70px_rgba(0,0,0,0.35)] w-full max-w-md p-8 border border-gray-100 transform scale-100 animate-slide-up">
+          <div className="bg-white rounded-[2rem] shadow-[0_25px_70px_rgba(0,0,0,0.35)] w-full max-w-md p-6 sm:p-8 border border-gray-100 transform scale-100 animate-slide-up">
             <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <span className="material-symbols-outlined text-3xl font-black">sync</span>
             </div>
             <h2 className="text-2xl font-pjs font-black text-center text-[#003624] mb-3">Re-Assign All Zones?</h2>
-            <p className="text-center text-slate-500 font-medium leading-relaxed mb-8">
+            <p className="text-center text-slate-500 font-medium leading-relaxed mb-8 text-sm sm:text-base">
               This will instantly shuffle and assign all active SWAFO Officers to new zones for the current month. You can manually adjust them afterwards.
             </p>
             <div className="flex gap-4">
-              <button onClick={() => setShowModal(false)} className="flex-1 py-3.5 rounded-full font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 transition-colors">Cancel</button>
-              <button onClick={executeAutoAssign} className="flex-1 py-3.5 rounded-full font-bold text-white bg-[#003624] hover:bg-[#004f36] shadow-lg shadow-[#003624]/20 transition-colors flex justify-center items-center gap-2">
+              <button onClick={() => setShowModal(false)} className="flex-1 py-3.5 rounded-full font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 transition-colors text-sm">Cancel</button>
+              <button onClick={executeAutoAssign} className="flex-1 py-3.5 rounded-full font-bold text-white bg-[#003624] hover:bg-[#004f36] shadow-lg shadow-[#003624]/20 transition-colors flex justify-center items-center gap-2 text-sm">
                 Yes, Auto-Assign
               </button>
             </div>
@@ -462,17 +568,17 @@ export default function DirectorPatrolAssignments() {
       )}
 
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-[32px] font-pjs font-black text-[#003624] tracking-tight leading-none mb-2">Patrol Assignments</h1>
-          <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">
+          <h1 className="text-2xl sm:text-[32px] font-pjs font-black text-[#003624] tracking-tight leading-tight sm:leading-none mb-1 sm:mb-2">Patrol Assignments</h1>
+          <p className="text-[11px] sm:text-[12px] font-black text-slate-400 uppercase tracking-widest">
             Manage designated patrol zones for all active SWAFO Officers.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={openMappingModal}
-              className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-6 py-3 rounded-full flex items-center gap-2 text-[13px] font-black uppercase tracking-widest transition-all shadow-sm"
+              className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-5 sm:px-6 py-3 rounded-full flex items-center justify-center gap-2 text-[12px] sm:text-[13px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95 w-full sm:w-auto"
             >
               <span className="material-symbols-outlined text-[18px]">map</span>
               Edit Zone Map
@@ -480,7 +586,7 @@ export default function DirectorPatrolAssignments() {
             <button
               onClick={() => setShowModal(true)}
               disabled={assigning}
-              className="bg-[#003624] hover:bg-[#004f36] text-white px-6 py-3 rounded-full flex items-center gap-2 text-[13px] font-black uppercase tracking-widest transition-all hover:-translate-y-0.5 shadow-lg shadow-[#003624]/20 disabled:opacity-50 disabled:hover:translate-y-0"
+              className="bg-[#003624] hover:bg-[#004f36] text-white px-5 sm:px-6 py-3 rounded-full flex items-center justify-center gap-2 text-[12px] sm:text-[13px] font-black uppercase tracking-widest transition-all hover:-translate-y-0.5 active:scale-95 shadow-lg shadow-[#003624]/20 disabled:opacity-50 disabled:hover:translate-y-0 w-full sm:w-auto"
             >
               <span className="material-symbols-outlined text-[18px]">
                 {assigning ? 'sync' : 'shuffle'}
@@ -497,8 +603,8 @@ export default function DirectorPatrolAssignments() {
         </div>
       )}
 
-      {/* Main Table Card */}
-      <div className="bg-white rounded-[1.5rem] p-1 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden">
+      {/* Main Table / Mobile Card Container */}
+      <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden">
         {loading ? (
           <div className="py-24 flex flex-col items-center justify-center gap-4">
              <div className="w-10 h-10 border-4 border-[#003624] border-t-transparent rounded-full animate-spin"></div>
@@ -518,65 +624,127 @@ export default function DirectorPatrolAssignments() {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="py-5 px-7 text-[11px] font-black text-slate-400 uppercase tracking-widest">SWAFO Officer</th>
-                  <th className="py-5 px-7 text-[11px] font-black text-slate-400 uppercase tracking-widest">Designated Zone (Manual Override)</th>
-                  <th className="py-5 px-7 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">Assignment Type</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {assignments.map((assignment) => (
-                  <tr key={assignment.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="py-5 px-7 w-1/3">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 font-black font-pjs text-lg group-hover:scale-110 transition-transform">
-                          {formatOfficerName(assignment.officer_name).charAt(0)}
-                        </div>
-                        <div>
-                           <p className="font-pjs font-bold text-[#003624] text-[15px] leading-tight">
-                             {formatOfficerName(assignment.officer_name)}
-                           </p>
-                           <p className="text-[11px] font-bold text-slate-400 mt-0.5">
-                             SWAFO Officer
-                           </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-5 px-7">
-                      <div className="relative w-full max-w-sm">
-                        <select 
-                          value={assignment.zone}
-                          onChange={(e) => handleManualZoneChange(assignment.id, e.target.value)}
-                          className="w-full appearance-none bg-slate-50 border border-slate-200 text-[#003624] font-bold text-[14px] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
-                        >
-                          {ZONES.map(z => (
-                            <option key={z} value={z}>{z.replace(/^Zone \d+: /, '')}</option>
-                          ))}
-                        </select>
-                        <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
-                      </div>
-                    </td>
-                    <td className="py-5 px-7 text-right">
-                      {assignment.is_manual ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-100">
-                            <span className="material-symbols-outlined text-[14px]">edit_note</span>
-                            Manual
-                          </span>
-                      ) : (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 border border-emerald-100">
-                            <span className="material-symbols-outlined text-[14px]">smart_toy</span>
-                            Auto
-                          </span>
-                      )}
-                    </td>
+          <>
+            {/* Desktop Table (Screen >= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="py-5 px-7 text-[11px] font-black text-slate-400 uppercase tracking-widest">SWAFO Officer</th>
+                    <th className="py-5 px-7 text-[11px] font-black text-slate-400 uppercase tracking-widest">Designated Zone (Manual Override)</th>
+                    <th className="py-5 px-7 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">Assignment Type</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {assignments.map((assignment) => (
+                    <tr key={assignment.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="py-5 px-7 w-1/3">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 font-black font-pjs text-lg group-hover:scale-110 transition-transform">
+                            {formatOfficerName(assignment.officer_name).charAt(0)}
+                          </div>
+                          <div>
+                             <p className="font-pjs font-bold text-[#003624] text-[15px] leading-tight">
+                               {formatOfficerName(assignment.officer_name)}
+                             </p>
+                             <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+                               SWAFO Officer
+                             </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-5 px-7">
+                        <div className="relative w-full max-w-sm">
+                          <select 
+                            value={assignment.zone || ''}
+                            onChange={(e) => handleManualZoneChange(assignment.id, e.target.value)}
+                            className="w-full appearance-none bg-slate-50 border border-slate-200 text-[#003624] font-bold text-[14px] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
+                          >
+                            {ZONES.map(z => (
+                              <option key={z} value={z}>{z.replace(/^Zone \d+: /, '')}</option>
+                            ))}
+                          </select>
+                          <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
+                        </div>
+                      </td>
+                      <td className="py-5 px-7 text-right">
+                        {assignment.is_manual ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-100">
+                              <span className="material-symbols-outlined text-[14px]">edit_note</span>
+                              Manual
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 border border-emerald-100">
+                              <span className="material-symbols-outlined text-[14px]">smart_toy</span>
+                              Auto
+                            </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card List (Screen < md) */}
+            <div className="block md:hidden divide-y divide-slate-100">
+              {assignments.map((assignment) => (
+                <div key={assignment.id} className="p-4 space-y-3.5 hover:bg-slate-50/40 transition-colors">
+                  {/* Top Row: Officer Identity + Assignment Type Badge */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 font-black font-pjs text-base shrink-0">
+                        {formatOfficerName(assignment.officer_name).charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-pjs font-bold text-[#003624] text-[15px] leading-tight truncate">
+                          {formatOfficerName(assignment.officer_name)}
+                        </p>
+                        <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+                          SWAFO Officer
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0">
+                      {assignment.is_manual ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-600 border border-amber-100">
+                          <span className="material-symbols-outlined text-[13px]">edit_note</span>
+                          Manual
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100">
+                          <span className="material-symbols-outlined text-[13px]">smart_toy</span>
+                          Auto
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bottom Row: Full-width Zone Selector */}
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                      Designated Zone (Manual Override)
+                    </label>
+                    <div className="relative w-full">
+                      <select 
+                        value={assignment.zone || ''}
+                        onChange={(e) => handleManualZoneChange(assignment.id, e.target.value)}
+                        className="w-full appearance-none bg-slate-50 border border-slate-200 text-[#003624] font-bold text-[13px] rounded-xl pl-3.5 pr-10 py-3 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
+                      >
+                        {ZONES.map(z => (
+                          <option key={z} value={z}>{z.replace(/^Zone \d+: /, '')}</option>
+                        ))}
+                      </select>
+                      <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xl">
+                        expand_more
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

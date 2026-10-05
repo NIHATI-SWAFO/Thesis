@@ -171,7 +171,10 @@ class ViolationListView(generics.ListAPIView):
         if email:
             queryset = queryset.filter(student__user__email__iexact=email)
         if student_id:
-            queryset = queryset.filter(student__student_number=student_id)
+            if str(student_id).isdigit():
+                queryset = queryset.filter(models.Q(student__student_number=student_id) | models.Q(student__id=student_id))
+            else:
+                queryset = queryset.filter(student__student_number=student_id)
         if college:
             queryset = queryset.filter(student__course__iexact=college)
 

@@ -8,6 +8,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  resolve: {
+    preserveSymlinks: true,
+  },
   server: {
     host: true,
     allowedHosts: true,

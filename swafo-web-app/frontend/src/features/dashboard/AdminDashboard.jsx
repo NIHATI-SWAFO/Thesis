@@ -67,24 +67,24 @@ export default function AdminDashboard() {
     : 0;
 
   return (
-    <div className="animate-fade-in space-y-8 pb-16">
+    <div className="animate-fade-in space-y-6 sm:space-y-8 pb-16">
       
       {/* ══════════════════════════════ 1. TOP KPI DASHBOARD ══════════════════════════════ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         
         {/* Total Institutional Infractions */}
         <div 
           onClick={() => navigate('/admin/cases')}
-          className="bg-white rounded-[1.5rem] p-7 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between cursor-pointer hover:border-emerald-500/20 hover:shadow-xl hover:shadow-emerald-900/5 transition-all group"
+          className="bg-white rounded-2xl sm:rounded-[1.5rem] p-4 sm:p-7 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between cursor-pointer hover:border-emerald-500/20 hover:shadow-xl hover:shadow-emerald-900/5 transition-all group"
         >
-           <div className="flex justify-between items-start">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-tight group-hover:text-emerald-600 transition-colors">Institutional<br/>Infractions</span>
-              <ShieldAlert size={20} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
+           <div className="flex justify-between items-start gap-1">
+              <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider leading-tight group-hover:text-emerald-600 transition-colors">Institutional<br/>Infractions</span>
+              <ShieldAlert size={18} className="text-slate-300 group-hover:text-emerald-500 transition-colors shrink-0" />
            </div>
-           <div className="flex items-end gap-3 mt-4">
-              <h3 className="text-[36px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{data.status_distribution.total}</h3>
-              <div className="flex items-center gap-1 text-rose-500 text-[12px] font-black mb-1">
-                 <TrendingUp size={12} className="rotate-45" /> 12%
+           <div className="flex items-end gap-2 sm:gap-3 mt-3 sm:mt-4">
+              <h3 className="text-2xl sm:text-[36px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{data.status_distribution.total}</h3>
+              <div className="flex items-center gap-0.5 sm:gap-1 text-rose-500 text-[10px] sm:text-[12px] font-black mb-0.5 sm:mb-1">
+                 <TrendingUp size={11} className="rotate-45" /> 12%
               </div>
            </div>
         </div>
@@ -92,29 +92,29 @@ export default function AdminDashboard() {
         {/* Pending Director Decisions */}
         <div 
           onClick={() => navigate('/admin/cases')}
-          className="bg-white rounded-[1.5rem] p-7 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between cursor-pointer hover:border-amber-500/20 hover:shadow-xl hover:shadow-amber-900/5 transition-all group"
+          className="bg-white rounded-2xl sm:rounded-[1.5rem] p-4 sm:p-7 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between cursor-pointer hover:border-amber-500/20 hover:shadow-xl hover:shadow-amber-900/5 transition-all group"
         >
-           <div className="flex justify-between items-start">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-tight group-hover:text-amber-600 transition-colors">Pending Decisions</span>
-              <Clock size={20} className="text-slate-300 group-hover:text-amber-500 transition-colors" />
+           <div className="flex justify-between items-start gap-1">
+              <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider leading-tight group-hover:text-amber-600 transition-colors">Pending<br className="sm:hidden"/> Decisions</span>
+              <Clock size={18} className="text-slate-300 group-hover:text-amber-500 transition-colors shrink-0" />
            </div>
-           <div className="flex items-end gap-3 mt-4">
-              <h3 className="text-[36px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{stats.pending_director_decisions.toString().padStart(2, '0')}</h3>
-              <div className="flex items-center gap-1 text-emerald-500 text-[10px] font-black mb-1 opacity-40">
+           <div className="flex items-end gap-2 sm:gap-3 mt-3 sm:mt-4">
+              <h3 className="text-2xl sm:text-[36px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{stats.pending_director_decisions.toString().padStart(2, '0')}</h3>
+              <div className="flex items-center gap-1 text-emerald-500 text-[10px] font-black mb-0.5 sm:mb-1 opacity-40">
                  ↘ 05
               </div>
            </div>
         </div>
 
         {/* Institutional Resolution Rate */}
-        <div className="bg-white rounded-[1.5rem] p-7 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between group">
-           <div className="flex justify-between items-start">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-tight">Resolution Rate</span>
-              <BarChart3 size={20} className="text-slate-300" />
+        <div className="bg-white rounded-2xl sm:rounded-[1.5rem] p-4 sm:p-7 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between group">
+           <div className="flex justify-between items-start gap-1">
+              <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider leading-tight">Resolution<br className="sm:hidden"/> Rate</span>
+              <BarChart3 size={18} className="text-slate-300 shrink-0" />
            </div>
-           <div className="flex items-end gap-3 mt-4">
-              <h3 className="text-[36px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{resolutionRate}%</h3>
-              <div className="flex items-center gap-1 text-emerald-500 text-[12px] font-black mb-1">
+           <div className="flex items-end gap-2 sm:gap-3 mt-3 sm:mt-4">
+              <h3 className="text-2xl sm:text-[36px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{resolutionRate}%</h3>
+              <div className="flex items-center gap-0.5 sm:gap-1 text-emerald-500 text-[10px] sm:text-[12px] font-black mb-0.5 sm:mb-1">
                  ↑ 4%
               </div>
            </div>
@@ -123,39 +123,39 @@ export default function AdminDashboard() {
         {/* Active Campus Surveillance */}
         <div 
           onClick={() => navigate('/admin/patrols')}
-          className="bg-white rounded-[1.5rem] p-7 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between cursor-pointer hover:border-indigo-500/20 hover:shadow-xl hover:shadow-indigo-900/5 transition-all group"
+          className="bg-white rounded-2xl sm:rounded-[1.5rem] p-4 sm:p-7 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between cursor-pointer hover:border-indigo-500/20 hover:shadow-xl hover:shadow-indigo-900/5 transition-all group"
         >
-           <div className="flex justify-between items-start">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-tight group-hover:text-indigo-600 transition-colors">Active Officers</span>
-              <Users size={20} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
+           <div className="flex justify-between items-start gap-1">
+              <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider leading-tight group-hover:text-indigo-600 transition-colors">Active<br className="sm:hidden"/> Officers</span>
+              <Users size={18} className="text-slate-300 group-hover:text-indigo-500 transition-colors shrink-0" />
            </div>
-           <div className="flex items-center gap-4 mt-4">
-              <h3 className="text-[36px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{stats.active_patrols.toString().padStart(2, '0')}</h3>
-              <div className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[9px] font-black rounded uppercase tracking-widest border border-emerald-100">
-                 Operational
+           <div className="flex items-center gap-2 sm:gap-4 mt-3 sm:mt-4">
+              <h3 className="text-2xl sm:text-[36px] font-pjs font-black text-[#003624] tracking-tighter leading-none">{stats.active_patrols.toString().padStart(2, '0')}</h3>
+              <div className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-emerald-50 text-emerald-600 text-[8px] sm:text-[9px] font-black rounded uppercase tracking-wider border border-emerald-100">
+                 Active
               </div>
            </div>
         </div>
       </div>
 
       {/* ══════════════════════════════ 2. TRENDS & HOTSPOTS COMPACT SPLIT ══════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
         
         {/* Temporal Trends Chart */}
         <div className="lg:col-span-8 flex flex-col group h-full relative">
            <ViolationsOverTimeChart 
              analytics={data} 
              headerActions={
-                <div className="flex bg-slate-50 p-1 rounded-xl gap-1 mr-2">
+                <div className="flex bg-slate-50 p-1 rounded-xl gap-1">
                   <button 
                     onClick={() => setTimeRange('week')}
-                    className={`px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${timeRange === 'week' ? 'bg-white text-[#003624] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${timeRange === 'week' ? 'bg-white text-[#003624] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                   >
                     Week
                   </button>
                   <button 
                     onClick={() => setTimeRange('month')}
-                    className={`px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${timeRange === 'month' ? 'bg-white text-[#003624] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${timeRange === 'month' ? 'bg-white text-[#003624] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                   >
                     Month
                   </button>
@@ -165,15 +165,15 @@ export default function AdminDashboard() {
         </div>
 
         {/* Hotspots Side Panel */}
-        <div className="lg:col-span-4 bg-white rounded-[2rem] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.02)] border border-gray-100 flex flex-col">
-           <div className="flex items-center gap-3 mb-8">
+        <div className="lg:col-span-4 bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.02)] border border-gray-100 flex flex-col">
+           <div className="flex items-center gap-3 mb-5 sm:mb-8">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                  <MapPin size={20} />
               </div>
-              <h3 className="text-[18px] font-pjs font-black text-[#003624] tracking-tight uppercase">Hotspots</h3>
+              <h3 className="text-base sm:text-[18px] font-pjs font-black text-[#003624] tracking-tight uppercase">Hotspots</h3>
            </div>
 
-           <div className="space-y-4 flex-1 overflow-y-auto max-h-[300px] pr-2 scrollbar-hide">
+           <div className="space-y-3 sm:space-y-4 flex-1 overflow-y-auto max-h-[300px] pr-1 sm:pr-2 scrollbar-hide">
               {hotspots.slice(0, 3).map((h, i) => {
                 const badgeColors = [
                    'bg-rose-50 text-rose-500 border-rose-100',
@@ -183,17 +183,17 @@ export default function AdminDashboard() {
                 ];
                 const colorClass = badgeColors[i] || badgeColors[3];
                 return (
-                  <div key={i} className="group p-4 bg-white rounded-2xl border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)] transition-all duration-500 flex items-center gap-5 cursor-pointer">
-                     <div className={`w-10 h-10 rounded-full border ${colorClass} text-[11px] font-black flex items-center justify-center shadow-sm`}>
+                  <div key={i} className="group p-3 sm:p-4 bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)] transition-all duration-500 flex items-center gap-3.5 sm:gap-5 cursor-pointer">
+                     <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full border ${colorClass} text-[11px] font-black flex items-center justify-center shadow-sm shrink-0`}>
                         {(i + 1).toString().padStart(2, '0')}
                      </div>
-                     <div className="flex-1">
-                        <h4 className="text-[14px] font-black text-gray-800 leading-tight mb-0.5">{h.name}</h4>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Campus Hotspot</p>
+                     <div className="flex-1 min-w-0">
+                        <h4 className="text-[13px] sm:text-[14px] font-black text-gray-800 leading-tight mb-0.5 truncate">{h.name}</h4>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Campus Hotspot</p>
                      </div>
-                     <div className="flex items-center gap-3">
-                        <span className="text-[16px] font-black text-[#003624]">{h.count.toString().padStart(2, '0')}</span>
-                        <TrendingUp size={14} className={h.count > 5 ? 'text-rose-500' : 'text-emerald-500'} />
+                     <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                        <span className="text-[15px] sm:text-[16px] font-black text-[#003624]">{h.count.toString().padStart(2, '0')}</span>
+                        <TrendingUp size={13} className={h.count > 5 ? 'text-rose-500' : 'text-emerald-500'} />
                      </div>
                   </div>
                 );
@@ -202,7 +202,7 @@ export default function AdminDashboard() {
 
            <button 
              onClick={() => navigate('/admin/analytics')}
-             className="w-full mt-6 py-3.5 rounded-xl border-2 border-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-[#003624] hover:text-white hover:border-[#003624] transition-all"
+             className="w-full mt-4 sm:mt-6 py-3 sm:py-3.5 rounded-xl border-2 border-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-[#003624] hover:text-white hover:border-[#003624] transition-all"
            >
               View All Zones
            </button>
@@ -210,23 +210,24 @@ export default function AdminDashboard() {
       </div>
 
       {/* ══════════════════════════════ 3. DECISION QUEUE & POLICY (INVESTIGATION VIEW) ══════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
         
-        {/* Director Decision Queue - Table Layout */}
-        <div className="lg:col-span-8 bg-white rounded-[2.5rem] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.02)] border border-gray-100 flex flex-col">
-           <div className="flex justify-between items-center mb-8 px-2">
-              <div className="flex items-center gap-3">
-                 <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#003624] flex items-center justify-center">
+        {/* Director Decision Queue */}
+        <div className="lg:col-span-8 bg-white rounded-2xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.02)] border border-gray-100 flex flex-col">
+           <div className="flex justify-between items-center mb-5 sm:mb-8 px-1 sm:px-2">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                 <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-50 text-[#003624] flex items-center justify-center">
                     <Gavel size={18} />
                  </div>
-                 <h3 className="text-[18px] font-pjs font-black text-[#003624] tracking-tight uppercase">Director Decision Queue</h3>
+                 <h3 className="text-base sm:text-[18px] font-pjs font-black text-[#003624] tracking-tight uppercase">Director Decision Queue</h3>
               </div>
-              <div className="px-3 py-1 bg-rose-600 text-white text-[9px] font-black rounded-lg uppercase tracking-widest shadow-lg shadow-rose-900/20">
+              <div className="px-2.5 sm:px-3 py-1 bg-rose-600 text-white text-[9px] font-black rounded-lg uppercase tracking-widest shadow-md shadow-rose-900/20">
                  Priority
               </div>
            </div>
            
-           <div className="flex-1 overflow-x-auto custom-scrollbar pb-4">
+           {/* Desktop Table View (>= md) */}
+           <div className="hidden md:block flex-1 overflow-x-auto custom-scrollbar pb-2">
               <table className="w-full min-w-[600px]">
                  <thead>
                     <tr className="border-b border-gray-50">
@@ -270,33 +271,65 @@ export default function AdminDashboard() {
                     ))}
                  </tbody>
               </table>
-              {(!data.director_alert_queue || data.director_alert_queue.length === 0) && (
-                <div className="py-20 text-center">
-                   <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">No high-priority decisions pending</p>
-                </div>
-              )}
            </div>
+
+           {/* Mobile Card View (< md) */}
+           <div className="block md:hidden divide-y divide-gray-100">
+             {data.director_alert_queue?.map((s, i) => (
+               <div key={i} className="py-3.5 space-y-2.5">
+                 <div className="flex items-start justify-between gap-2.5">
+                   <div className="flex items-center gap-3 min-w-0">
+                     <div className="w-9 h-9 rounded-full bg-emerald-50 shrink-0 border border-emerald-100 flex items-center justify-center text-[#003624]">
+                       <Users size={16} />
+                     </div>
+                     <div className="min-w-0">
+                       <p className="text-[13px] font-black text-gray-900 leading-tight truncate">{s.name}</p>
+                       <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight mt-0.5 truncate">{s.college} • #{s.id?.slice(-5) || '?????'}</p>
+                     </div>
+                   </div>
+                   <span className={`shrink-0 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${s.distinct_rules > 2 ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+                     {s.distinct_rules > 2 ? 'Critical' : 'Major'}
+                   </span>
+                 </div>
+                 <div className="flex items-center justify-between pt-1">
+                   <span className="text-[11px] font-semibold text-slate-500">{s.date}</span>
+                   <button
+                     onClick={() => navigate('/admin/students/' + s.id)}
+                     className="px-4 py-1.5 rounded-xl bg-[#003624] text-white text-[10px] font-black uppercase tracking-widest shadow-sm active:scale-95 transition-all"
+                   >
+                     Review
+                   </button>
+                 </div>
+               </div>
+             ))}
+           </div>
+
+           {(!data.director_alert_queue || data.director_alert_queue.length === 0) && (
+             <div className="py-16 text-center">
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">No high-priority decisions pending</p>
+             </div>
+           )}
         </div>
 
         {/* Policy Compliance Distribution */}
-        <div className="lg:col-span-4 bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)]">
-           <div className="flex justify-between items-start mb-10">
+        <div className="lg:col-span-4 bg-white rounded-2xl sm:rounded-[2.5rem] p-5 sm:p-10 border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)]">
+           <div className="flex justify-between items-start mb-6 sm:mb-10">
               <div>
-                 <h3 className="text-[18px] font-pjs font-black text-[#003624] tracking-tight uppercase mb-1">Policy Compliance Distribution</h3>
-                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Current quarter categorical analysis</p>
+                 <h3 className="text-base sm:text-[18px] font-pjs font-black text-[#003624] tracking-tight uppercase mb-1">Policy Compliance Distribution</h3>
+                 <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-widest">Current quarter categorical analysis</p>
               </div>
-              <BarChart3 size={20} className="text-emerald-400" />
+              <BarChart3 size={20} className="text-emerald-400 shrink-0" />
            </div>
 
-           <div className="space-y-8">
+           <div className="space-y-5 sm:space-y-8">
               {data.policy_breakdown?.map((p, i) => {
                 const total = data.status_distribution.total || 1;
                 const pct = (p.count / total) * 100;
                 return (
                   <div key={i} className="group">
-                    <div className="flex justify-between items-end mb-2.5 px-0.5">
-                      <span className="text-[13px] font-black text-gray-700 tracking-tight">{p.name}</span>
-                      <span className="text-[14px] font-black text-[#003624]">{Math.round(pct)}%</span>
+                    <div className="flex justify-between items-end mb-2 px-0.5">
+                      <span className="text-[12px] sm:text-[13px] font-black text-gray-700 tracking-tight">{p.name}</span>
+                      <span className="text-[13px] sm:text-[14px] font-black text-[#003624]">{Math.round(pct)}%</span>
                     </div>
                     <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
                        <div 
@@ -313,3 +346,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

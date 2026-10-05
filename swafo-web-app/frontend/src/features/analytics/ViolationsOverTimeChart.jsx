@@ -77,43 +77,43 @@ export default function ViolationsOverTimeChart({ analytics, headerActions }) {
   }));
 
   return (
-    <div className="bg-white rounded-[3rem] p-12 border border-[#f1f5f9] shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-full">
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex flex-col gap-3">
+    <div className="bg-white rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] p-4 sm:p-8 md:p-12 border border-[#f1f5f9] shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-full">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4">
+        <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-3 relative">
-            <BarChart3 className="text-[#004d33] opacity-40" />
-            <h3 className="text-[22px] font-pjs font-black text-[#003624] tracking-tight">Violations Over Time</h3>
+            <BarChart3 className="text-[#004d33] opacity-40 shrink-0" />
+            <h3 className="text-lg sm:text-[22px] font-pjs font-black text-[#003624] tracking-tight">Violations Over Time</h3>
             <button 
               onClick={() => setShowHelper(!showHelper)}
-              className="text-slate-300 hover:text-emerald-600 transition-colors"
+              className="text-slate-300 hover:text-emerald-600 transition-colors p-0.5"
             >
               <HelpCircle size={18} />
             </button>
 
             {showHelper && (
-              <div className="absolute top-10 left-0 w-[320px] bg-white rounded-2xl shadow-2xl border border-emerald-100 p-6 z-[150] animate-fade-in">
+              <div className="absolute top-10 left-0 w-[290px] sm:w-[320px] bg-white rounded-2xl shadow-2xl border border-emerald-100 p-5 sm:p-6 z-[150] animate-fade-in">
                 <div className="flex justify-between items-start mb-4">
                   <h4 className="font-pjs font-black text-[#003624]">How to read this chart</h4>
                   <button onClick={() => setShowHelper(false)} className="text-slate-400 hover:text-rose-500 bg-slate-50 hover:bg-rose-50 rounded-full p-1 transition-colors">
                     <X size={14} />
                   </button>
                 </div>
-                <div className="space-y-4 text-[12px] text-slate-600 leading-relaxed">
+                <div className="space-y-3.5 text-[11px] sm:text-[12px] text-slate-600 leading-relaxed">
                   <p>
                     <strong className="text-[#10b981]">Daily Violations (Solid Line):</strong><br/>
                     The exact number of infractions recorded on a specific day.
                   </p>
                   <p>
                     <strong className="text-[#065f46]">7-Day Moving Average (Dashed Line):</strong><br/>
-                    A rolling average of the past 7 days. It smooths out day-to-day noise to reveal the true underlying trend. It may appear above the daily line if recent days have lower violations than the previous week.
+                    A rolling average of the past 7 days. It smooths out day-to-day noise to reveal the true underlying trend.
                   </p>
                   <p>
                     <strong className="text-[#f59e0b]">Spike Annotations (⚠):</strong><br/>
-                    Automatically flags days where the violation count is more than 1.5x higher than the moving average, indicating anomalous activity.
+                    Flags days where violations exceed 1.5x of the moving average.
                   </p>
                   <p>
                     <strong className="text-[#64748b]">Weekends (Shaded Areas):</strong><br/>
-                    Non-school days are shaded to provide context for expected drops in volume.
+                    Non-school days are shaded for context.
                   </p>
                 </div>
               </div>
@@ -121,7 +121,7 @@ export default function ViolationsOverTimeChart({ analytics, headerActions }) {
           </div>
           {analytics.seasonality_trend && (
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`whitespace-nowrap inline-flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider ${
+              <span className={`whitespace-nowrap inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl uppercase tracking-wider ${
                 analytics.seasonality_trend.direction === 'RISING' ? 'bg-rose-50 text-rose-600' :
                 analytics.seasonality_trend.direction === 'DECLINING' ? 'bg-emerald-50 text-emerald-600' :
                 'bg-slate-100 text-slate-500'
@@ -137,12 +137,12 @@ export default function ViolationsOverTimeChart({ analytics, headerActions }) {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           {headerActions}
           <div className="flex bg-slate-100 rounded-xl p-1 shrink-0">
             <button
               onClick={() => setSchoolDaysOnly(false)}
-              className={`whitespace-nowrap px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${
+              className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${
                 !schoolDaysOnly ? 'bg-white text-[#003624] shadow-sm' : 'text-slate-400 hover:text-slate-600'
               }`}
             >
@@ -150,7 +150,7 @@ export default function ViolationsOverTimeChart({ analytics, headerActions }) {
             </button>
             <button
               onClick={() => setSchoolDaysOnly(true)}
-              className={`whitespace-nowrap px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${
+              className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${
                 schoolDaysOnly ? 'bg-white text-[#003624] shadow-sm' : 'text-slate-400 hover:text-slate-600'
               }`}
             >
@@ -161,18 +161,18 @@ export default function ViolationsOverTimeChart({ analytics, headerActions }) {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-6 mb-6 ml-1">
+      <div className="flex items-center gap-4 sm:gap-6 mb-4 sm:mb-6 ml-0.5 flex-wrap">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-[3px] bg-[#10b981] rounded-full"></div>
-          <span className="text-[11px] font-bold text-slate-500">Daily Violations</span>
+          <div className="w-4 sm:w-5 h-[3px] bg-[#10b981] rounded-full"></div>
+          <span className="text-[10px] sm:text-[11px] font-bold text-slate-500">Daily Violations</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-5 h-[3px] border-t-2 border-dashed border-[#065f46]"></div>
-          <span className="text-[11px] font-bold text-slate-500">7-Day Moving Average</span>
+          <div className="w-4 sm:w-5 h-[3px] border-t-2 border-dashed border-[#065f46]"></div>
+          <span className="text-[10px] sm:text-[11px] font-bold text-slate-500">7-Day Moving Avg</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-[#f0fdf4] border border-[#bbf7d0] rounded-sm"></div>
-          <span className="text-[11px] font-bold text-slate-500">Weekend</span>
+          <span className="text-[10px] sm:text-[11px] font-bold text-slate-500">Weekend</span>
         </div>
       </div>
 

@@ -37,8 +37,9 @@ export default function RecordViolation() {
   const fileInputRef = useRef(null);
   const resultRef = useRef(null);
 
-  const [mobileStep, setMobileStep] = useState('scan'); // 'scan', 'manual', 'confirm', 'form'
+  const [mobileStep, setMobileStep] = useState('student'); // 'student', 'details', 'sanction'
   const [showScannerModal, setShowScannerModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   /**
    * Called by BarcodeScanner once a barcode is decoded.
@@ -57,15 +58,13 @@ export default function RecordViolation() {
           const exact = data.find(s => s.student_number === scannedValue) || data[0];
           setFoundStudent(exact);
           fetchStudentHistory(exact.user_details?.email);
-          setMobileStep('confirm');
+          setMobileStep('student');
         } else {
-          alert(`No student found for barcode: "${scannedValue}". Try manual entry.`);
-          setMobileStep('manual');
+          alert(`No student found for barcode: "${scannedValue}". Try searching by name or number.`);
         }
       }
     } catch (e) {
       console.error('Barcode lookup failed:', e);
-      setMobileStep('manual');
     } finally {
       setIsSearching(false);
     }
@@ -167,7 +166,10 @@ export default function RecordViolation() {
   };
 
   const handleGenerateRecommendation = async () => {
-    if (!formData.violationType || !foundStudent) return;
+    if (!formData.violationType || !foundStudent) {
+      alert("Please select a target student and a handbook violation rule first.");
+      return;
+    }
     setIsGenerating(true);
     try {
       const response = await fetch(
@@ -177,9 +179,13 @@ export default function RecordViolation() {
       if (response.ok) {
         const data = await response.json();
         setAssessment(data);
+        setMobileStep('sanction');
         setTimeout(() => {
           resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 100);
+      } else {
+        const err = await response.json();
+        alert(`Assessment error: ${err.message || 'Unable to assess violation'}`);
       }
     } catch (error) {
       console.error("Assessment failed:", error);
@@ -264,9 +270,27 @@ export default function RecordViolation() {
     });
     setSmartSearchQuery('');
     setEvidenceFiles([]);
+    setFoundStudent(null);
+    setMobileStep('student');
 
-    // Return to the previous screen (Live Map)
+    // Return to the previous screen (Live Map / Dashboard)
     navigate(-1);
+  };
+
+  const handleLogAnother = () => {
+    setShowSuccess(false);
+    setAssessment(null);
+    setFormData({
+      violationType: '',
+      incidentDate: new Date().toISOString().split('T')[0],
+      incidentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+      location: '',
+      description: '',
+    });
+    setSmartSearchQuery('');
+    setEvidenceFiles([]);
+    setFoundStudent(null);
+    setMobileStep('student');
   };
 
   const handleInputChange = (e) => {
@@ -544,7 +568,7 @@ export default function RecordViolation() {
                     <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors">list_alt</span>
                     <select
                       name="violationType"
-                      value={formData.violationType}
+                      value={formData.violationType || ''}
                       onChange={handleInputChange}
                       className="w-full bg-slate-50 border-2 border-transparent rounded-2xl h-[64px] pl-14 pr-4 text-[15px] font-bold text-slate-700 outline-none focus:bg-white focus:border-emerald-100 focus:shadow-lg focus:shadow-emerald-950/5 transition-all appearance-none"
                     >
@@ -564,14 +588,14 @@ export default function RecordViolation() {
                     <label className="block text-[11px] font-black text-[#003624]/40 uppercase tracking-[0.2em] mb-3">Incident Date</label>
                     <div className="relative">
                       <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-[20px]">event</span>
-                      <input type="date" name="incidentDate" value={formData.incidentDate} onChange={handleInputChange} className="w-full bg-slate-50 border-none rounded-2xl h-[60px] pl-12 pr-4 text-[14px] font-bold text-slate-700 outline-none focus:bg-white focus:ring-4 ring-emerald-50 transition-all" />
+                      <input type="date" name="incidentDate" value={formData.incidentDate || ''} onChange={handleInputChange} className="w-full bg-slate-50 border-none rounded-2xl h-[60px] pl-12 pr-4 text-[14px] font-bold text-slate-700 outline-none focus:bg-white focus:ring-4 ring-emerald-50 transition-all" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-[11px] font-black text-[#003624]/40 uppercase tracking-[0.2em] mb-3">Logging Time</label>
                     <div className="relative">
                       <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-[20px]">alarm</span>
-                      <input type="time" name="incidentTime" value={formData.incidentTime} onChange={handleInputChange} className="w-full bg-slate-50 border-none rounded-2xl h-[60px] pl-12 pr-4 text-[14px] font-bold text-slate-700 outline-none focus:bg-white focus:ring-4 ring-emerald-50 transition-all" />
+                      <input type="time" name="incidentTime" value={formData.incidentTime || ''} onChange={handleInputChange} className="w-full bg-slate-50 border-none rounded-2xl h-[60px] pl-12 pr-4 text-[14px] font-bold text-slate-700 outline-none focus:bg-white focus:ring-4 ring-emerald-50 transition-all" />
                     </div>
                   </div>
                 </div>
@@ -584,7 +608,7 @@ export default function RecordViolation() {
                       type="text"
                       name="location"
                       placeholder="Search campus building or gate..."
-                      value={locationSearchQuery || formData.location}
+                      value={locationSearchQuery || formData.location || ''}
                       onFocus={() => setShowLocationDropdown(true)}
                       onChange={(e) => {
                         setLocationSearchQuery(e.target.value);
@@ -636,7 +660,7 @@ export default function RecordViolation() {
 
                 <div>
                   <label className="block text-[11px] font-black text-[#003624]/40 uppercase tracking-[0.2em] mb-3">Contextual Remarks</label>
-                  <textarea name="description" rows="4" placeholder="Objectively describe the observed behavior and situational factors..." value={formData.description} onChange={handleInputChange} className="w-full bg-slate-50 border-none rounded-[2rem] p-6 text-[15px] font-medium text-slate-600 outline-none focus:bg-white focus:ring-4 ring-emerald-50 transition-all resize-none leading-relaxed" />
+                  <textarea name="description" rows="4" placeholder="Objectively describe the observed behavior and situational factors..." value={formData.description || ''} onChange={handleInputChange} className="w-full bg-slate-50 border-none rounded-[2rem] p-6 text-[15px] font-medium text-slate-600 outline-none focus:bg-white focus:ring-4 ring-emerald-50 transition-all resize-none leading-relaxed" />
                 </div>
 
                 {/* Evidence & Media Upload */}
@@ -841,368 +865,735 @@ export default function RecordViolation() {
           </div>
         )}
 
-        {/* SUCCESS DIALOG - PORTAL */}
-        {showSuccess && createPortal(
-          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-6 bg-[#003624]/70 backdrop-blur-2xl animate-in fade-in duration-500">
-            <div className="bg-white rounded-[4rem] w-full max-w-[540px] p-10 md:p-14 text-center shadow-[0_50px_150px_rgba(0,0,0,0.5)] border border-white/20 animate-in zoom-in-95 duration-300 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500"></div>
-
-              <div className="w-24 h-24 rounded-[2rem] bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-8 shadow-inner">
-                <span className="material-symbols-outlined text-[48px] font-bold animate-bounce-slow">verified</span>
-              </div>
-
-              <h2 className="text-[28px] md:text-[32px] font-black text-[#003624] mb-3 tracking-tighter leading-none">Incident Securely Logged</h2>
-              <p className="text-[10px] md:text-[12px] font-black text-emerald-600/60 uppercase tracking-[0.3em] mb-10">Permanent Reference: SW-{lastLoggedId?.toString().padStart(4, '0')}</p>
-
-              <div className="bg-slate-50 rounded-[2.5rem] p-6 md:p-8 mb-12 text-left border border-slate-100 shadow-inner group">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Actioned Sanction</p>
-                <p className="text-[18px] md:text-[22px] font-black text-[#003624] leading-tight group-hover:text-emerald-700 transition-colors">{assessment?.recommendation}</p>
-                <div className="mt-6 pt-4 border-t border-slate-200 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[16px] text-emerald-500">task_alt</span>
-                  <span className="text-[11px] font-bold text-slate-500">Automated Parent/Guardian Notification Queued</span>
-                </div>
-              </div>
-
-              <button onClick={handleCloseSuccess} className="w-full h-[76px] bg-[#003624] text-white rounded-[2rem] font-black text-[13px] md:text-[15px] uppercase tracking-[0.2em] hover:bg-[#004d35] transition-all shadow-[0_15px_40px_rgba(0,54,36,0.3)] active:scale-[0.98]">Dismiss & Start New Session</button>
-            </div>
-          </div>, document.body
-        )}
-
-        {/* DESKTOP SCANNER MODAL — real camera */}
-        {showScannerModal && createPortal(
-          <BarcodeScanner
-            onScan={handleBarcodeScan}
-            onClose={() => setShowScannerModal(false)}
-          />,
-          document.body
-        )}
-
       </div>
 
-      {/* MOBILE LAYOUT (WIZARD) */}
-      <div className="block lg:hidden min-h-screen bg-slate-50 font-pjs pb-24">
-        {/* STEP 1: SCANNER — real camera full screen */}
-        {mobileStep === 'scan' && (
-          <BarcodeScanner
-            onScan={handleBarcodeScan}
-            onClose={() => setMobileStep('manual')}
-          />
-        )}
-
-        {/* STEP 1.5: MANUAL ENTRY */}
-        {mobileStep === 'manual' && (
-          <div className="flex flex-col items-center pt-16 px-6">
-            <button onClick={() => setMobileStep('scan')} className="absolute top-6 left-6 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-              <span className="material-symbols-outlined">arrow_back</span>
+      {/* ══════════════════════════════ MOBILE LAYOUT (3-STEP REFINED WIZARD) ══════════════════════════════ */}
+      <div className="block lg:hidden font-pjs pb-20">
+        
+        {/* Page Header (Seamlessly matches portal theme) */}
+        <div className="flex items-center justify-between gap-3 mb-4 pt-1">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                if (mobileStep === 'sanction') setMobileStep('details');
+                else if (mobileStep === 'details') setMobileStep('student');
+                else navigate(-1);
+              }}
+              className="w-10 h-10 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center text-[#003624] active:scale-90 transition-transform cursor-pointer shrink-0"
+              aria-label="Back"
+            >
+              <span className="material-symbols-outlined text-[22px]">arrow_back</span>
             </button>
-            <h2 className="text-[28px] font-black text-[#003624] mb-8 text-center mt-6">Manual Lookup</h2>
-            <div className="w-full relative mb-6">
-              <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder="Student ID or Name..." className="w-full h-16 bg-white rounded-2xl pl-14 pr-6 text-[16px] font-bold outline-none border border-slate-200 focus:border-emerald-500 shadow-sm" />
+            <div>
+              <p className="font-black text-[9px] text-gray-400 tracking-[0.2em] uppercase mb-0.5">
+                {mobileStep === 'student' ? 'STEP 1 OF 3 • LOOKUP' : mobileStep === 'details' ? 'STEP 2 OF 3 • DETAILS' : 'STEP 3 OF 3 • SANCTION'}
+              </p>
+              <h1 className="font-pjs font-extrabold text-[22px] text-[#003624] leading-none tracking-tight">
+                Record Violation
+              </h1>
             </div>
-            <button onClick={handleSearch} disabled={isSearching} className="w-full h-16 bg-[#003624] text-white font-black rounded-2xl flex items-center justify-center tracking-widest text-[14px] active:scale-95 transition-all">
-              {isSearching ? 'SEARCHING...' : 'FETCH PROFILE'}
-            </button>
+          </div>
 
-            {searchResults.length > 0 && (
-              <div className="w-full mt-8 bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-                {searchResults.map(s => (
-                  <button key={s.id} onClick={() => { setFoundStudent(s); fetchStudentHistory(s.user_details?.email); setSearchResults([]); setMobileStep('confirm'); }} className="w-full flex items-center gap-4 p-5 border-b border-slate-50 text-left active:bg-slate-50">
-                    <div className="w-12 h-12 bg-[#003624] text-white rounded-xl flex items-center justify-center font-black text-[18px] shrink-0">{s.user_details?.full_name?.charAt(0)}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-[#003624] truncate text-[15px]">{s.user_details?.full_name}</p>
-                      <p className="text-[12px] font-bold text-slate-400 truncate">{s.student_number} • {s.course}</p>
-                    </div>
+          {/* Stepper Dots Pill */}
+          <div className="flex items-center gap-1.5 bg-white border border-gray-200/80 px-2.5 py-1.5 rounded-full shadow-xs shrink-0">
+            <span className={`w-2.5 h-2.5 rounded-full transition-all ${mobileStep === 'student' ? 'bg-[#003624] scale-110' : 'bg-gray-200'}`} />
+            <span className={`w-2.5 h-2.5 rounded-full transition-all ${mobileStep === 'details' ? 'bg-[#003624] scale-110' : 'bg-gray-200'}`} />
+            <span className={`w-2.5 h-2.5 rounded-full transition-all ${mobileStep === 'sanction' ? 'bg-[#003624] scale-110' : 'bg-gray-200'}`} />
+          </div>
+        </div>
+
+        {/* ── STEP 1: STUDENT IDENTIFICATION ── */}
+        {mobileStep === 'student' && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            
+            {/* Student Search & Barcode Scan Card */}
+            <div className="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Search Student</span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Official Records</span>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[18px]">search</span>
+                <input
+                  type="text"
+                  placeholder="Enter Student Number or Full Name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="w-full h-12 bg-slate-50 border border-gray-200 rounded-xl pl-10 pr-10 text-[13px] font-bold text-gray-800 outline-none focus:bg-white focus:border-emerald-500 transition-colors shadow-inner"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => { setSearchQuery(''); setSearchResults([]); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">close</span>
                   </button>
-                ))}
+                )}
               </div>
-            )}
-          </div>
-        )}
 
-        {/* STEP 2: CONFIRM PROFILE */}
-        {mobileStep === 'confirm' && foundStudent && (
-          <div className="flex flex-col items-center pt-24 px-6 relative">
-            <div className="relative mb-8">
-              <div className="w-32 h-32 rounded-[2rem] border-4 border-emerald-400 bg-slate-100 overflow-hidden shadow-xl flex items-center justify-center">
-                <span className="material-symbols-outlined text-[64px] text-slate-300">person</span>
+              {/* Action Buttons: Scan Barcode + Fetch */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowScannerModal(true)}
+                  className="h-11 bg-emerald-50 hover:bg-emerald-100 text-[#003624] border border-emerald-200 rounded-xl font-bold text-[12px] flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-[18px] text-emerald-700">qr_code_scanner</span>
+                  <span>Scan Barcode</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSearch}
+                  disabled={isSearching}
+                  className="h-11 bg-[#003624] hover:bg-[#004d35] text-white rounded-xl font-bold text-[12px] flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+                >
+                  {isSearching ? (
+                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[17px]">person_search</span>
+                      <span>Find Profile</span>
+                    </>
+                  )}
+                </button>
               </div>
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#003624] text-white text-[9px] font-black px-4 py-1.5 rounded-xl tracking-widest uppercase shadow-md">
-                ACTIVE
-              </div>
-            </div>
 
-            <h2 className="text-[26px] font-black text-[#003624] leading-tight text-center mb-1 px-4">{foundStudent.user_details?.full_name}</h2>
-            <p className="text-[15px] font-black text-[#003624] mb-8">{foundStudent.student_number}</p>
-
-            <div className="flex flex-col items-center gap-3 mb-8 w-full max-w-[280px]">
-              <div className="w-full bg-emerald-100/60 text-[#003624] py-3 rounded-2xl text-[13px] font-bold flex items-center justify-center gap-2 shadow-sm">
-                <span className="material-symbols-outlined text-[18px]">account_balance</span> {foundStudent.college || 'CICS'}
-              </div>
-              <div className="w-full bg-emerald-100/60 text-[#003624] py-3 rounded-2xl text-[13px] font-bold flex items-center justify-center gap-2 shadow-sm">
-                <span className="material-symbols-outlined text-[18px]">school</span> {foundStudent.course}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 w-full mb-12">
-              <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 flex flex-col justify-center items-center">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Year Level</p>
-                <p className="text-[18px] font-black text-[#003624]">3rd Year</p>
-              </div>
-              <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 flex flex-col justify-center items-center">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Standing</p>
-                <p className={`text-[16px] font-black text-center leading-tight ${pastViolations.length > 3 ? 'text-red-600' : 'text-[#003624]'}`}>{pastViolations.length > 3 ? 'High Risk' : 'Good Standing'}</p>
-              </div>
-            </div>
-
-            <button onClick={() => setMobileStep('form')} className="w-full h-[68px] bg-[#003624] text-white font-black rounded-full flex items-center justify-center gap-3 tracking-widest text-[14px] mb-6 shadow-[0_10px_30px_rgba(0,54,36,0.3)] active:scale-95 transition-all">
-              CONFIRM STUDENT <span className="material-symbols-outlined">check_circle</span>
-            </button>
-
-            <button onClick={() => { setFoundStudent(null); setMobileStep('scan'); }} className="flex items-center gap-2 text-[13px] font-black text-[#003624] uppercase tracking-widest active:scale-95 transition-all opacity-80">
-              <span className="material-symbols-outlined text-[18px]">refresh</span> Re-scan
-            </button>
-          </div>
-        )}
-
-        {/* STEP 3: INCIDENT FORM */}
-        {mobileStep === 'form' && foundStudent && (
-          <div className="pb-32">
-            <div className="bg-[#003624] pt-16 pb-12 px-6 rounded-b-[3rem] text-white relative shadow-xl z-10">
-              <button onClick={() => setMobileStep('confirm')} className="absolute top-6 left-6 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-all">
-                <span className="material-symbols-outlined text-white">arrow_back</span>
-              </button>
-              <div className="flex flex-col items-center">
-                <div className="w-[72px] h-[72px] rounded-[1.2rem] bg-slate-100 border-2 border-emerald-400 flex items-center justify-center mb-4 overflow-hidden shadow-lg">
-                  <span className="material-symbols-outlined text-[36px] text-slate-300">person</span>
+              {/* Live Search Results Dropdown */}
+              {searchResults.length > 0 && (
+                <div className="mt-3 border border-emerald-100 rounded-xl overflow-hidden divide-y divide-gray-100 max-h-56 overflow-y-auto bg-white shadow-lg animate-in fade-in">
+                  {searchResults.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        setFoundStudent(s);
+                        fetchStudentHistory(s.user_details?.email);
+                        setSearchResults([]);
+                        setSearchQuery('');
+                      }}
+                      className="w-full flex items-center gap-3 p-3 text-left hover:bg-emerald-50/60 active:bg-emerald-100/50 transition-colors cursor-pointer"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-[#003624] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                        {s.user_details?.full_name?.charAt(0) || 'S'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-bold text-gray-900 truncate leading-tight">{s.user_details?.full_name}</p>
+                        <p className="text-[11px] font-medium text-gray-500 truncate">{s.student_number} • {s.course}</p>
+                      </div>
+                      <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
+                    </button>
+                  ))}
                 </div>
-                <p className="text-[9px] font-black text-emerald-400 tracking-[0.2em] uppercase mb-1">Target Student</p>
-                <h2 className="text-[24px] font-black leading-tight mb-2 text-center px-4">{foundStudent.user_details?.full_name}</h2>
-                <div className="flex items-center gap-3 text-[11px] font-medium text-emerald-100/70 mb-6">
-                  <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">school</span> {foundStudent.course}</span>
-                  <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">calendar_today</span> Year 3</span>
-                </div>
-
-                <div className="bg-emerald-600/50 border border-emerald-500/30 rounded-2xl px-6 py-3 flex flex-col items-center w-40 shadow-inner">
-                  <span className="text-[28px] font-black leading-none mb-1 text-white">{pastViolations.length}</span>
-                  <span className="text-[8px] font-black uppercase tracking-widest text-emerald-200">Active Violations</span>
-                </div>
-              </div>
+              )}
             </div>
 
-            <div className="px-6 -mt-6 relative z-20 pb-32">
-              <div className="bg-white rounded-[2.5rem] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-slate-100">
-                <div className="flex flex-col gap-5 mb-8">
+            {/* Selected Student Card */}
+            {foundStudent ? (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border-2 border-emerald-500/30 space-y-3.5 animate-in zoom-in-95 duration-200">
+                <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 shrink-0">
-                      <span className="material-symbols-outlined font-black">tune</span>
+                    <div className="w-12 h-12 rounded-xl bg-[#003624] text-white flex items-center justify-center font-extrabold text-base shadow-sm">
+                      {foundStudent.user_details?.full_name?.charAt(0) || 'S'}
                     </div>
-                    <h3 className="text-[20px] font-black text-[#003624] leading-tight">Incident Parameters</h3>
+                    <div>
+                      <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        Verified Subject
+                      </span>
+                      <h3 className="text-[15px] font-extrabold text-gray-900 leading-tight mt-0.5">
+                        {foundStudent.user_details?.full_name}
+                      </h3>
+                      <p className="text-[11px] font-bold text-gray-500">{foundStudent.student_number}</p>
+                    </div>
                   </div>
-                  <div className="flex bg-slate-100 p-1 rounded-2xl gap-1 w-full">
-                    <button type="button" onClick={() => setSearchMode('smart')} className={`flex-1 py-3.5 rounded-[0.8rem] text-[10px] font-black uppercase tracking-widest transition-all ${searchMode === 'smart' ? 'bg-[#003624] text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>Smart Scan</button>
-                    <button type="button" onClick={() => setSearchMode('manual')} className={`flex-1 py-3.5 rounded-[0.8rem] text-[10px] font-black uppercase tracking-widest transition-all ${searchMode === 'manual' ? 'bg-[#003624] text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>Manual</button>
+
+                  <button
+                    onClick={() => { setFoundStudent(null); setPastViolations([]); }}
+                    className="text-[11px] font-bold text-gray-400 hover:text-rose-600 transition-colors px-2 py-1"
+                  >
+                    Change
+                  </button>
+                </div>
+
+                {/* Academic Badges */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg">
+                    {foundStudent.college || 'CICS'}
+                  </span>
+                  <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg truncate max-w-[200px]">
+                    {foundStudent.course}
+                  </span>
+                </div>
+
+                {/* Past Violations History Badge */}
+                <div className="p-3 rounded-xl bg-slate-50 border border-gray-100 flex items-center justify-between">
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Disciplinary History</span>
+                    <span className={`text-[12px] font-extrabold ${pastViolations.length > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                      {pastViolations.length > 0 ? `${pastViolations.length} Prior Violation(s) on Record` : 'Clean Disciplinary Record'}
+                    </span>
+                  </div>
+                  {pastViolations.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowHistoryModal(true)}
+                      className="text-[11px] font-bold text-emerald-800 bg-emerald-100/70 hover:bg-emerald-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                    >
+                      View Log
+                    </button>
+                  )}
+                </div>
+
+                {/* Primary Proceed Button */}
+                <button
+                  type="button"
+                  onClick={() => setMobileStep('details')}
+                  className="w-full h-12 bg-[#003624] hover:bg-[#004d35] text-white rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 active:scale-98 transition-all shadow-md cursor-pointer"
+                >
+                  <span>Continue to Incident Details</span>
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white/60 border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center flex flex-col items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
+                  <span className="material-symbols-outlined text-[24px]">badge</span>
+                </div>
+                <p className="text-[12px] font-extrabold text-gray-700">No Student Identified Yet</p>
+                <p className="text-[10px] text-gray-400 mt-0.5 max-w-[220px]">
+                  Use the barcode scanner or type a student ID number above to begin.
+                </p>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* ── STEP 2: INCIDENT DETAILS ── */}
+        {mobileStep === 'details' && foundStudent && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            
+            {/* Student verified banner (Portal theme) */}
+            <div className="bg-white rounded-2xl p-3.5 border border-emerald-100 shadow-xs flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-100 flex items-center justify-center font-bold text-sm shrink-0">
+                  {foundStudent.user_details?.full_name?.charAt(0) || 'S'}
+                </div>
+                <div className="truncate">
+                  <p className="text-[13px] font-extrabold text-[#003624] truncate leading-tight">{foundStudent.user_details?.full_name}</p>
+                  <p className="text-[10.5px] text-gray-500 font-semibold">{foundStudent.student_number} • {foundStudent.course}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileStep('student')}
+                className="text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-2.5 py-1 rounded-lg transition-colors shrink-0 cursor-pointer"
+              >
+                Change
+              </button>
+            </div>
+
+            {/* Violation Rule Picker Card */}
+            <div className="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Handbook Violation Rule *</label>
+                <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setSearchMode('smart')}
+                    className={`px-2.5 py-1 rounded-md transition-all ${searchMode === 'smart' ? 'bg-[#003624] text-white shadow-xs' : 'text-gray-500'}`}
+                  >
+                    AI Search
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSearchMode('manual')}
+                    className={`px-2.5 py-1 rounded-md transition-all ${searchMode === 'manual' ? 'bg-[#003624] text-white shadow-xs' : 'text-gray-500'}`}
+                  >
+                    Browse
+                  </button>
+                </div>
+              </div>
+
+              {/* Selected Rule Banner */}
+              {formData.violationType && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start justify-between gap-2 animate-in fade-in">
+                  <div>
+                    <span className="text-[9px] font-black bg-emerald-700 text-white px-2 py-0.5 rounded uppercase tracking-wider">
+                      {formData.violationType}
+                    </span>
+                    <p className="text-[11.5px] font-bold text-emerald-950 mt-1 leading-snug">
+                      {handbookRules.find(r => r.rule_code === formData.violationType)?.description || 'Selected Handbook Violation Rule'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, violationType: '' }))}
+                    className="text-emerald-700 hover:text-rose-600 p-1"
+                    title="Change rule"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Rule Search / Selection Input */}
+              {searchMode === 'smart' ? (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[18px]">search</span>
+                    <input
+                      type="text"
+                      placeholder="Type keyword (e.g. uniform, smoking, haircut)..."
+                      value={smartSearchQuery}
+                      onChange={(e) => handleSmartSearch(e.target.value)}
+                      className="w-full h-11 bg-slate-50 border border-gray-200 rounded-xl pl-9 pr-3 text-[12.5px] font-bold text-gray-800 outline-none focus:bg-white focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Preset Rule Quick Chips (Shown when input is empty) */}
+                  {!smartSearchQuery && !formData.violationType && (
+                    <div>
+                      <p className="text-[9.5px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Common Violations:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { code: '27.1.a', label: 'Uniform / Dress Code' },
+                          { code: '27.1.c', label: 'Student ID Validation' },
+                          { code: '27.1.f', label: 'Prescribed Haircut' },
+                          { code: '27.1.n', label: 'Littering' },
+                          { code: '27.2.d', label: 'Smoking / Vaping' },
+                        ].map((chip) => (
+                          <button
+                            key={chip.code}
+                            type="button"
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, violationType: chip.code }));
+                              setSmartSearchQuery(chip.code);
+                            }}
+                            className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-gray-700 transition-colors border border-gray-200/80 cursor-pointer"
+                          >
+                            [{chip.code}] {chip.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Smart Search Results */}
+                  {smartSearchResults.length > 0 && (
+                    <div className="border border-emerald-100 rounded-xl divide-y divide-gray-100 max-h-48 overflow-y-auto bg-white shadow-md">
+                      {smartSearchResults.map(res => (
+                        <button
+                          key={res.id}
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({ ...prev, violationType: res.rule_code }));
+                            setSmartSearchQuery(res.rule_code);
+                            setSmartSearchResults([]);
+                          }}
+                          className="w-full p-2.5 text-left hover:bg-emerald-50 transition-colors cursor-pointer"
+                        >
+                          <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
+                            {res.rule_code}
+                          </span>
+                          <p className="text-[11.5px] font-bold text-gray-800 leading-snug mt-0.5">{res.description}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="relative">
+                  <select
+                    name="violationType"
+                    value={formData.violationType || ''}
+                    onChange={handleInputChange}
+                    className="w-full h-11 bg-slate-50 border border-gray-200 rounded-xl px-3 text-[12px] font-bold text-gray-800 outline-none focus:bg-white focus:border-emerald-500 appearance-none cursor-pointer"
+                  >
+                    <option value="">Select Official Handbook Rule...</option>
+                    {handbookRules.map(r => (
+                      <option key={r.id} value={r.rule_code}>
+                        [{r.rule_code}] {r.description ? r.description.substring(0, 45) : 'Rule'}...
+                      </option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[18px]">
+                    expand_more
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Timing & Location Card */}
+            <div className="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 space-y-3">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Date, Time & Location</span>
+
+              {/* Date & Time Row */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[9px] font-bold text-gray-500 block mb-1">Date</label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      name="incidentDate"
+                      value={formData.incidentDate || ''}
+                      onChange={handleInputChange}
+                      className="w-full h-10 bg-slate-50 border border-gray-200 rounded-xl px-2.5 text-[11.5px] font-bold text-gray-800 outline-none"
+                    />
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Handbook Rule Violation</label>
-                    {searchMode === 'smart' ? (
-                      <div className="relative">
-                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
-                        <input type="text" placeholder="Search violation code or keyword..." value={smartSearchQuery} onChange={(e) => handleSmartSearch(e.target.value)} className="w-full bg-slate-50 h-[60px] rounded-2xl pl-12 pr-4 text-[13px] font-bold text-slate-700 outline-none focus:bg-white focus:border-2 border-emerald-400 transition-all shadow-sm" />
-                        {smartSearchResults.length > 0 && (
-                          <div className="absolute top-[70px] left-0 right-0 z-[60] bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 max-h-[300px] overflow-y-auto animate-in slide-in-from-top-2">
-                            {(Array.isArray(smartSearchResults) ? smartSearchResults : []).map(res => (
-                              <button key={res.id} type="button" onClick={() => { setFoundStudent(prev => ({ ...prev })); setFormData(prev => ({ ...prev, violationType: res.rule_code })); setSmartSearchQuery(res.rule_code); setSmartSearchResults([]); }} className="w-full p-5 text-left border-b border-slate-50 text-[13px] font-bold text-slate-700 active:bg-slate-50">
-                                <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md inline-block mb-1">{res.rule_code}</span>
-                                <p className="leading-snug">{res.description}</p>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <select name="violationType" value={formData.violationType} onChange={handleInputChange} className="w-full bg-slate-50 h-[60px] rounded-2xl px-4 text-[13px] font-bold text-slate-700 outline-none appearance-none shadow-sm focus:bg-white focus:border-2 border-emerald-400 transition-all">
-                          <option value="">Select Handbook Rule...</option>
-                          {(Array.isArray(handbookRules) ? handbookRules : []).map(r => <option key={r.id} value={r.rule_code}>[{r.rule_code}] {r.description ? r.description.substring(0, 40) : 'No description'}...</option>)}
-                        </select>
-                        <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
-                      </div>
-                    )}
+                <div>
+                  <label className="text-[9px] font-bold text-gray-500 block mb-1">Time</label>
+                  <div className="relative">
+                    <input
+                      type="time"
+                      name="incidentTime"
+                      value={formData.incidentTime || ''}
+                      onChange={handleInputChange}
+                      className="w-full h-10 bg-slate-50 border border-gray-200 rounded-xl px-2.5 text-[11.5px] font-bold text-gray-800 outline-none"
+                    />
                   </div>
+                </div>
+              </div>
 
-                  <div>
-                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Date of Incident</label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">calendar_today</span>
-                      <input type="date" name="incidentDate" value={formData.incidentDate} onChange={handleInputChange} className="w-full bg-slate-50 h-[60px] rounded-2xl pl-12 pr-4 text-[13px] font-bold text-slate-700 outline-none shadow-sm focus:bg-white focus:border-2 border-emerald-400" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Time of Occurrence</label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">schedule</span>
-                      <input type="time" name="incidentTime" value={formData.incidentTime} onChange={handleInputChange} className="w-full bg-slate-50 h-[60px] rounded-2xl pl-12 pr-4 text-[13px] font-bold text-slate-700 outline-none shadow-sm focus:bg-white focus:border-2 border-emerald-400" />
-                    </div>
-                  </div>
-
-                  <div className="relative" ref={locationRef}>
-                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Specific Location</label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">location_on</span>
-                      <input
-                        type="text"
-                        name="location"
-                        value={locationSearchQuery || formData.location}
-                        onFocus={() => setShowLocationDropdown(true)}
-                        onChange={(e) => {
-                          setLocationSearchQuery(e.target.value);
-                          setFormData(prev => ({ ...prev, location: e.target.value }));
-                          setShowLocationDropdown(true);
-                        }}
-                        placeholder="Search campus facility..."
-                        className="w-full bg-slate-50 h-[60px] rounded-2xl pl-12 pr-4 text-[13px] font-bold text-slate-700 outline-none shadow-sm focus:bg-white focus:border-2 border-emerald-400 transition-all"
-                      />
-                      {showLocationDropdown && (
-                        <div className="absolute top-[65px] left-0 right-0 z-[120] bg-white rounded-3xl shadow-[0_30px_100px_rgba(0,0,0,0.15)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
-                          <div className="max-h-[300px] overflow-y-auto custom-scrollbar-emerald">
-                            {Object.keys(filteredLocations()).length > 0 ? (
-                              Object.entries(filteredLocations()).map(([campus, items]) => (
-                                <div key={campus}>
-                                  <div className="bg-slate-50/50 px-6 py-2 border-y border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{campus}</p>
-                                  </div>
-                                  {items.map(loc => (
-                                    <button
-                                      key={loc}
-                                      type="button"
-                                      onClick={() => {
-                                        setFormData(prev => ({ ...prev, location: loc }));
-                                        setLocationSearchQuery(loc);
-                                        setShowLocationDropdown(false);
-                                      }}
-                                      className="w-full px-6 py-4 hover:bg-emerald-50 text-left text-[13px] font-bold text-slate-600 transition-all border-b border-slate-50 last:border-0"
-                                    >
-                                      {loc}
-                                    </button>
-                                  ))}
-                                </div>
-                              ))
-                            ) : (
-                              <div className="p-8 text-center">
-                                <p className="text-[12px] font-bold text-slate-400 italic mb-2">Location not in directory</p>
-                                <button
-                                  type="button"
-                                  onClick={() => setShowLocationDropdown(false)}
-                                  className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-4 py-2 rounded-lg"
-                                >
-                                  Use Manual Entry
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Contextual Remarks</label>
-                    <textarea name="description" value={formData.description} onChange={handleInputChange} rows="4" placeholder="Provide detailed narrative of the situation..." className="w-full bg-slate-50 rounded-3xl p-5 text-[13px] font-bold text-slate-700 outline-none resize-none shadow-sm focus:bg-white focus:border-2 border-emerald-400"></textarea>
-                  </div>
-
-                  <div>
-                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Evidence Capture</label>
-                    <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-slate-200 rounded-3xl py-8 px-4 flex flex-col items-center gap-2 bg-slate-50/50 hover:bg-slate-50 transition-all">
-                      <span className="material-symbols-outlined text-[32px] text-slate-400">cloud_upload</span>
-                      <span className="text-[12px] font-black text-[#003624]">Click to upload or drag photos</span>
-                      <span className="text-[9px] font-bold text-slate-400">PNG, JPG up to 10MB each</span>
-                    </button>
-                    {evidenceFiles.length > 0 && (
-                      <p className="text-[11px] font-bold text-[#003624] mt-3 text-center">{evidenceFiles.length} evidence file(s) attached</p>
-                    )}
-                  </div>
-
-                  <div className="pt-6">
-                    <button 
-                      onClick={handleGenerateRecommendation} 
-                      disabled={isGenerating || !formData.violationType} 
-                      className="w-full h-[76px] bg-[#003624] text-white rounded-[2rem] font-black text-[14px] uppercase tracking-[0.15em] flex items-center justify-center gap-3 shadow-[0_20px_50px_rgba(0,54,36,0.15)] active:scale-[0.98] disabled:opacity-50 transition-all"
+              {/* Specific Location */}
+              <div className="space-y-1.5" ref={locationRef}>
+                <label className="text-[9px] font-bold text-gray-500 block">Specific Campus Facility / Spot</label>
+                
+                {/* Quick Facility Chips */}
+                <div className="flex flex-wrap gap-1 mb-1">
+                  {['Gate 3', 'ICTC Building', 'Food Square', 'Ugnayang La Salle', 'Oval / Track'].map((locName) => (
+                    <button
+                      key={locName}
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, location: locName }));
+                        setLocationSearchQuery(locName);
+                      }}
+                      className={`text-[9.5px] font-bold px-2 py-0.5 rounded-lg border transition-colors cursor-pointer ${
+                        formData.location === locName
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-slate-50 text-gray-600 border-gray-200 hover:bg-emerald-50'
+                      }`}
                     >
-                      {isGenerating ? (
-                        <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <span className="material-symbols-outlined text-emerald-400">psychology</span>
-                          RUN ASSESSMENT ENGINE
-                        </>
-                      )}
+                      {locName}
                     </button>
-                  </div>
+                  ))}
+                </div>
+
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[16px]">location_on</span>
+                  <input
+                    type="text"
+                    value={locationSearchQuery || formData.location || ''}
+                    onFocus={() => setShowLocationDropdown(true)}
+                    onChange={(e) => {
+                      setLocationSearchQuery(e.target.value);
+                      setFormData(prev => ({ ...prev, location: e.target.value }));
+                      setShowLocationDropdown(true);
+                    }}
+                    placeholder="Search campus facility or enter location..."
+                    className="w-full h-10 bg-slate-50 border border-gray-200 rounded-xl pl-8 pr-3 text-[12px] font-bold text-gray-800 outline-none focus:bg-white focus:border-emerald-500 transition-colors"
+                  />
+                  {showLocationDropdown && (
+                    <div className="absolute top-11 left-0 right-0 z-40 bg-white rounded-xl shadow-xl border border-gray-200 max-h-44 overflow-y-auto divide-y divide-gray-50">
+                      {Object.entries(filteredLocations()).map(([group, locs]) => (
+                        <div key={group}>
+                          <p className="text-[8.5px] font-black uppercase tracking-wider text-gray-400 bg-slate-50 px-3 py-1">{group}</p>
+                          {locs.map(loc => (
+                            <button
+                              key={loc}
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({ ...prev, location: loc }));
+                                locationSearchQuery && setLocationSearchQuery(loc);
+                                setShowLocationDropdown(false);
+                              }}
+                              className="w-full text-left px-3 py-1.5 text-[11.5px] font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-900 transition-colors"
+                            >
+                              {loc}
+                            </button>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* COMPACT ASSESSMENT POPUP (MOBILE ONLY) */}
-            {assessment && !showSuccess && (
-              <div className="fixed inset-0 z-[1000] flex items-center justify-center px-6 bg-[#003624]/60 backdrop-blur-md animate-in fade-in duration-300">
-                <div className="bg-[#003624] rounded-[2.5rem] w-full max-w-[340px] p-8 animate-in zoom-in-95 duration-300 border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.5)]">
-                  
-                  <div className="flex flex-col items-center mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center mb-4 border border-emerald-500/30">
-                        <span className="material-symbols-outlined text-emerald-400 text-[24px]">verified_user</span>
-                    </div>
-                    <h3 className="text-[10px] font-black text-emerald-400 text-center uppercase tracking-[0.2em] mb-1">Assessment Engine Output</h3>
-                    <p className="text-[12px] text-white/50 text-center font-medium">Policy v2.4 Verified</p>
-                  </div>
+            {/* Narrative & Evidence Card */}
+            <div className="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 space-y-3">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Contextual Remarks & Evidence</span>
 
-                  <div className="space-y-3 mb-8">
-                    <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex items-center justify-between">
-                        <div>
-                          <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-0.5">Escalation</p>
-                          <p className="text-[15px] font-black text-white leading-tight">
-                            {assessment.rule_code?.startsWith('27.1') ? `Violation #${(assessment.total_minor_count || 0) + 1}` : `Instance #${assessment.instance_number}`}
-                          </p>
-                        </div>
-                        <span className="material-symbols-outlined text-white/20">trending_up</span>
-                    </div>
+              <div>
+                <textarea
+                  name="description"
+                  value={formData.description || ''}
+                  onChange={handleInputChange}
+                  rows="3"
+                  placeholder="Provide brief objective narrative of the incident..."
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl p-3 text-[12px] font-medium text-gray-800 outline-none focus:bg-white focus:border-emerald-500 resize-none transition-colors"
+                />
+              </div>
 
-                    <div className="bg-emerald-500 rounded-2xl p-4 shadow-lg">
-                        <p className="text-[8px] font-black text-emerald-950/30 uppercase tracking-widest mb-0.5">Mandated Sanction</p>
-                        <p className="text-[15px] font-black text-[#003624] leading-tight mb-2">{assessment.recommendation}</p>
-                        <div className="flex items-center gap-1.5 opacity-60">
-                          <span className="material-symbols-outlined text-[12px] text-[#003624]">menu_book</span>
-                          <span className="text-[9px] font-black text-[#003624] uppercase">Handbook Page {assessment.rule_code?.substring(0,4) || 'Ref'}</span>
-                        </div>
-                    </div>
-                  </div>
+              {/* Photo Evidence Upload */}
+              <div>
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={(e) => setEvidenceFiles(prev => [...prev, ...Array.from(e.target.files)])}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-3 bg-slate-50 hover:bg-emerald-50/50 border border-dashed border-gray-300 hover:border-emerald-400 rounded-xl flex items-center justify-center gap-2 text-gray-600 transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[18px] text-emerald-700">add_a_photo</span>
+                  <span className="text-[11.5px] font-bold">Attach Photo Evidence</span>
+                </button>
 
-                  <div className="flex flex-col gap-3">
-                    <button 
-                      onClick={handleSubmit} 
-                      disabled={isSubmitting} 
-                      className="w-full h-14 bg-white text-[#003624] rounded-2xl font-black text-[13px] uppercase tracking-widest flex items-center justify-center active:scale-[0.98] transition-all"
-                    >
-                      {isSubmitting ? <div className="w-5 h-5 border-2 border-[#003624]/30 border-t-[#003624] rounded-full animate-spin" /> : 'Commit Record'}
-                    </button>
-                    
-                    <button 
-                      onClick={() => setAssessment(null)} 
-                      className="w-full h-12 text-white/30 font-black text-[11px] uppercase tracking-widest hover:text-white transition-all"
-                    >
-                      Discard
-                    </button>
+                {evidenceFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {evidenceFiles.map((file, idx) => (
+                      <div key={idx} className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5">
+                        <span className="truncate max-w-[120px]">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setEvidenceFiles(prev => prev.filter((_, i) => i !== idx))}
+                          className="hover:text-rose-600"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">close</span>
+                        </button>
+                      </div>
+                    ))}
                   </div>
+                )}
+              </div>
+            </div>
+
+            {/* Run Assessment Button */}
+            <button
+              type="button"
+              onClick={handleGenerateRecommendation}
+              disabled={isGenerating || !formData.violationType}
+              className="w-full h-13 bg-[#003624] hover:bg-[#004d35] text-white rounded-xl font-bold text-[13px] uppercase tracking-wider flex items-center justify-center gap-2 active:scale-98 transition-all shadow-md cursor-pointer disabled:opacity-40"
+            >
+              {isGenerating ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  <span>Computing Escalation...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-emerald-400 text-[18px]">gavel</span>
+                  <span>Run Assessment Engine</span>
+                </>
+              )}
+            </button>
+
+          </div>
+        )}
+
+        {/* ── STEP 3: SANCTION & RECORD COMMIT ── */}
+        {mobileStep === 'sanction' && assessment && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            
+            {/* Student & Violation Recap Card (Portal theme) */}
+            <div className="bg-white rounded-2xl p-4 shadow-xs border border-emerald-100 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[9.5px] font-black text-emerald-800 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+                  Policy v2.4 Verified
+                </span>
+                <span className="text-[10.5px] font-extrabold text-[#003624]">
+                  {assessment.rule_code?.startsWith('27.1') ? `Violation #${(assessment.total_minor_count || 0) + 1}` : `Instance #${assessment.instance_number}`}
+                </span>
+              </div>
+              <div>
+                <p className="text-[15px] font-extrabold text-gray-900 leading-tight">{foundStudent.user_details?.full_name}</p>
+                <p className="text-[11px] text-gray-500 font-bold">{foundStudent.student_number} • {foundStudent.course}</p>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-2.5 text-[11.5px] font-bold text-gray-800 flex items-center justify-between border border-gray-100">
+                <span>Rule: <strong className="text-emerald-800">[{assessment.rule_code}]</strong></span>
+                <span className="text-[10px] uppercase font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                  {assessment.rule_code?.startsWith('27.1') ? 'Minor Escalation' : 'Major Offense'}
+                </span>
+              </div>
+            </div>
+
+            {/* Duplicate Warning */}
+            {assessment.is_duplicate && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2.5 text-amber-900">
+                <span className="material-symbols-outlined text-amber-600 text-[18px] shrink-0 mt-0.5">warning</span>
+                <div>
+                  <p className="text-[11.5px] font-extrabold leading-tight">Duplicate Incident Notice</p>
+                  <p className="text-[10.5px] font-medium text-amber-700 leading-snug mt-0.5">
+                    This violation was already logged for this student recently. Please verify before committing.
+                  </p>
                 </div>
               </div>
             )}
+
+            {/* Mandated Sanction Card */}
+            <div className="bg-white rounded-2xl p-4 shadow-xs border-2 border-emerald-500/40 space-y-2">
+              <span className="text-[9px] font-black text-emerald-800 uppercase tracking-widest">Official Mandated Sanction</span>
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                <p className="text-[16px] font-black text-[#003624] leading-snug">
+                  {assessment.recommendation}
+                </p>
+                <p className="text-[10px] font-bold text-emerald-700 mt-1.5 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[13px]">menu_book</span>
+                  <span>Handbook Page {assessment.rule_code?.substring(0, 4) || 'Ref'}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="w-full h-13 bg-[#003624] hover:bg-[#004d35] text-white rounded-xl font-bold text-[13px] uppercase tracking-wider flex items-center justify-center gap-2 active:scale-98 transition-all shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    <span>Committing Record...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-emerald-400 text-[18px]">verified</span>
+                    <span>Commit Violation to Record</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMobileStep('details')}
+                className="w-full h-11 bg-white hover:bg-slate-50 text-gray-700 border border-gray-200 rounded-xl font-bold text-[12px] transition-colors cursor-pointer"
+              >
+                Edit Parameters
+              </button>
+            </div>
+
           </div>
         )}
+
       </div>
+
+      {/* ══════════════════════════════ UNIVERSAL PORTALS (MOBILE & DESKTOP) ══════════════════════════════ */}
+
+      {/* ── CAMERA SCANNER MODAL ── */}
+      {showScannerModal && createPortal(
+        <BarcodeScanner
+          onScan={handleBarcodeScan}
+          onClose={() => setShowScannerModal(false)}
+        />,
+        document.body
+      )}
+
+      {/* ── STUDENT PAST VIOLATIONS HISTORY MODAL ── */}
+      {showHistoryModal && foundStudent && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-md p-5 shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="font-pjs font-extrabold text-[15px] text-gray-900 leading-tight">Prior Disciplinary Log</h3>
+                <p className="text-[11px] font-bold text-gray-400">{foundStudent.user_details?.full_name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            <div className="max-h-64 overflow-y-auto space-y-2 divide-y divide-gray-50">
+              {pastViolations.map((v, i) => (
+                <div key={v.id || i} className="pt-2 text-left space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded">
+                      {v.rule_details?.rule_code || v.rule_code || 'Violation'}
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-medium">
+                      {v.created_at ? new Date(v.created_at).toLocaleDateString() : 'Previous'}
+                    </span>
+                  </div>
+                  <p className="text-[12px] font-bold text-gray-800 leading-snug">{v.corrective_action || v.description || 'Action logged'}</p>
+                  <p className="text-[10px] text-gray-400">Status: <strong>{v.status || 'CLOSED'}</strong></p>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowHistoryModal(false)}
+              className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl font-bold text-[12px] text-gray-700 transition-colors"
+            >
+              Close History
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── UNIVERSAL SUCCESS DIALOG ── */}
+      {showSuccess && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-[#003624]/70 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl w-full max-w-sm sm:max-w-md p-6 sm:p-8 text-center shadow-2xl border border-white/20 animate-in zoom-in-95 duration-200 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-emerald-500"></div>
+
+            <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4 shadow-inner">
+              <span className="material-symbols-outlined text-[36px] font-bold animate-bounce-slow">verified</span>
+            </div>
+
+            <h2 className="text-[20px] sm:text-[24px] font-black text-[#003624] mb-1 tracking-tight leading-tight">
+              Incident Securely Logged
+            </h2>
+            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-4">
+              Permanent Reference: SW-{lastLoggedId?.toString().padStart(4, '0')}
+            </p>
+
+            <div className="bg-slate-50 rounded-2xl p-4 mb-5 text-left border border-slate-100">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Actioned Sanction</p>
+              <p className="text-[14px] font-black text-[#003624] leading-snug">{assessment?.recommendation}</p>
+              <div className="mt-3 pt-2.5 border-t border-slate-200/80 flex items-center gap-1.5 text-emerald-700">
+                <span className="material-symbols-outlined text-[15px]">task_alt</span>
+                <span className="text-[10.5px] font-bold">Automated Parent/Guardian Notification Queued</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleLogAnother}
+                className="w-full h-12 bg-emerald-50 hover:bg-emerald-100 text-[#003624] border border-emerald-200 rounded-xl font-bold text-[12.5px] uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Log Another Violation
+              </button>
+              <button
+                type="button"
+                onClick={handleCloseSuccess}
+                className="w-full h-12 bg-[#003624] hover:bg-[#004d35] text-white rounded-xl font-bold text-[12.5px] uppercase tracking-wider transition-all shadow-md cursor-pointer"
+              >
+                Finish & Return
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }

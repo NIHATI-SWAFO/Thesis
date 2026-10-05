@@ -14,6 +14,8 @@ export const API_ENDPOINTS = {
   // Users
   SEARCH_USERS: `${API_BASE_URL}/api/users/search/`,
   USERS_LIST: `${API_BASE_URL}/api/users/list/`,
+  USERS_ALL: `${API_BASE_URL}/api/users/users/`,
+  USER_DETAIL: (id) => `${API_BASE_URL}/api/users/users/${id}/`,
   USERS_BY_ROLE: (role) => `${API_BASE_URL}/api/users/users/?role=${role}`,
   PROFILE_BY_EMAIL: `${API_BASE_URL}/api/users/profile-by-email/`,
   COLLEGES_LIST: `${API_BASE_URL}/api/users/colleges/`,
@@ -44,7 +46,13 @@ export const API_ENDPOINTS = {
   // Analytics
   OFFICER_DASHBOARD: `${API_BASE_URL}/api/analytics/officer-dashboard/`,
   ADMIN_DASHBOARD: `${API_BASE_URL}/api/analytics/admin-dashboard/`,
-  COLLEGE_REPORT: (college) => `${API_BASE_URL}/api/analytics/college-report/?college=${encodeURIComponent(college)}`,
+  NOTIFICATIONS: (email = '', role = '') => {
+    const params = new URLSearchParams();
+    if (email) params.append('email', email);
+    if (role) params.append('role', role);
+    const q = params.toString();
+    return `${API_BASE_URL}/api/analytics/notifications/${q ? `?${q}` : ''}`;
+  },
   
   // Handbook
   HANDBOOK_RULES: `${API_BASE_URL}/api/handbook/rules/`,

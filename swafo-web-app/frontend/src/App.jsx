@@ -26,6 +26,7 @@ import AdminDashboard from './features/dashboard/AdminDashboard';
 import DirectorPatrolAssignments from './features/patrols/DirectorPatrolAssignments';
 import MapTrial from './features/maps/MapTrial';
 import LiveNavigation from './features/maps/LiveNavigation';
+import UserManagement from './features/users/UserManagement';
 
 
 import { AuthProvider } from './context/AuthContext';
@@ -96,7 +97,7 @@ function App() {
           <Route path="freedom-wall" element={<DirectorFreedomWall />} />
           <Route path="campus-map" element={<MapTrial />} />
           <Route path="live-navigation" element={<LiveNavigation />} />
-          <Route path="users" element={<div className="p-12"><h1 className="text-3xl font-black text-[#003624] mb-4">User Management</h1><p className="text-gray-500 font-bold uppercase tracking-widest text-[11px]">Control student and officer access levels.</p><div className="mt-12 p-20 border-2 border-dashed border-emerald-100 rounded-[3rem] text-center text-emerald-200 font-black uppercase tracking-widest">Interface Module Loading...</div></div>} />
+          <Route path="users" element={<UserManagement />} />
           <Route path="*" element={<div className="p-12 text-2xl font-bold font-pjs">Admin Module Under Construction</div>} />
         </Route>
 

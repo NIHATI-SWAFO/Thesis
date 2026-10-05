@@ -508,3 +508,249 @@ class CollegeReportPDFView(APIView):
             import traceback
             traceback.print_exc()
             return Response({"error": str(e)}, status=500)
+
+
+class NotificationsAPIView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        try:
+            email = request.query_params.get('email', '').strip()
+            role_param = request.query_params.get('role', '').strip().upper()
+            
+            # Determine user and actual role
+            user_obj = None
+            if email:
+                from apps.users.models import User
+                user_obj = User.objects.filter(email__iexact=email).first()
+            
+            # If role is explicitly provided in query, use it; otherwise use user_obj.role
+            role = role_param
+            if not role and user_obj:
+                role = (user_obj.role or '').upper()
+            if not role:
+                role = 'STUDENT'
+            
+            notifications = []
+            local_now = timezone.localtime(timezone.now())
+
+            # ══════════════════════════════════════════════════════════════
+            # 1. STUDENT NOTIFICATIONS: Strictly student-personal & policy
+            # (Never show officer patrols, internal assignments, or other students' violations)
+            # ══════════════════════════════════════════════════════════════
+            if role == 'STUDENT':
+                # A. Personal Disciplinary Violations
+                if email:
+                    user_violations = Violation.objects.filter(
+                        student__user__email__iexact=email
+                    ).select_related('rule', 'student__user').order_by('-timestamp')[:8]
+
+                    for v in user_violations:
+                        category_name = v.rule.category if v.rule else "Institutional Rule"
+                        rule_code = f" (Section {v.rule.rule_code})" if v.rule and v.rule.rule_code else ""
+                        status_label = v.status.replace('_', ' ').title()
+
+                        notifications.append({
+                            "id": f"stud-vio-{v.id}",
+                            "title": f"Disciplinary Notice: {category_name}",
+                            "message": f"Incident logged{rule_code} at {v.location or 'Campus'}. Status: {status_label}.",
+                            "category": "violation",
+                            "timestamp": v.timestamp.isoformat(),
+                            "priority": "high" if v.status in ['OPEN', 'AWAITING_DECISION'] else "medium",
+                            "link": "/student/violations"
+                        })
+
+                # B. Personal SWAFO Connect / Grievance Submissions
+                if email:
+                    try:
+                        from apps.freedom_wall.models import FreedomWallSubmission
+                        user_fw = FreedomWallSubmission.objects.filter(
+                            student__email__iexact=email
+                        ).order_by('-created_at')[:5]
+
+                        for fw in user_fw:
+                            notifications.append({
+                                "id": f"stud-fw-{fw.id}",
+                                "title": f"SWAFO Connect: {fw.category}",
+                                "message": f"Your report '{fw.title[:30]}' ({fw.reference_number}) is currently: {fw.status}.",
+                                "category": "connect",
+                                "timestamp": (fw.updated_at if hasattr(fw, 'updated_at') and fw.updated_at else fw.created_at).isoformat(),
+                                "priority": "medium",
+                                "link": "/student/freedom-wall"
+                            })
+                    except Exception:
+                        pass
+
+                # C. Clearance Good Standing Notice (if no active violations)
+                has_active_vios = any(n.get('priority') == 'high' for n in notifications)
+                if not has_active_vios:
+                    notifications.append({
+                        "id": "stud-clearance-status",
+                        "title": "Disciplinary Clearance: Good Standing",
+                        "message": "No active disciplinary sanctions or pending holds on your record.",
+                        "category": "system",
+                        "timestamp": local_now.isoformat(),
+                        "priority": "low",
+                        "link": "/student/profile"
+                    })
+
+                # D. Handbook Policy Advisory
+                notifications.append({
+                    "id": "stud-handbook-policy",
+                    "title": "Campus Handbook 2025–2026",
+                    "message": "University student rights, dress code regulations, and disciplinary sanction matrix are in effect.",
+                    "category": "system",
+                    "timestamp": local_now.isoformat(),
+                    "priority": "low",
+                    "link": "/student/handbook"
+                })
+
+            # ══════════════════════════════════════════════════════════════
+            # 2. OFFICER NOTIFICATIONS: Field patrol & campus enforcement
+            # ══════════════════════════════════════════════════════════════
+            elif role == 'OFFICER':
+                # A. Monthly Patrol Schedule for this Officer
+                if email:
+                    from apps.patrols.models import PatrolAssignment
+                    user_assignments = PatrolAssignment.objects.filter(
+                        officer__email__iexact=email,
+                        month=local_now.month,
+                        year=local_now.year
+                    ).first()
+                    if user_assignments:
+                        notifications.append({
+                            "id": f"assign-{user_assignments.id}",
+                            "title": "Monthly Patrol Schedule",
+                            "message": f"Assigned to {user_assignments.zone} for {local_now.strftime('%B %Y')}.",
+                            "category": "patrol",
+                            "timestamp": user_assignments.created_at.isoformat() if hasattr(user_assignments, 'created_at') and user_assignments.created_at else local_now.isoformat(),
+                            "priority": "high",
+                            "link": "/officer/patrols"
+                        })
+
+                # B. Active Patrol Sessions
+                from apps.patrols.models import PatrolSession
+                active_patrols = PatrolSession.objects.filter(end_time__isnull=True).order_by('-start_time')[:3]
+                for p in active_patrols:
+                    officer_name = p.officer.get_full_name() or p.officer.username
+                    notifications.append({
+                        "id": f"patrol-active-{p.id}",
+                        "title": "Patrol Started",
+                        "message": f"Officer {officer_name} active in {p.location}.",
+                        "category": "patrol",
+                        "timestamp": p.start_time.isoformat(),
+                        "priority": "medium",
+                        "link": "/officer/patrols"
+                    })
+
+                # C. Recent Violations Logged
+                recent_vios = Violation.objects.select_related('student__user', 'rule').order_by('-timestamp')[:6]
+                for v in recent_vios:
+                    student_name = v.student.user.get_full_name() if v.student and v.student.user else (v.student.student_number if v.student else "Student")
+                    category_name = v.rule.category if v.rule else "Campus Rule"
+                    status_label = v.status.replace('_', ' ')
+                    notifications.append({
+                        "id": f"vio-{v.id}",
+                        "title": f"Violation Logged: {category_name}",
+                        "message": f"{student_name} reported at {v.location or 'Campus'}. Status: {status_label}.",
+                        "category": "violation",
+                        "timestamp": v.timestamp.isoformat(),
+                        "priority": "high" if v.status == 'OPEN' else "medium",
+                        "link": "/officer/cases"
+                    })
+
+                # D. Officer Station Operational Status
+                notifications.append({
+                    "id": "sys-officer-status",
+                    "title": "Station Operational",
+                    "message": "Field telemetry and mobile patrol logging active.",
+                    "category": "system",
+                    "timestamp": local_now.isoformat(),
+                    "priority": "low",
+                    "link": "/officer/dashboard"
+                })
+
+            # ══════════════════════════════════════════════════════════════
+            # 3. ADMIN NOTIFICATIONS: Institutional oversight & approvals
+            # ══════════════════════════════════════════════════════════════
+            elif role == 'ADMIN':
+                # A. Cases Awaiting Director Decision / Sanctions
+                pending_decisions = Violation.objects.filter(
+                    status='AWAITING_DECISION'
+                ).select_related('student__user', 'rule').order_by('-timestamp')[:5]
+
+                for v in pending_decisions:
+                    student_name = v.student.user.get_full_name() if v.student and v.student.user else (v.student.student_number if v.student else "Student")
+                    rule_code = v.rule.rule_code if v.rule else ""
+                    notifications.append({
+                        "id": f"admin-await-{v.id}",
+                        "title": "Director Action: Awaiting Sanction",
+                        "message": f"{student_name} ({rule_code}) requires Director disciplinary decision.",
+                        "category": "violation",
+                        "timestamp": v.timestamp.isoformat(),
+                        "priority": "high",
+                        "link": "/admin/cases"
+                    })
+
+                # B. Pending Freedom Wall Submissions for Moderation
+                try:
+                    from apps.freedom_wall.models import FreedomWallSubmission
+                    pending_fw = FreedomWallSubmission.objects.filter(
+                        status__in=['Submitted', 'Under Review']
+                    ).order_by('-created_at')[:4]
+
+                    for fw in pending_fw:
+                        notifications.append({
+                            "id": f"admin-fw-{fw.id}",
+                            "title": f"SWAFO Connect: {fw.category}",
+                            "message": f"New report '{fw.title[:32]}' ({fw.reference_number}) - Status: {fw.status}.",
+                            "category": "connect",
+                            "timestamp": fw.created_at.isoformat(),
+                            "priority": "high" if fw.priority in ['High', 'Critical'] else "medium",
+                            "link": "/admin/freedom-wall"
+                        })
+                except Exception:
+                    pass
+
+                # C. Active Patrol Monitoring
+                from apps.patrols.models import PatrolSession
+                active_patrols = PatrolSession.objects.filter(end_time__isnull=True).order_by('-start_time')[:3]
+                for p in active_patrols:
+                    officer_name = p.officer.get_full_name() or p.officer.username
+                    notifications.append({
+                        "id": f"admin-patrol-{p.id}",
+                        "title": "Active Patrol On Duty",
+                        "message": f"Officer {officer_name} patrolling {p.location}.",
+                        "category": "patrol",
+                        "timestamp": p.start_time.isoformat(),
+                        "priority": "medium",
+                        "link": "/admin/patrols"
+                    })
+
+                # D. Director Dashboard Summary
+                notifications.append({
+                    "id": "sys-admin-status",
+                    "title": "Director Command Center",
+                    "message": "Institutional policy enforcement and audit registry active.",
+                    "category": "system",
+                    "timestamp": local_now.isoformat(),
+                    "priority": "low",
+                    "link": "/admin/dashboard"
+                })
+
+            # Sort chronologically, newest first
+            notifications = sorted(
+                notifications, 
+                key=lambda x: x.get('timestamp', ''), 
+                reverse=True
+            )[:15]
+
+            return Response({
+                "count": len(notifications),
+                "role": role,
+                "results": notifications
+            })
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+

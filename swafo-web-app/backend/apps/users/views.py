@@ -82,6 +82,11 @@ class StudentListView(generics.ListAPIView):
             queryset = queryset.filter(course__iexact=college)
         return queryset
 
+class StudentProfileDetailView(generics.RetrieveUpdateAPIView):
+    permission_classes = [permissions.AllowAny]
+    queryset = StudentProfile.objects.all()
+    serializer_class = StudentProfileSerializer
+
 class CollegeListView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -94,7 +99,7 @@ class CollegeListView(APIView):
         )
         return Response({'colleges': [c for c in colleges if c]})
 
-class UserListView(generics.ListAPIView):
+class UserListView(generics.ListCreateAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = UserSerializer
 
@@ -102,5 +107,10 @@ class UserListView(generics.ListAPIView):
         role = self.request.query_params.get('role')
         queryset = User.objects.all().order_by('full_name')
         if role:
-            queryset = queryset.filter(role=role)
+            queryset = queryset.filter(role__iexact=role)
         return queryset
+
+class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [permissions.AllowAny]
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
