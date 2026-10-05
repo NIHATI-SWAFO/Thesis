@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Bell, AlertTriangle, Clock, CheckCheck, Radio, FileText, ChevronRight, X, Shield, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -263,23 +264,23 @@ export default function NotificationBell({ isDarkBg = false, role: explicitRole 
     }
   };
 
-  const [panelPosition, setPanelPosition] = useState({ top: 0, left: 0, arrowLeft: 0, width: 310 });
+  const [panelPosition, setPanelPosition] = useState({ top: 0, left: 0, arrowLeft: 0, width: 340 });
 
-  // Dynamically position the dropdown directly under the bell trigger
+  // Dynamically position the dropdown directly under the bell trigger via document.body portal
   useEffect(() => {
     if (!isOpen || !dropdownRef.current) return;
 
     const updatePosition = () => {
       if (!dropdownRef.current) return;
       const rect = dropdownRef.current.getBoundingClientRect();
-      const panelWidth = Math.min(320, window.innerWidth - 20);
+      const panelWidth = Math.min(340, window.innerWidth - 24);
       const bellCenterX = rect.left + rect.width / 2;
 
-      // Default: anchor dropdown towards the right under the bell
-      let desiredLeft = bellCenterX - (panelWidth - 28);
+      // Center the dropdown panel directly under the bell icon
+      let desiredLeft = bellCenterX - panelWidth / 2;
 
-      // Clamp within screen boundaries
-      const padding = 10;
+      // Keep comfortably within screen boundaries with safe margins
+      const padding = 12;
       if (desiredLeft < padding) {
         desiredLeft = padding;
       }
@@ -287,14 +288,14 @@ export default function NotificationBell({ isDarkBg = false, role: explicitRole 
         desiredLeft = window.innerWidth - panelWidth - padding;
       }
 
-      // Pointer arrow aligned to bell center
-      const arrowLeft = Math.max(14, Math.min(panelWidth - 14, bellCenterX - desiredLeft));
+      // Pointer arrow notch aligned directly to the bell's horizontal center
+      const arrowLeft = Math.max(16, Math.min(panelWidth - 16, bellCenterX - desiredLeft));
 
       setPanelPosition({
-        top: rect.bottom + 6,
-        left: desiredLeft,
+        top: Math.round(rect.bottom + 8),
+        left: Math.round(desiredLeft),
         width: panelWidth,
-        arrowLeft: arrowLeft,
+        arrowLeft: Math.round(arrowLeft),
       });
     };
 
@@ -330,29 +331,29 @@ export default function NotificationBell({ isDarkBg = false, role: explicitRole 
         )}
       </button>
 
-      {/* ── Transparent Click-Outside Overlay ── */}
-      {isOpen && (
-        <div 
-          onClick={() => setIsOpen(false)}
-          className="fixed inset-0 z-[9990] bg-transparent"
-        />
-      )}
-
-      {/* ── Connected Compact Dropdown Panel ── */}
-      {isOpen && (
-        <div 
-          style={{
-            top: `${panelPosition.top}px`,
-            left: `${panelPosition.left}px`,
-            width: `${panelPosition.width}px`,
-          }}
-          className="fixed bg-white rounded-xl shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22)] border border-gray-200/90 z-[9999] animate-in fade-in zoom-in-95 duration-150 font-sans"
-        >
-          {/* Upward Connecting Arrow Notch */}
+      {/* ── Render into document.body portal to escape ancestor transforms & backdrop-filter ── */}
+      {isOpen && typeof document !== 'undefined' && createPortal(
+        <>
+          {/* Transparent Backdrop Click-To-Close */}
           <div 
-            className="absolute -top-[5px] w-2.5 h-2.5 bg-slate-50 border-t border-l border-gray-200 rotate-45 z-20 pointer-events-none"
-            style={{ left: `${panelPosition.arrowLeft - 5}px` }}
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 z-[9998] bg-transparent"
           />
+
+          {/* Connected Compact Dropdown Panel */}
+          <div 
+            style={{
+              top: `${panelPosition.top}px`,
+              left: `${panelPosition.left}px`,
+              width: `${panelPosition.width}px`,
+            }}
+            className="fixed bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.25)] border border-gray-200/90 z-[9999] animate-in fade-in zoom-in-95 duration-150 font-sans"
+          >
+            {/* Upward Connecting Arrow Notch */}
+            <div 
+              className="absolute -top-[5px] w-2.5 h-2.5 bg-slate-50 border-t border-l border-gray-200 rotate-45 z-20 pointer-events-none"
+              style={{ left: `${panelPosition.arrowLeft - 5}px` }}
+            />
 
           {/* Compact Header */}
           <div className="px-3 py-2 border-b border-gray-100 bg-slate-50/90 rounded-t-xl flex items-center justify-between">
@@ -526,9 +527,10 @@ export default function NotificationBell({ isDarkBg = false, role: explicitRole 
               Refresh
             </button>
           </div>
-
         </div>
-      )}
-    </div>
-  );
+      </>,
+      document.body
+    )}
+  </div>
+);
 }
