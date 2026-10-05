@@ -189,7 +189,7 @@ export default function SignIn() {
                         </div>
                         <input
                           type="text"
-                          value={officerEmail}
+                          value={officerEmail || ""}
                           onChange={(e) => setOfficerEmail(e.target.value)}
                           className="block w-full rounded-xl border-0 bg-[#f4f5f7] py-3 sm:py-3.5 pl-11 sm:pl-[3.25rem] pr-4 text-gray-900 ring-1 ring-inset ring-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#113a26] hover:bg-[#eef0f2] focus:hover:bg-white transition-all text-xs sm:text-[15px] font-medium"
                           placeholder="EG: officer1@dlsud.edu.ph"
@@ -211,7 +211,7 @@ export default function SignIn() {
                         </div>
                         <input
                           type={showPassword ? 'text' : 'password'}
-                          value={officerPassword}
+                          value={officerPassword || ""}
                           onChange={(e) => setOfficerPassword(e.target.value)}
                           className="block w-full rounded-xl border-0 bg-[#f4f5f7] py-3 sm:py-3.5 pl-11 sm:pl-[3.25rem] pr-11 sm:pr-12 text-gray-900 ring-1 ring-inset ring-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#113a26] hover:bg-[#eef0f2] focus:hover:bg-white transition-all text-xs sm:text-[15px] font-medium placeholder:font-sans placeholder:font-normal placeholder:text-gray-400"
                           placeholder="••••••••"

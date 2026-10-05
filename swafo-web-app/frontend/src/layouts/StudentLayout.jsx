@@ -244,7 +244,7 @@ export default function StudentLayout() {
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-portal-text-muted/40 text-[20px]">search</span>
             <input
               type="text"
-              value={topSearch}
+              value={topSearch || ""}
               onChange={(e) => setTopSearch(e.target.value)}
               placeholder="Search academic records, handbooks, or AI curator..."
               className="block w-full rounded-xl border-none bg-portal-bg/40 py-3 pl-12 pr-4 text-portal-text focus:ring-2 focus:ring-portal-primary/20 text-[13px] font-manrope font-medium placeholder:text-portal-text-muted/30 outline-none transition-all"

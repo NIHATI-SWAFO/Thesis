@@ -325,7 +325,7 @@ export default function MapTrial() {
             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Date From</label>
             <div className="relative">
               <input type="date" className={fieldBase} style={{ paddingLeft:'2.2rem' }}
-                value={filters.date_from} onChange={e => handleFilter('date_from', e.target.value)} />
+                value={filters.date_from || ""} onChange={e => handleFilter('date_from', e.target.value)} />
               <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px] pointer-events-none">event</span>
             </div>
           </div>
@@ -333,7 +333,7 @@ export default function MapTrial() {
             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Date To</label>
             <div className="relative">
               <input type="date" className={fieldBase} style={{ paddingLeft:'2.2rem' }}
-                value={filters.date_to} onChange={e => handleFilter('date_to', e.target.value)} />
+                value={filters.date_to || ""} onChange={e => handleFilter('date_to', e.target.value)} />
               <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px] pointer-events-none">event</span>
             </div>
           </div>
@@ -341,7 +341,7 @@ export default function MapTrial() {
             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Category</label>
             <div className="relative">
               <select className={fieldBase} style={{ paddingRight:'2.2rem' }}
-                value={filters.category} onChange={e => handleFilter('category', e.target.value)}>
+                value={filters.category || ""} onChange={e => handleFilter('category', e.target.value)}>
                 <option value="">All Categories</option>
                 <option value="minor">⚠️ Minor Offenses</option>
                 <option value="major">🔴 Major Offenses</option>

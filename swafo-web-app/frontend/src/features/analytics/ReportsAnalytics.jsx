@@ -126,7 +126,7 @@ export default function ReportsAnalytics() {
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto">
           {/* College Filter */}
           <select
-            value={collegeFilter}
+            value={collegeFilter || ""}
             onChange={e => setCollegeFilter(e.target.value)}
             className="w-full sm:w-auto px-3 sm:px-5 py-2.5 sm:py-3 bg-white border border-[#f1f5f9] rounded-xl md:rounded-2xl text-[12px] sm:text-[14px] font-bold text-[#475569] shadow-sm hover:bg-gray-50 transition-all outline-none cursor-pointer"
           >

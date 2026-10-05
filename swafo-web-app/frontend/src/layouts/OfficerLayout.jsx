@@ -243,7 +243,7 @@ export default function OfficerLayout() {
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-[20px]">search</span>
             <input 
               type="text" 
-              value={searchQuery} 
+              value={searchQuery || ""} 
               onChange={(e) => setSearchQuery(e.target.value)} 
               placeholder="Search academic records, handbook..." 
               className="block w-full rounded-2xl border border-white/10 bg-white/10 py-3 pl-12 pr-4 text-white text-[13px] font-manrope font-semibold placeholder:text-white/30 outline-none" 

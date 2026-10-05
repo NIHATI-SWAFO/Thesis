@@ -225,7 +225,7 @@ export default function StudentRecords({ role = 'officer' }) {
           {/* College Filter Dropdown */}
           <div className="relative w-full sm:w-auto">
             <select
-              value={collegeFilter}
+              value={collegeFilter || ""}
               onChange={e => { setCollegeFilter(e.target.value); setCurrentPage(1); }}
               className="h-11 sm:h-13 w-full sm:w-auto pl-4 pr-10 bg-white border border-slate-200 sm:border-slate-100 rounded-xl sm:rounded-2xl text-[12px] sm:text-[13px] font-bold text-slate-600 focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all shadow-sm appearance-none cursor-pointer"
             >
@@ -246,7 +246,7 @@ export default function StudentRecords({ role = 'officer' }) {
                 type="text"
                 placeholder="Search students..."
                 className="w-full pl-10 sm:pl-13 pr-4 sm:pr-6 h-11 sm:h-13 bg-white border border-slate-200 sm:border-slate-100 rounded-xl sm:rounded-2xl text-[13px] sm:text-[14px] font-bold focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all shadow-sm"
-                value={searchQuery}
+                value={searchQuery || ""}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>

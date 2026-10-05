@@ -271,7 +271,7 @@ export default function UserManagement() {
           <input
             type="text"
             placeholder="Search by name, email, or username..."
-            value={searchQuery}
+            value={searchQuery || ""}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
           />
@@ -509,7 +509,7 @@ export default function UserManagement() {
                   type="text"
                   required
                   placeholder="e.g. Officer Juan Dela Cruz"
-                  value={newUser.full_name}
+                  value={newUser.full_name || ""}
                   onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500"
                 />
@@ -521,7 +521,7 @@ export default function UserManagement() {
                   type="email"
                   required
                   placeholder="e.g. jdelacruz@dlsud.edu.ph"
-                  value={newUser.email}
+                  value={newUser.email || ""}
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500"
                 />
@@ -532,7 +532,7 @@ export default function UserManagement() {
                 <input
                   type="text"
                   placeholder="Leave empty to auto-generate from email"
-                  value={newUser.username}
+                  value={newUser.username || ""}
                   onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500"
                 />
@@ -541,7 +541,7 @@ export default function UserManagement() {
               <div>
                 <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Assigned Role</label>
                 <select
-                  value={newUser.role}
+                  value={newUser.role || ""}
                   onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-bold text-[#003624] outline-none focus:ring-2 focus:ring-emerald-500"
                 >

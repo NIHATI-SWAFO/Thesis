@@ -489,7 +489,7 @@ function PatrolList({ patrols, onSelect, role }) {
           <input
             type="text"
             placeholder="Search by area or officer..."
-            value={search}
+            value={search || ""}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-[#003624]/20 shadow-sm"
           />

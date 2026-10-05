@@ -93,7 +93,7 @@ export default function StudentCreatePost() {
                 type="text" 
                 required
                 placeholder="What's on your mind?"
-                value={formData.title}
+                value={formData.title || ""}
                 onChange={e => setFormData({...formData, title: e.target.value})}
                 className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl px-5 py-4 text-[15px] font-bold text-[#003624] outline-none focus:ring-2 focus:ring-[#2bd99b] focus:bg-white transition-all placeholder:text-slate-300"
               />
@@ -104,7 +104,7 @@ export default function StudentCreatePost() {
               <textarea 
                 required
                 placeholder="Share the details..."
-                value={formData.description}
+                value={formData.description || ""}
                 onChange={e => setFormData({...formData, description: e.target.value})}
                 className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl px-5 py-4 text-[15px] font-medium text-slate-700 outline-none focus:ring-2 focus:ring-[#2bd99b] focus:bg-white transition-all min-h-[160px] resize-none placeholder:text-slate-300"
               ></textarea>

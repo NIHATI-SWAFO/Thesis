@@ -442,7 +442,7 @@ export default function RecordViolation() {
                     type="text"
                     placeholder="Enter Student Number or Full Name..."
                     className="w-full bg-white/5 border-2 border-white/10 rounded-[2rem] h-[72px] pl-16 pr-6 text-[16px] font-bold text-white placeholder-white/20 outline-none focus:bg-white/10 focus:border-emerald-400 transition-all shadow-inner"
-                    value={searchQuery}
+                    value={searchQuery || ""}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   />
@@ -543,7 +543,7 @@ export default function RecordViolation() {
                     <input
                       type="text"
                       placeholder="Smart search (e.g. 'smoking', 'uniform', 'noise')..."
-                      value={smartSearchQuery}
+                      value={smartSearchQuery || ""}
                       onChange={(e) => handleSmartSearch(e.target.value)}
                       className="w-full bg-slate-50 border-2 border-transparent rounded-2xl h-[64px] pl-14 pr-4 text-[15px] font-bold text-slate-700 outline-none focus:bg-white focus:border-emerald-100 focus:shadow-lg focus:shadow-emerald-950/5 transition-all"
                     />
@@ -920,7 +920,7 @@ export default function RecordViolation() {
                 <input
                   type="text"
                   placeholder="Enter Student Number or Full Name..."
-                  value={searchQuery}
+                  value={searchQuery || ""}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   className="w-full h-12 bg-slate-50 border border-gray-200 rounded-xl pl-10 pr-10 text-[13px] font-bold text-gray-800 outline-none focus:bg-white focus:border-emerald-500 transition-colors shadow-inner"
@@ -1149,7 +1149,7 @@ export default function RecordViolation() {
                     <input
                       type="text"
                       placeholder="Type keyword (e.g. uniform, smoking, haircut)..."
-                      value={smartSearchQuery}
+                      value={smartSearchQuery || ""}
                       onChange={(e) => handleSmartSearch(e.target.value)}
                       className="w-full h-11 bg-slate-50 border border-gray-200 rounded-xl pl-9 pr-3 text-[12.5px] font-bold text-gray-800 outline-none focus:bg-white focus:border-emerald-500 transition-colors"
                     />

@@ -304,7 +304,7 @@ export default function StudentHandbook({ role = 'student' }) {
             <input
               type="text"
               placeholder="Search by rule code (e.g. 27.1.2.1), dress code, misconduct, suspension..."
-              value={searchQuery}
+              value={searchQuery || ""}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 font-manrope transition-all"
             />

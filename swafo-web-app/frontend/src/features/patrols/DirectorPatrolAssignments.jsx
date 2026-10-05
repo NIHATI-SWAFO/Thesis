@@ -306,7 +306,7 @@ export default function DirectorPatrolAssignments() {
                 </span>
                 <input
                   type="text"
-                  value={mappingSearch}
+                  value={mappingSearch || ""}
                   onChange={(e) => setMappingSearch(e.target.value)}
                   placeholder="Search building name (e.g. Library, Gate, Hall)..."
                   className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl pl-10 pr-8 py-2 sm:py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-slate-400 shadow-xs"

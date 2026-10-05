@@ -371,7 +371,7 @@ export default function CaseManagement({ role }) {
               <input 
                 type="text" 
                 placeholder="Search student name, ID or case #..." 
-                value={searchQuery} 
+                value={searchQuery || ""} 
                 onChange={(e) => setSearchQuery(e.target.value)} 
                 className="w-full bg-white rounded-xl sm:rounded-2xl py-3 pl-12 pr-4 text-xs sm:text-[14px] font-manrope font-medium outline-none border-2 border-transparent focus:border-[#003624] transition-all shadow-xs h-[44px] sm:h-[50px]" 
               />
@@ -379,7 +379,7 @@ export default function CaseManagement({ role }) {
 
             <div className="grid grid-cols-3 gap-2 w-full md:w-auto">
               <select
-                value={collegeFilter}
+                value={collegeFilter || ""}
                 onChange={(e) => { setCollegeFilter(e.target.value); setCurrentPage(1); }}
                 className="bg-white px-2.5 sm:px-4 rounded-xl sm:rounded-2xl text-xs sm:text-[13px] font-bold text-slate-700 h-[42px] sm:h-[50px] border-2 border-transparent focus:border-[#003624] outline-none transition-all cursor-pointer truncate"
               >
@@ -390,7 +390,7 @@ export default function CaseManagement({ role }) {
               </select>
 
               <select
-                value={statusFilter}
+                value={statusFilter || ""}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="bg-white px-2.5 sm:px-4 rounded-xl sm:rounded-2xl text-xs sm:text-[13px] font-bold text-slate-700 h-[42px] sm:h-[50px] md:w-[160px] border-2 border-transparent focus:border-[#003624] outline-none transition-all cursor-pointer truncate"
               >
@@ -403,7 +403,7 @@ export default function CaseManagement({ role }) {
               </select>
 
               <select
-                value={priorityFilter}
+                value={priorityFilter || ""}
                 onChange={(e) => setPriorityFilter(e.target.value)}
                 className="bg-white px-2.5 sm:px-4 rounded-xl sm:rounded-2xl text-xs sm:text-[13px] font-bold text-slate-700 h-[42px] sm:h-[50px] md:w-[150px] border-2 border-transparent focus:border-[#003624] outline-none transition-all cursor-pointer truncate"
               >
@@ -898,7 +898,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                 <div className="mt-4 sm:mt-5 flex flex-col gap-3 sm:gap-3.5 animate-in slide-in-from-top-2 duration-300">
                   {/* Sanction dropdown */}
                   <select
-                    value={selectedSanction}
+                    value={selectedSanction || ""}
                     onChange={(e) => setSelectedSanction(e.target.value)}
                     className="w-full bg-white border-2 border-rose-200 rounded-xl px-3.5 py-2.5 text-[12px] sm:text-[13.5px] font-bold text-rose-900 outline-none focus:border-rose-500 transition-all cursor-pointer"
                   >
@@ -979,7 +979,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                 <div className="mt-4 sm:mt-5 animate-in slide-in-from-top-2 duration-300">
                   <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
                     <select
-                      value={selectedOfficer}
+                      value={selectedOfficer || ""}
                       onChange={(e) => setSelectedOfficer(e.target.value)}
                       className="flex-1 bg-white border-2 border-indigo-100 rounded-xl px-3.5 py-2.5 text-[12.5px] sm:text-[13.5px] font-bold text-slate-700 outline-none focus:border-indigo-600 transition-all cursor-pointer"
                     >

@@ -158,7 +158,7 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
               <div className="col-span-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Official Status</label>
                 <div className="space-y-2">
-                  <select value={status} onChange={(e) => setStatus(e.target.value)} onBlur={handleUpdateMeta} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-[#003624] outline-none focus:ring-2 focus:ring-emerald-500">
+                  <select value={status || ""} onChange={(e) => setStatus(e.target.value)} onBlur={handleUpdateMeta} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-[#003624] outline-none focus:ring-2 focus:ring-emerald-500">
                     <option value="Submitted">Submitted</option>
                     <option value="Acknowledged">Acknowledged</option>
                     <option value="Under Review">Under Review</option>
@@ -188,7 +188,7 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
               </div>
               <div className="col-span-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Priority</label>
-                <select value={priority} onChange={(e) => setPriority(e.target.value)} onBlur={handleUpdateMeta} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-[#003624] outline-none focus:ring-2 focus:ring-emerald-500">
+                <select value={priority || ""} onChange={(e) => setPriority(e.target.value)} onBlur={handleUpdateMeta} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-[#003624] outline-none focus:ring-2 focus:ring-emerald-500">
                   <option value="Low">Low</option>
                   <option value="Moderate">Moderate</option>
                   <option value="High">High</option>
@@ -197,7 +197,7 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
               </div>
               <div className="col-span-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Visibility</label>
-                <select value={visibility} onChange={(e) => setVisibility(e.target.value)} onBlur={handleUpdateMeta} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-[#003624] outline-none focus:ring-2 focus:ring-emerald-500">
+                <select value={visibility || ""} onChange={(e) => setVisibility(e.target.value)} onBlur={handleUpdateMeta} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-[#003624] outline-none focus:ring-2 focus:ring-emerald-500">
                   <option value="Pending Review">Pending Review</option>
                   <option value="Community">Community Feed</option>
                   <option value="Private">Private</option>
@@ -216,14 +216,14 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
               <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-blue-50 border border-blue-100 rounded-2xl animate-in fade-in zoom-in-95">
                 <h4 className="text-sm font-bold text-blue-900 mb-3 sm:mb-4 flex items-center gap-2"><Share2 size={16} /> External Referral</h4>
                 <div className="space-y-3 sm:space-y-4">
-                  <select value={referTo} onChange={e=>setReferTo(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border-none ring-1 ring-blue-200 text-xs sm:text-sm outline-none">
+                  <select value={referTo || ""} onChange={e=>setReferTo(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border-none ring-1 ring-blue-200 text-xs sm:text-sm outline-none">
                     <option value="">Select Destination...</option>
                     <option value="Guidance Office">Guidance Office</option>
                     <option value="Campus Security">Campus Security</option>
                     <option value="College Dean">College Dean</option>
                     <option value="Facilities Management">Facilities Management</option>
                   </select>
-                  <textarea value={referReason} onChange={e=>setReferReason(e.target.value)} placeholder="Reason for referral..." className="w-full px-4 py-2.5 rounded-xl border-none ring-1 ring-blue-200 text-xs sm:text-sm outline-none resize-none h-20"></textarea>
+                  <textarea value={referReason || ""} onChange={e=>setReferReason(e.target.value)} placeholder="Reason for referral..." className="w-full px-4 py-2.5 rounded-xl border-none ring-1 ring-blue-200 text-xs sm:text-sm outline-none resize-none h-20"></textarea>
                   <div className="flex justify-end gap-2">
                     <button onClick={() => setShowReferral(false)} className="px-4 py-2 text-xs font-bold text-blue-600">Cancel</button>
                     <button onClick={handleSendReferral} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-blue-700">Submit Referral</button>
@@ -288,7 +288,7 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
             {/* Reply Box */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
               <textarea 
-                value={replyContent} 
+                value={replyContent || ""} 
                 onChange={e=>setReplyContent(e.target.value)}
                 placeholder="Type a response or internal note..." 
                 className="w-full p-3 sm:p-4 text-xs sm:text-sm font-manrope outline-none resize-none h-24"

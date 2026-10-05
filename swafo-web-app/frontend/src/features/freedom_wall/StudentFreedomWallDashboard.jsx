@@ -267,14 +267,14 @@ export default function StudentFreedomWallDashboard() {
                       type="text" 
                       required
                       placeholder="Post Title..."
-                      value={newPostData.title}
+                      value={newPostData.title || ""}
                       onChange={e => setNewPostData({...newPostData, title: e.target.value})}
                       className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold text-[#003624] outline-none focus:ring-2 focus:ring-[#2bd99b] focus:bg-white transition-all placeholder:text-slate-300"
                     />
                     <textarea 
                       required
                       placeholder="Share the details..."
-                      value={newPostData.description}
+                      value={newPostData.description || ""}
                       onChange={e => setNewPostData({...newPostData, description: e.target.value})}
                       className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl px-4 py-3 text-[14px] font-medium text-slate-700 outline-none focus:ring-2 focus:ring-[#2bd99b] focus:bg-white transition-all min-h-[100px] resize-none placeholder:text-slate-300"
                     ></textarea>
@@ -540,7 +540,7 @@ export default function StudentFreedomWallDashboard() {
                           <textarea 
                             required
                             placeholder="Write a comment..."
-                            value={commentText}
+                            value={commentText || ""}
                             onChange={(e) => setCommentText(e.target.value)}
                             className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-[#2bd99b] focus:bg-white transition-all min-h-[44px] resize-none"
                             rows={2}

@@ -173,7 +173,7 @@ export default function DirectorFreedomWall() {
         </div>
         
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 flex-1">
-          <select name="type" value={filters.type} onChange={handleFilterChange} className="w-full sm:w-auto bg-slate-50/50 border-0 ring-1 ring-slate-200/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 hover:bg-slate-50 cursor-pointer transition-all truncate">
+          <select name="type" value={filters.type || ""} onChange={handleFilterChange} className="w-full sm:w-auto bg-slate-50/50 border-0 ring-1 ring-slate-200/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 hover:bg-slate-50 cursor-pointer transition-all truncate">
             <option value="">All Intents</option>
             <option value="report_something">Report Something</option>
             <option value="get_help">Get Help</option>
@@ -183,7 +183,7 @@ export default function DirectorFreedomWall() {
             <option value="give_appreciation">Give Appreciation</option>
           </select>
 
-          <select name="category" value={filters.category} onChange={handleFilterChange} className="w-full sm:w-auto bg-slate-50/50 border-0 ring-1 ring-slate-200/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 hover:bg-slate-50 cursor-pointer transition-all truncate">
+          <select name="category" value={filters.category || ""} onChange={handleFilterChange} className="w-full sm:w-auto bg-slate-50/50 border-0 ring-1 ring-slate-200/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 hover:bg-slate-50 cursor-pointer transition-all truncate">
             <option value="">All Categories</option>
             <option value="Professor">Professor / Faculty</option>
             <option value="Subject">Subject / Curriculum</option>
@@ -193,7 +193,7 @@ export default function DirectorFreedomWall() {
             <option value="Welfare">Student Welfare</option>
           </select>
 
-          <select name="status" value={filters.status} onChange={handleFilterChange} className="w-full sm:w-auto bg-slate-50/50 border-0 ring-1 ring-slate-200/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 hover:bg-slate-50 cursor-pointer transition-all truncate">
+          <select name="status" value={filters.status || ""} onChange={handleFilterChange} className="w-full sm:w-auto bg-slate-50/50 border-0 ring-1 ring-slate-200/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 hover:bg-slate-50 cursor-pointer transition-all truncate">
             <option value="">All Statuses</option>
             <option value="Submitted">Submitted</option>
             <option value="Under Review">Under Review</option>
@@ -201,7 +201,7 @@ export default function DirectorFreedomWall() {
             <option value="Resolved">Resolved</option>
           </select>
 
-          <select name="priority" value={filters.priority} onChange={handleFilterChange} className="w-full sm:w-auto bg-slate-50/50 border-0 ring-1 ring-slate-200/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 hover:bg-slate-50 cursor-pointer transition-all truncate">
+          <select name="priority" value={filters.priority || ""} onChange={handleFilterChange} className="w-full sm:w-auto bg-slate-50/50 border-0 ring-1 ring-slate-200/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 hover:bg-slate-50 cursor-pointer transition-all truncate">
             <option value="">All Priorities</option>
             <option value="Low">Low</option>
             <option value="Moderate">Moderate</option>

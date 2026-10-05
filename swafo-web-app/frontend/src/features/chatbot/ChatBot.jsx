@@ -241,7 +241,7 @@ export default function ChatBot() {
               <input 
                 type="text"
                 placeholder="Ask about academic policies, rules, or campus guidelines..."
-                value={input}
+                value={input || ""}
                 onChange={(e) => setInput(e.target.value)}
                 className="flex-1 bg-transparent border-none text-[15px] font-manrope font-medium text-[#1a1a1a] focus:outline-none placeholder:text-[#94a3b8]"
               />

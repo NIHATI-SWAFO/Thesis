@@ -232,7 +232,7 @@ export default function StudentViolations() {
           </span>
           <input
             type="text"
-            value={searchQuery}
+            value={searchQuery || ""}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search records by title, rule or ID..."
             className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 font-manrope transition-all"
