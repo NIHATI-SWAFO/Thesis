@@ -705,7 +705,7 @@ export default function RecordViolation() {
                 </div>
               </div>
               <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 ${pastViolations.length > 3 ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-                {pastViolations.length > 3 ? 'High Risk' : 'Standard'}
+                {pastViolations.length > 3 ? 'Disciplinary Review' : 'Good Standing'}
               </div>
             </div>
 
@@ -951,7 +951,7 @@ export default function RecordViolation() {
               </div>
               <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 flex flex-col justify-center items-center">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Standing</p>
-                <p className={`text-[16px] font-black text-center leading-tight ${pastViolations.length > 3 ? 'text-red-600' : 'text-[#003624]'}`}>{pastViolations.length > 3 ? 'High Risk' : 'Good Standing'}</p>
+                <p className={`text-[16px] font-black text-center leading-tight ${pastViolations.length > 3 ? 'text-red-600' : 'text-[#003624]'}`}>{pastViolations.length > 3 ? 'Disciplinary Review' : 'Good Standing'}</p>
               </div>
             </div>
 

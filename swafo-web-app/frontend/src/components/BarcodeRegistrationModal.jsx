@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { API_ENDPOINTS } from '../api/config';
 import BarcodeScanner from './BarcodeScanner';
 
@@ -83,12 +84,23 @@ export default function BarcodeRegistrationModal({
 
   const fileInputRef = useRef(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const studentNumber = profile?.student_number;
   const fullName = profile?.user_details?.full_name || 'Student';
 
-  // ── Handle ID / Barcode Image Upload ──
+  // ── Handle ID / Barcode Image Upload (Multi-Engine Pipeline) ──
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -101,24 +113,79 @@ export default function BarcodeRegistrationModal({
     const previewUrl = URL.createObjectURL(file);
     setImagePreview(previewUrl);
 
-    try {
-      const html5QrCode = new Html5Qrcode('barcode-file-decoder-temp');
-      const decodedText = await html5QrCode.scanFile(file, false);
-      await html5QrCode.clear();
+    let detectedCode = null;
 
-      if (decodedText && decodedText.trim()) {
-        const cleanCode = decodedText.trim();
-        setBarcodeInput(cleanCode);
-        setFileSuccess(`Barcode decoded: "${cleanCode}"`);
-      } else {
-        setFileError('No readable barcode could be detected. Please ensure the image is clear or type the number below.');
+    // ── Tier 1: Native Browser BarcodeDetector (instant, GPU-accelerated) ──
+    try {
+      if ('BarcodeDetector' in window) {
+        const supported = await window.BarcodeDetector.getSupportedFormats().catch(() => []);
+        if (supported.length > 0) {
+          const detector = new window.BarcodeDetector({ 
+            formats: supported.filter(f => ['code_128', 'code_39', 'ean_13', 'upc_a'].includes(f))
+          });
+          const imgBitmap = await createImageBitmap(file);
+          const detected = await detector.detect(imgBitmap);
+          if (detected && detected.length > 0 && detected[0].rawValue) {
+            detectedCode = detected[0].rawValue.trim();
+          }
+        }
       }
-    } catch (err) {
-      console.warn('Barcode image decode error:', err);
-      setFileError('Could not decode barcode from this image. Please check lighting or enter the number below.');
-    } finally {
-      setIsDecodingFile(false);
+    } catch (detectorErr) {
+      console.warn('Native BarcodeDetector pass skipped:', detectorErr);
     }
+
+    // ── Tier 2: Dedicated Backend Barcode Decoder (zxing-cpp C++ engine) ──
+    if (!detectedCode) {
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+        const resp = await fetch(API_ENDPOINTS.DECODE_BARCODE, {
+          method: 'POST',
+          body: formData,
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.success && data.barcode) {
+            detectedCode = data.barcode.trim();
+          }
+        }
+      } catch (backendErr) {
+        console.warn('Backend zxing-cpp decode pass error:', backendErr);
+      }
+    }
+
+    // ── Tier 3: Client-side html5-qrcode fallback ──
+    if (!detectedCode) {
+      try {
+        const html5QrCode = new Html5Qrcode('barcode-file-decoder-temp', {
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.QR_CODE,
+          ],
+          verbose: false,
+        });
+        const decodedText = await html5QrCode.scanFile(file, false);
+        await html5QrCode.clear();
+
+        if (decodedText && decodedText.trim()) {
+          detectedCode = decodedText.trim();
+        }
+      } catch (html5Err) {
+        console.warn('Html5Qrcode fallback pass error:', html5Err);
+      }
+    }
+
+    if (detectedCode) {
+      setBarcodeInput(detectedCode);
+      setFileSuccess(`Barcode decoded: "${detectedCode}"`);
+    } else {
+      setFileError('Could not auto-detect barcode from this photo. Barcode scanners require white margins (quiet zone) around the bars. You can type or edit your barcode value below.');
+    }
+
+    setIsDecodingFile(false);
   };
 
   // ── Handle Camera Scan Completion ──
@@ -203,7 +270,7 @@ export default function BarcodeRegistrationModal({
     }
   };
 
-  return (
+  return createPortal(
     <>
       {/* Hidden DOM element required by html5-qrcode for file scanning */}
       <div id="barcode-file-decoder-temp" style={{ display: 'none' }} />
@@ -217,8 +284,16 @@ export default function BarcodeRegistrationModal({
       )}
 
       {/* Main Barcode Registration Dialog */}
-      <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-        <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
+      <div 
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div 
+          className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-[0_25px_80px_rgba(0,0,0,0.35)] border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
+          onClick={(e) => e.stopPropagation()}
+        >
           
           {/* Header */}
           <div className="bg-[#003624] text-white px-8 py-6 flex items-center justify-between relative overflow-hidden shrink-0">
@@ -362,7 +437,7 @@ export default function BarcodeRegistrationModal({
                     {imagePreview ? 'Click to choose a different photo' : 'Upload photo of your ID barcode'}
                   </p>
                   <p className="font-manrope text-[12px] text-slate-500 mt-1 max-w-xs">
-                    Take a clear snapshot or crop of the barcode on the back of your DLSU-D ID card
+                    Take a well-lit photo of the barcode. Keep white space (quiet zone) around the bars and avoid cropping directly against the black lines.
                   </p>
                 </div>
 
@@ -428,6 +503,30 @@ export default function BarcodeRegistrationModal({
                   className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border-2 border-slate-200 focus:border-[#006b5d] focus:bg-white rounded-2xl font-mono text-[15px] font-bold text-slate-800 outline-none transition-all shadow-inner"
                 />
               </div>
+
+              {/* DLSU-D Standard ID Pattern Quick-Fill Helper */}
+              {studentNumber && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-emerald-50/70 border border-emerald-200/60 rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px] text-emerald-700 shrink-0">lightbulb</span>
+                    <p className="text-[11px] text-emerald-900 font-manrope">
+                      <strong>DLSU-D Pattern:</strong> Physical barcode is typically <code className="bg-emerald-100/80 px-1 py-0.5 rounded font-mono font-bold">20{studentNumber}</code>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBarcodeInput(`20${studentNumber}`);
+                      setFileError('');
+                      setFileSuccess(`Applied DLSU-D standard barcode: 20${studentNumber}`);
+                    }}
+                    className="self-start sm:self-auto text-[11px] font-bold text-[#003624] bg-white hover:bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-lg transition-colors shadow-xs cursor-pointer"
+                  >
+                    Use 20{studentNumber}
+                  </button>
+                </div>
+              )}
+
               <p className="font-manrope text-[11px] text-slate-400">
                 You can review or edit the value extracted from your ID before saving.
               </p>
@@ -510,6 +609,7 @@ export default function BarcodeRegistrationModal({
 
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

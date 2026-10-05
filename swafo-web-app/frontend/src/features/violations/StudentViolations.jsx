@@ -63,7 +63,7 @@ export default function StudentViolations() {
   };
 
   const handleExportClick = () => {
-    const headers = ['Ref ID', 'Status', 'Title', 'Date', 'Time', 'Location', 'Action Needed'];
+    const headers = ['Ref ID', 'Status', 'Title', 'Date', 'Time', 'Location', 'Prescribed Sanction'];
     const csvRows = violations.map(v => [
       v.id,
       v.status,
@@ -109,12 +109,12 @@ export default function StudentViolations() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 flex flex-col justify-between">
           <div>
-            <p className="text-[12px] font-pjs font-bold text-[#003624]/40 uppercase tracking-widest leading-none mb-1">Pending Actions</p>
+            <p className="text-[12px] font-pjs font-bold text-[#003624]/40 uppercase tracking-widest leading-none mb-1">Active Obligations</p>
             <h3 className="text-3xl font-bold font-pjs text-[#003624] leading-none">{pendingCount.toString().padStart(2, '0')}</h3>
           </div>
           <div className="flex items-center gap-2 mt-6 text-portal-text-muted/70 text-sm font-manrope font-medium">
             <span className="material-symbols-outlined text-[18px]">hourglass_bottom</span>
-            Action Required
+            Resolution Pending
           </div>
         </div>
 

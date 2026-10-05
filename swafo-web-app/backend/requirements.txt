@@ -44,3 +44,5 @@ uritemplate
 urllib3
 whitenoise
 reportlab
+pillow
+zxing-cpp

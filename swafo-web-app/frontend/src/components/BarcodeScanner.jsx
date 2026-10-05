@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 
 /**
@@ -20,12 +21,14 @@ export default function BarcodeScanner({ onScan, onClose }) {
     const config = {
       fps: 15,
       formatsToSupport: [
+        5,  // CODE_128   ← primary university ID barcode format
+        3,  // CODE_39
+        9,  // EAN_13
+        14, // UPC_A
         0,  // QR_CODE
         1,  // AZTEC
         2,  // CODABAR
-        3,  // CODE_39
         4,  // CODE_93
-        5,  // CODE_128   ← most likely format for university IDs
         6,  // DATA_MATRIX
         7,  // MAXICODE
         8,  // ITF
@@ -98,8 +101,8 @@ export default function BarcodeScanner({ onScan, onClose }) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] bg-black flex flex-col">
       <style>{`
         #barcode-scanner-viewport video {
           object-fit: cover !important;
@@ -173,6 +176,7 @@ export default function BarcodeScanner({ onScan, onClose }) {
           Enter Manually Instead
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

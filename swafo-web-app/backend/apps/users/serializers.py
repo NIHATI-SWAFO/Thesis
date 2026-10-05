@@ -17,13 +17,14 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     is_repeat_offender = serializers.SerializerMethodField()
     has_pending_violations = serializers.SerializerMethodField()
     risk_score = serializers.SerializerMethodField()
+    risk_standing = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentProfile
         fields = [
             'id', 'student_number', 'user_details', 'course', 'year_level',
             'violation_count', 'is_repeat_offender', 'has_pending_violations',
-            'clearance_status', 'risk_score', 'barcode_value',
+            'clearance_status', 'risk_score', 'risk_standing', 'barcode_value',
         ]
 
     # ─── Basic Counts ──────────────────────────────────────────────
@@ -103,3 +104,56 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             total += decayed
 
         return round(min(total, self.MAX_SCORE), 1)
+
+    def get_risk_standing(self, obj):
+        score = self.get_risk_score(obj)
+        has_pending = self.get_has_pending_violations(obj)
+
+        if score <= 25:
+            tier = 'LOW'
+            standing = 'Good Standing'
+            clearance_impact = 'CLEARED'
+            honors_eligibility = 'ELIGIBLE'
+            gmc_status = 'AVAILABLE'
+            handbook_citation = 'Section 14'
+            consequence_summary = 'Unrestricted institutional clearance (§14). Eligible for Dean\'s List and Latin Honors; unconditional Good Moral Certificate (GMC) issuance.'
+            color = 'emerald'
+        elif score <= 50:
+            tier = 'MODERATE'
+            standing = 'Under Review'
+            clearance_impact = 'CONDITIONAL'
+            honors_eligibility = 'UNDER_REVIEW'
+            gmc_status = 'DEFERRED'
+            handbook_citation = 'Section 27.1'
+            consequence_summary = 'Conditional clearance. Honors subject to end-of-semester conduct review. Good Moral Certificate deferred pending resolution of active obligations (§27.1).'
+            color = 'amber'
+        elif score <= 75:
+            tier = 'HIGH'
+            standing = 'Disciplinary Warning'
+            clearance_impact = 'RESTRICTED'
+            honors_eligibility = 'DISQUALIFIED'
+            gmc_status = 'WITHHELD'
+            handbook_citation = 'Section 26.4'
+            consequence_summary = 'Disqualified from Dean\'s List and Latin Honors (conduct clause). Clearance restricted; Good Moral Certificate withheld. Mandatory SWAFO Formation Program (§26.4).'
+            color = 'orange'
+        else:
+            tier = 'CRITICAL'
+            standing = 'Disciplinary Probation'
+            clearance_impact = 'HOLD'
+            honors_eligibility = 'FORFEITED'
+            gmc_status = 'DENIED'
+            handbook_citation = 'Section 27.3.5'
+            consequence_summary = 'Institutional Clearance placed on HOLD (§14) blocking enrollment and graduation. Honors forfeited; referral to SWAFO Director and Student Discipline Board (§27.3.5) with risk of suspension or expulsion.'
+            color = 'rose'
+
+        return {
+            'tier': tier,
+            'standing': standing,
+            'score': score,
+            'clearance_impact': clearance_impact,
+            'honors_eligibility': honors_eligibility,
+            'gmc_status': gmc_status,
+            'handbook_citation': handbook_citation,
+            'consequence_summary': consequence_summary,
+            'color': color,
+        }

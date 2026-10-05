@@ -11,7 +11,7 @@ export default function StudentProfile() {
 
   const email = user?.email;
 
-  useEffect(() => {
+  const fetchProfile = () => {
     if (email) {
       fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${email}`)
         .then(res => res.json())
@@ -23,6 +23,10 @@ export default function StudentProfile() {
         .catch(err => console.error("Profile fetch error:", err))
         .finally(() => setLoading(false));
     }
+  };
+
+  useEffect(() => {
+    fetchProfile();
   }, [email]);
 
   if (loading) {
@@ -84,23 +88,38 @@ export default function StudentProfile() {
         
         {/* ══════════════════════════ ACADEMIC STATUS ══════════════════════════ */}
         <div className="lg:col-span-5">
-          <SectionCard title="Academic Status" icon="analytics">
+          <SectionCard title="Academic Standing & Privileges" icon="analytics" subtitle="DLSU-D Student Handbook 2022–2027">
             <div className="space-y-4">
               <StatusRow label="Enrollment" status="Active" type="success" />
               {(() => {
-                const count = profile?.violation_count || 0;
-                let standing = "Good Standing";
-                let type = "success";
-                
-                if (count >= 5) {
-                  standing = "Disciplinary Probation";
-                  type = "error";
-                } else if (count >= 2) {
-                  standing = "Under Review";
-                  type = "warning";
-                }
-                
-                return <StatusRow label="Standing" status={standing} type={type} />;
+                const rs = profile?.risk_standing || {
+                  standing: 'Good Standing',
+                  tier: 'LOW',
+                  clearance_impact: 'CLEARED',
+                  honors_eligibility: 'ELIGIBLE',
+                  gmc_status: 'AVAILABLE',
+                  handbook_citation: 'Section 14',
+                };
+
+                const typeMap = {
+                  LOW: 'success',
+                  MODERATE: 'warning',
+                  HIGH: 'orange',
+                  CRITICAL: 'error',
+                };
+                const standingType = typeMap[rs.tier] || 'success';
+                const clearanceType = rs.clearance_impact === 'CLEARED' ? 'success' : rs.clearance_impact === 'HOLD' ? 'error' : 'warning';
+                const honorsType = rs.honors_eligibility === 'ELIGIBLE' ? 'success' : rs.honors_eligibility === 'UNDER_REVIEW' ? 'warning' : 'error';
+                const gmcType = rs.gmc_status === 'AVAILABLE' ? 'success' : rs.gmc_status === 'DEFERRED' ? 'warning' : 'error';
+
+                return (
+                  <>
+                    <StatusRow label="Behavioral Standing" status={rs.standing} type={standingType} />
+                    <StatusRow label="Clearance (§14)" status={rs.clearance_impact} type={clearanceType} />
+                    <StatusRow label="Dean's List / Honors" status={rs.honors_eligibility.replace('_', ' ')} type={honorsType} />
+                    <StatusRow label="Good Moral (GMC)" status={rs.gmc_status} type={gmcType} />
+                  </>
+                );
               })()}
               
               <div className="mt-5 pt-5 border-t border-emerald-50/50">
@@ -189,8 +208,8 @@ export default function StudentProfile() {
                            Linked
                          </span>
                        ) : (
-                         <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-wider">
-                           Action Needed
+                         <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">
+                           Not Linked
                          </span>
                        )}
                      </div>
@@ -206,8 +225,13 @@ export default function StudentProfile() {
                  </button>
                </div>
 
-               <DocumentLink title="Digital Student ID" subtitle="Last synced 2 hours ago" icon="id_card" actionIcon="visibility" />
-               <DocumentLink title="Transcript of Records" subtitle="Ready for download (Unofficial)" icon="description" actionIcon="download" />
+                <DocumentLink title="Digital Student ID" subtitle="Last synced 2 hours ago" icon="id_card" actionIcon="visibility" />
+                <DocumentLink 
+                  title="Transcript of Records" 
+                  subtitle={profile?.risk_standing?.clearance_impact === 'HOLD' ? 'Locked — Section 14 Clearance Hold' : 'Ready for download (Unofficial)'} 
+                  icon="description" 
+                  actionIcon="download" 
+                />
              </div>
           </SectionCard>
         </div>
@@ -221,6 +245,7 @@ export default function StudentProfile() {
         profile={profile}
         onSuccess={(newBarcode) => {
           setProfile(prev => ({ ...prev, barcode_value: newBarcode }));
+          fetchProfile();
         }}
       />
     </div>
@@ -251,11 +276,13 @@ function SectionCard({ title, icon, subtitle, children, bgColor = "bg-white" }) 
 function StatusRow({ label, status, type }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="font-manrope font-semibold text-portal-text text-lg">{label}</span>
-      <span className={`px-5 py-2 rounded-2xl text-[13px] font-bold font-pjs uppercase tracking-tight shadow-sm ${
+      <span className="font-manrope font-semibold text-portal-text text-[14px]">{label}</span>
+      <span className={`px-4 py-1.5 rounded-2xl text-[12px] font-bold font-pjs uppercase tracking-tight shadow-sm ${
         type === 'success' ? 'bg-[#d1fadf] text-[#006b5d]' : 
+        type === 'warning' ? 'bg-amber-100 text-amber-800' :
+        type === 'orange' ? 'bg-orange-100 text-orange-800' :
         type === 'error' ? 'bg-red-100 text-red-700' :
-        'bg-amber-100 text-amber-700'
+        'bg-slate-100 text-slate-600'
       }`}>
         {status}
       </span>

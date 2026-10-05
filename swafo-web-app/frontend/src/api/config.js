@@ -18,6 +18,7 @@ export const API_ENDPOINTS = {
   PROFILE_BY_EMAIL: `${API_BASE_URL}/api/users/profile-by-email/`,
   COLLEGES_LIST: `${API_BASE_URL}/api/users/colleges/`,
   UPDATE_BARCODE: `${API_BASE_URL}/api/users/update-barcode/`,
+  DECODE_BARCODE: `${API_BASE_URL}/api/users/decode-barcode/`,
 
   
   // Violations
