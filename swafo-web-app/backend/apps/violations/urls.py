@@ -3,6 +3,7 @@ from .views import (
     ViolationAssessmentView, ViolationCreateView, ViolationListView,
     ViolationUpdateStatusView, ViolationAssignView,
     HeatmapView, LocationsView, ViolationStatisticsView,
+    AppealListView, AppealCreateView, AppealUpdateView
 )
 
 urlpatterns = [
@@ -14,4 +15,7 @@ urlpatterns = [
     path('heatmap/',             HeatmapView.as_view(),              name='violation-heatmap'),
     path('locations/',           LocationsView.as_view(),            name='violation-locations'),
     path('statistics/',          ViolationStatisticsView.as_view(),  name='violation-statistics'),
+    path('appeals/',             AppealListView.as_view(),           name='violation-appeals'),
+    path('appeals/submit/',      AppealCreateView.as_view(),         name='violation-appeals-submit'),
+    path('appeals/<int:pk>/update/', AppealUpdateView.as_view(),     name='violation-appeals-update'),
 ]

@@ -33,6 +33,10 @@ class IsDirector(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user and request.user.is_authenticated and request.user.role == 'ADMIN'
 
+class IsOfficerOrDirector(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and request.user.role in ['ADMIN', 'OFFICER']
+
 class StudentSubmissionListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsStudent]
     
@@ -72,7 +76,7 @@ class StudentSubmissionDetailView(generics.RetrieveAPIView):
 
 
 class DirectorSubmissionListView(generics.ListAPIView):
-    permission_classes = [IsDirector]
+    permission_classes = [IsOfficerOrDirector]
     serializer_class = FreedomWallSubmissionSerializer
 
     def get_queryset(self):
@@ -92,7 +96,7 @@ class DirectorSubmissionListView(generics.ListAPIView):
         return queryset
 
 class DirectorSubmissionDetailView(generics.RetrieveUpdateAPIView):
-    permission_classes = [IsDirector]
+    permission_classes = [IsOfficerOrDirector]
     serializer_class = FreedomWallSubmissionSerializer
     queryset = FreedomWallSubmission.objects.all()
 
@@ -198,7 +202,7 @@ class CommunityPostReactionView(APIView):
             return Response({'detail': 'Post not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 class DirectorSubmissionRespondView(APIView):
-    permission_classes = [IsDirector]
+    permission_classes = [IsOfficerOrDirector]
 
     def post(self, request, pk):
         try:
@@ -222,7 +226,7 @@ class DirectorSubmissionRespondView(APIView):
         return Response(SubmissionResponseSerializer(response_obj).data, status=status.HTTP_201_CREATED)
 
 class DirectorSubmissionReferView(APIView):
-    permission_classes = [IsDirector]
+    permission_classes = [IsOfficerOrDirector]
 
     def post(self, request, pk):
         try:
@@ -246,7 +250,7 @@ class DirectorSubmissionReferView(APIView):
         return Response(SubmissionReferralSerializer(referral).data, status=status.HTTP_201_CREATED)
 
 class DirectorAnalyticsView(APIView):
-    permission_classes = [IsDirector]
+    permission_classes = [IsOfficerOrDirector]
 
     def get(self, request):
         total = FreedomWallSubmission.objects.count()

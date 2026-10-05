@@ -1,115 +1,132 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, AlertTriangle, Clock } from 'lucide-react';
-
-const mockNotifications = [
-  { id: 1, title: 'New error detected', message: 'API failed to connect to database in Officer Layout.', timestamp: '2 mins ago', read: false },
-  { id: 2, title: 'Patrol started', message: 'Officer Timothy started a patrol in North Wing.', timestamp: '1 hour ago', read: false },
-  { id: 3, title: 'Violation logged', message: 'New uniform violation logged in ICTC.', timestamp: '3 hours ago', read: false },
-  { id: 4, title: 'System update', message: 'SWAFO portal updated successfully.', timestamp: '1 day ago', read: true }
-];
+import { useAuth } from '../../context/AuthContext';
+import { API_ENDPOINTS } from '../../api/config';
+import { useNavigate } from 'react-router-dom';
 
 export default function NotificationBell({ isDarkBg = false }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
+  const navigate = useNavigate();
 
-  // Close dropdown if clicked outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
+    if (user?.token) {
+      fetch(API_ENDPOINTS.NOTIFICATIONS, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      })
+      .then(res => res.ok ? res.json() : [])
+      .then(data => {
+        if (Array.isArray(data)) {
+          setNotifications(data);
+        }
+      })
+      .catch(console.error);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
+        setShowDropdown(false);
       }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
-  const markAsRead = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const markAsRead = async (id) => {
+    try {
+      await fetch(API_ENDPOINTS.NOTIFICATIONS_UPDATE(id), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.token}`
+        },
+        body: JSON.stringify({ is_read: true })
+      });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+    } catch(err) {
+      console.error(err);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const handleNotificationClick = (notif) => {
+    if (!notif.is_read) {
+      markAsRead(notif.id);
+    }
+    
+    if (notif.notification_type === 'APPEAL_REPLY' && notif.reference_id) {
+       navigate(`/student/violations?appeal_id=${notif.reference_id}`);
+    }
+    
+    setShowDropdown(false);
   };
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Bell Button */}
       <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`relative p-2 rounded-full transition-colors flex items-center justify-center ${isDarkBg ? 'text-white/80 hover:text-white hover:bg-white/10' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`}
+        onClick={() => setShowDropdown(!showDropdown)}
+        className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all relative ${
+          isDarkBg 
+            ? 'text-white/70 hover:bg-white/10 hover:text-white' 
+            : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'
+        }`}
       >
-        <Bell size={22} strokeWidth={2.5} />
-        
-        {/* Red Unread Badge */}
+        <span className="material-symbols-outlined text-[22px]">notifications</span>
         {unreadCount > 0 && (
-          <span className={`absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 border-2 ${isDarkBg ? 'border-[#003624]' : 'border-white'} text-[9px] font-bold text-white shadow-sm pointer-events-none`}>
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
+          <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_0_3px_var(--bg-color)]" 
+                style={{ '--bg-color': isDarkBg ? '#003624' : '#fff' }}></span>
         )}
       </button>
 
-      {/* Dropdown Popover */}
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-[340px] bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] border border-gray-200 overflow-hidden z-[9999] animate-in fade-in slide-in-from-top-2 duration-200 font-sans">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+      {showDropdown && (
+        <div className="absolute top-[120%] right-0 w-[380px] bg-white rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.1)] border border-slate-100 overflow-hidden z-50 animate-in slide-in-from-top-2 duration-200">
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <h3 className="text-[14px] font-bold text-gray-800">Notifications</h3>
-            {unreadCount > 0 && (
-              <button 
-                onClick={markAllAsRead}
-                className="text-[12px] font-semibold text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                Mark all as read
-              </button>
-            )}
           </div>
-
-          {/* List */}
-          <div className="max-h-[360px] overflow-y-auto custom-scrollbar">
+          
+          <div className="max-h-[400px] overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-gray-500">
+              <div className="p-8 text-center text-slate-400 text-[13px] font-medium">
                 No notifications yet.
               </div>
             ) : (
-              <div className="flex flex-col divide-y divide-gray-50">
+              <div className="flex flex-col">
                 {notifications.map((notif) => (
-                  <button 
-                    key={notif.id}
-                    onClick={() => {
-                      if (!notif.read) markAsRead(notif.id);
-                    }}
-                    className={`flex items-start gap-3 px-4 py-3 text-left transition-colors ${
-                      notif.read ? 'bg-white hover:bg-gray-50' : 'bg-[#f0f7ff] hover:bg-[#e0f0ff]'
-                    }`}
+                  <div 
+                    key={notif.id} 
+                    onClick={() => handleNotificationClick(notif)}
+                    className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer flex gap-4 ${!notif.is_read ? 'bg-emerald-50/30' : ''}`}
                   >
-                    {/* Icon */}
-                    <div className={`mt-0.5 rounded-full p-1.5 shrink-0 ${notif.read ? 'bg-gray-100 text-gray-400' : 'bg-blue-100 text-blue-600'}`}>
-                      {notif.title.toLowerCase().includes('error') ? (
-                        <AlertTriangle size={14} className={notif.read ? 'text-gray-400' : 'text-red-500'} />
-                      ) : (
-                        <Bell size={14} />
-                      )}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                      notif.notification_type === 'APPEAL_REPLY' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
+                    }`}>
+                      <span className="material-symbols-outlined text-[20px]">
+                        {notif.notification_type === 'APPEAL_REPLY' ? 'forum' : 'notifications'}
+                      </span>
                     </div>
-                    
-                    {/* Content */}
-                    <div className="flex-1 flex flex-col gap-0.5 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={`text-[13px] font-bold truncate ${notif.read ? 'text-gray-700' : 'text-gray-900'}`}>
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <p className={`text-[13px] font-bold ${!notif.is_read ? 'text-gray-900' : 'text-gray-700'}`}>
                           {notif.title}
+                        </p>
+                        <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
+                          {new Date(notif.created_at).toLocaleDateString()}
                         </span>
-                        {!notif.read && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>}
                       </div>
-                      <span className={`text-[12px] leading-tight ${notif.read ? 'text-gray-500' : 'text-gray-700'}`}>
+                      <p className="text-[13px] text-slate-500 line-clamp-2">
                         {notif.message}
-                      </span>
-                      <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 mt-1">
-                        <Clock size={10} /> {notif.timestamp}
-                      </span>
+                      </p>
                     </div>
-                  </button>
+                    {!notif.is_read && (
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 mt-2"></div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
@@ -119,3 +136,4 @@ export default function NotificationBell({ isDarkBg = false }) {
     </div>
   );
 }
+

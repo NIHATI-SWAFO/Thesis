@@ -103,3 +103,9 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             total += decayed
 
         return round(min(total, self.MAX_SCORE), 1)
+from .models import Notification
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'title', 'message', 'notification_type', 'reference_id', 'is_read', 'created_at']

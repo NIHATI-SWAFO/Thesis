@@ -30,6 +30,8 @@ import LiveNavigation from './features/maps/LiveNavigation';
 import { AuthProvider } from './context/AuthContext';
 import SwafoDevTools from './components/dev/SwafoDevTools';
 
+import OfficerFreedomWall from './features/freedom_wall/OfficerFreedomWall';
+
 function App() {
   return (
     <BrowserRouter>
@@ -73,6 +75,7 @@ function App() {
           <Route path="violations/new" element={<RecordViolation />} />
           <Route path="cases" element={<CaseManagement />} />
           <Route path="students" element={<StudentRecords />} />
+          <Route path="freedom-wall" element={<OfficerFreedomWall />} />
           <Route path="students/:id" element={<StudentProfileDetail />} />
           <Route path="campus-map" element={<MapTrial />} />
           <Route path="live-navigation" element={<LiveNavigation />} />

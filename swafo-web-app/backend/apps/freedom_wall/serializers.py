@@ -50,6 +50,13 @@ class FreedomWallSubmissionSerializer(serializers.ModelSerializer):
             
         return SubmissionResponseSerializer(responses, many=True).data
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        # Security: explicitly strip identifying ID if anonymous
+        if instance.is_anonymous:
+            ret['student'] = None
+        return ret
+
 class CommunityReactionSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.full_name', read_only=True)
     

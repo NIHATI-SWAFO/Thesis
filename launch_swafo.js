@@ -24,8 +24,8 @@ console.log('🚀 Starting SWAFO Full-Stack System...');
 const backendPath = path.join(__dirname, 'swafo-web-app', 'backend');
 const frontendPath = path.join(__dirname, 'swafo-web-app', 'frontend');
 
-// Start Backend
-const backend = runCommand('.venv\\Scripts\\python.exe', ['manage.py', 'runserver', '5000'], backendPath, 'BACKEND');
+// Start Backend (Default Django port 8000 to match VITE_API_URL)
+const backend = runCommand('.venv\\Scripts\\python.exe', ['manage.py', 'runserver', '8000'], backendPath, 'BACKEND');
 
 // Start Frontend
 const frontend = runCommand('npm', ['run', 'dev'], frontendPath, 'FRONTEND');

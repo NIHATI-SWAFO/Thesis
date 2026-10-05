@@ -95,3 +95,20 @@ class UserListView(generics.ListAPIView):
         if role:
             queryset = queryset.filter(role=role)
         return queryset
+from .serializers import NotificationSerializer
+from .models import Notification
+
+class NotificationListView(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+
+class NotificationUpdateView(generics.UpdateAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Notification.objects.all()
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)

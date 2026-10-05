@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Violation
+from .models import Violation, Appeal
 from apps.users.serializers import StudentProfileSerializer
 from apps.handbook.serializers import HandbookEntrySerializer
 try:
@@ -23,6 +23,20 @@ def resolve_building_coords(location_name: str):
         if loc_lower in name.lower() or name.lower() in loc_lower:
             return c['lat'], c['lng'], name
     return None, None, location_name
+
+class AppealSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.user.full_name', read_only=True)
+    violation_code = serializers.CharField(source='violation.rule.rule_code', read_only=True)
+    
+    class Meta:
+        model = Appeal
+        fields = ['id', 'violation', 'violation_code', 'student', 'student_name', 'subject', 'description', 'reviewer_remarks', 'status', 'created_at', 'updated_at']
+        read_only_fields = ['student', 'status', 'reviewer_remarks', 'created_at', 'updated_at']
+
+class AppealUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appeal
+        fields = ['status', 'reviewer_remarks']
 
 class ViolationSerializer(serializers.ModelSerializer):
     student_details = StudentProfileSerializer(source='student', read_only=True)

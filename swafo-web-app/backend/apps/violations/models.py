@@ -37,3 +37,26 @@ class Violation(models.Model):
 
     def __str__(self):
         return f"{self.student.student_number} - {self.rule.rule_code} ({self.timestamp.date()})"
+
+class Appeal(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        REVIEWING = 'REVIEWING', 'Reviewing'
+        AWAITING_INFO = 'AWAITING_INFO', 'Awaiting Student Info'
+        APPROVED = 'APPROVED', 'Approved'
+        REJECTED = 'REJECTED', 'Rejected'
+
+    violation = models.ForeignKey(Violation, on_delete=models.CASCADE, related_name='appeals')
+    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name='appeals')
+    subject = models.CharField(max_length=255)
+    description = models.TextField()
+    reviewer_remarks = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Appeal for {self.violation} by {self.student.student_number}"

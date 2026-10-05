@@ -13,6 +13,9 @@ class FreedomWallSubmission(models.Model):
     ]
 
     CATEGORY_CHOICES = [
+        ('General Feedback', 'General Feedback'),
+        ('School Concern', 'School Concern'),
+        ('Officer Report', 'Officer Report'),
         ('Professor', 'Professor / Faculty'),
         ('Subject', 'Subject / Curriculum'),
         ('Administration', 'School Administration'),

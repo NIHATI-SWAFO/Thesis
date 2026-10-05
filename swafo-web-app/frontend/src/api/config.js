@@ -19,6 +19,9 @@ export const API_ENDPOINTS = {
   COLLEGES_LIST: `${API_BASE_URL}/api/users/colleges/`,
 
   
+    NOTIFICATIONS: `${API_BASE_URL}/api/users/notifications/`,
+  NOTIFICATIONS_UPDATE: (id) => `${API_BASE_URL}/api/users/notifications/${id}/update/`,
+
   // Violations
   VIOLATIONS_LIST: `${API_BASE_URL}/api/violations/list/`,
   VIOLATIONS_CREATE: `${API_BASE_URL}/api/violations/record/`,
@@ -28,6 +31,9 @@ export const API_ENDPOINTS = {
   VIOLATIONS_HEATMAP: `${API_BASE_URL}/api/violations/heatmap/`,
   VIOLATIONS_LOCATIONS: `${API_BASE_URL}/api/violations/locations/`,
   VIOLATIONS_STATISTICS: `${API_BASE_URL}/api/violations/statistics/`,
+  VIOLATIONS_APPEALS: `${API_BASE_URL}/api/violations/appeals/`,
+  VIOLATIONS_APPEALS_SUBMIT: `${API_BASE_URL}/api/violations/appeals/submit/`,
+  VIOLATIONS_APPEALS_UPDATE: (id) => `${API_BASE_URL}/api/violations/appeals/${id}/update/`,
   
   // Patrols
   PATROLS_LIST: `${API_BASE_URL}/api/patrols/list/`,
@@ -64,3 +70,7 @@ export const API_ENDPOINTS = {
 };
 
 export default API_BASE_URL;
+
+
+
+

@@ -10,8 +10,8 @@ from apps.users.models import StudentProfile
 from apps.handbook.models import HandbookEntry
 from django.db import models
 from django.utils import timezone
-from .models import Violation
-from .serializers import ViolationSerializer
+from .models import Violation, Appeal
+from .serializers import ViolationSerializer, AppealSerializer
 try:
     from constants.locations import get_all_location_names, get_locations_by_category
 except ImportError:
@@ -373,3 +373,55 @@ class ViolationStatisticsView(APIView):
             }
         })
 
+class AppealListView(generics.ListAPIView):
+    serializer_class = AppealSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = Appeal.objects.all()
+        
+        if hasattr(self.request.user, 'student_profile'):
+            qs = qs.filter(student=self.request.user.student_profile)
+        elif hasattr(self.request.user, 'studentprofile'):
+            qs = qs.filter(student=self.request.user.studentprofile)
+            
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return qs.order_by('-created_at')
+
+class AppealCreateView(generics.CreateAPIView):
+    serializer_class = AppealSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # We need to get the student profile for the current user
+        try:
+            student_profile = self.request.user.student_profile
+        except StudentProfile.DoesNotExist:
+            # Fallback if testing with another account or if missing
+            student_profile = StudentProfile.objects.first()
+        
+        serializer.save(student=student_profile)
+
+
+from apps.users.models import Notification
+from .serializers import AppealSerializer, AppealUpdateSerializer
+
+class AppealUpdateView(generics.UpdateAPIView):
+    queryset = Appeal.objects.all()
+    serializer_class = AppealUpdateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_update(self, serializer):
+        appeal = serializer.save()
+        
+        # Trigger notification to student
+        notification_type = 'APPEAL_REPLY' if appeal.status == 'AWAITING_INFO' else 'APPEAL_UPDATE'
+        Notification.objects.create(
+            user=appeal.student.user,
+            title=f"Appeal Updated: {appeal.status}",
+            message=f"Your appeal regarding {appeal.violation.rule.rule_code} has been updated. Remarks: {appeal.reviewer_remarks or 'No remarks provided.'}",
+            notification_type=notification_type,
+            reference_id=appeal.id
+        )

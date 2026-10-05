@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import AppealThreadModal from '../../components/common/AppealThreadModal';
+
 import ReactDOM from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import { API_ENDPOINTS } from '../../api/config';
@@ -7,6 +9,9 @@ import { useColleges } from '../../hooks/useColleges';
 export default function CaseManagement({ role }) {
   const { user } = useAuth();
   const [violations, setViolations] = useState([]);
+  const [appeals, setAppeals] = useState([]);
+  const [selectedAppeal, setSelectedAppeal] = useState(null);
+  const [showAllAppeals, setShowAllAppeals] = useState(false);
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterTab, setFilterTab] = useState('all');
@@ -25,17 +30,21 @@ export default function CaseManagement({ role }) {
       ? `${API_ENDPOINTS.VIOLATIONS_LIST}?college=${encodeURIComponent(collegeFilter)}`
       : API_ENDPOINTS.VIOLATIONS_LIST;
     setLoading(true);
-    fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        setViolations(Array.isArray(data) ? data : (data.results || []));
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Error fetching violations:', err);
-        setLoading(false);
-      });
-  }, [collegeFilter]);
+    
+    Promise.all([
+      fetch(url).then(r => r.json()),
+      fetch(API_ENDPOINTS.VIOLATIONS_APPEALS, { headers: { "Authorization": `Bearer ${user?.token}` } }).then(r => r.json()).catch(() => [])
+    ])
+    .then(([violData, appealsData]) => {
+      setViolations(Array.isArray(violData) ? violData : (violData.results || []));
+      setAppeals(Array.isArray(appealsData) ? appealsData : (appealsData.results || []));
+      setLoading(false);
+    })
+    .catch(err => {
+      console.error('Error fetching data:', err);
+      setLoading(false);
+    });
+  }, [collegeFilter, user?.token]);
 
   useEffect(() => {
     if (role === 'admin') {
@@ -557,7 +566,7 @@ export default function CaseManagement({ role }) {
             </div>
           </div>
 
-          <div className="bg-white rounded-[2.5rem] p-10 shadow-[0_4px_40px_rgba(0,0,0,0.02)] border border-slate-50 flex flex-col gap-8">
+          <div className="bg-white rounded-[2.5rem] p-10 shadow-[0_4px_40px_rgba(0,0,0,0.02)] border border-slate-50 flex flex-col gap-8 mb-6">
             <div className="flex justify-between items-center">
               <h3 className="text-[18px] font-pjs font-bold text-[#111827]">Recent Activity</h3>
               <span className="text-[11px] font-black text-[#009b69] tracking-widest uppercase">Today</span>
@@ -575,17 +584,56 @@ export default function CaseManagement({ role }) {
                     color={severity === 'Major' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'}
                     title={v.student_details?.user_details?.full_name || 'New Case'}
                     sub={<span className="flex items-center gap-1.5 truncate">
-                      {(v.rule_details?.category || 'General').replace(/^(Major|Minor|General)\s*[—\-]\s*/i, '')}
-                      <span className="opacity-40">•</span>
+                      {(v.rule_details?.category || 'General').replace(/^(Major|Minor|General)\s*[-?"]\s*/i, '')}
+                      <span className="opacity-40">&bull;</span>
                       <span className="whitespace-nowrap">{v.status.replace('_', ' ')}</span>
                     </span>}
                     time={`${dateStr}, ${timeStr}`}
+                    onClick={() => setSelectedCase(v)}
                   />
                 );
               })}
               {violations.length === 0 && (
                 <p className="text-[13px] text-slate-400 font-medium italic text-center py-4">No recent activity found.</p>
               )}
+            </div>
+          </div>
+
+          {/* Pending Appeals Section */}
+          <div className="bg-white rounded-[2.5rem] p-10 shadow-[0_4px_40px_rgba(0,0,0,0.02)] border border-slate-50 flex flex-col gap-8">
+            <div className="flex justify-between items-center">
+              <h3 className="text-[18px] font-pjs font-bold text-[#111827]">Pending Appeals</h3>
+              <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-[11px] font-black">{appeals.filter(a => a.status === 'PENDING').length}</span>
+            </div>
+            <div className="flex flex-col gap-8">
+              {appeals.filter(a => a.status === 'PENDING').slice(0, 4).map(a => {
+                const timeStr = new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const dateStr = new Date(a.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' });
+                return (
+                  <ActivityItem
+                    key={a.id}
+                    icon="gavel"
+                    color="bg-amber-50 text-amber-600"
+                    title={a.student_name}
+                    sub={<span className="flex items-center gap-1.5 truncate">
+                      Ref: {a.violation_code}
+                    </span>}
+                    time={`${dateStr}, ${timeStr}`}
+                    onClick={() => setSelectedAppeal(a)}
+                  />
+                );
+              })}
+              {appeals.filter(a => a.status === 'PENDING').length === 0 && (
+                <p className="text-[13px] text-slate-400 font-medium italic text-center py-4">No pending appeals.</p>
+              )}
+              
+              <button 
+                onClick={() => setShowAllAppeals(true)}
+                className="mt-2 w-full py-3.5 bg-slate-50 text-slate-600 rounded-xl font-pjs font-bold text-[12px] uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100 flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[16px]">history</span>
+                View Appeals History
+              </button>
             </div>
           </div>
         </div>
@@ -605,6 +653,23 @@ export default function CaseManagement({ role }) {
         />,
         document.body
       )}
+      
+{selectedAppeal && (
+        <AppealReviewWrapper 
+           appealData={selectedAppeal} 
+           onClose={() => setSelectedAppeal(null)} 
+           user={user} 
+        />
+      )}
+      
+      {showAllAppeals && (
+        <AllAppealsModal 
+          appeals={appeals} 
+          onClose={() => setShowAllAppeals(false)} 
+          onSelectAppeal={setSelectedAppeal} 
+        />
+      )}
+
     </div>
   );
 }
@@ -1017,9 +1082,9 @@ function ProgressItem({ label, percent, color }) {
   );
 }
 
-function ActivityItem({ icon, color, title, sub, time }) {
+function ActivityItem({ icon, color, title, sub, time, onClick }) {
   return (
-    <div className="flex gap-5 items-start group cursor-pointer hover:translate-x-1 transition-transform">
+    <div onClick={onClick} className="flex gap-5 items-start group cursor-pointer hover:bg-slate-50 p-3 -mx-3 rounded-2xl hover:ring-2 hover:ring-emerald-500/30 transition-all">
       <div className={`w-11 h-11 rounded-xl ${color} flex justify-center items-center shrink-0 border border-current opacity-[0.85]`}>
         <span className="material-symbols-outlined text-[20px]">{icon}</span>
       </div>
@@ -1029,5 +1094,139 @@ function ActivityItem({ icon, color, title, sub, time }) {
         <span className="text-[11px] font-semibold text-slate-300 mt-2 uppercase tracking-wide">{time}</span>
       </div>
     </div>
+  );
+}
+
+
+function AppealReviewWrapper({ appealData, onClose, user }) {
+  const [isUpdating, setIsUpdating] = React.useState(false);
+
+  const handleUpdate = async (newStatus, remarks) => {
+    setIsUpdating(true);
+    try {
+      const payload = { status: newStatus };
+      if (remarks.trim()) {
+         payload.reviewer_remarks = remarks;
+      }
+
+      const res = await fetch(API_ENDPOINTS.VIOLATIONS_APPEALS_UPDATE(appealData.id), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        window.location.reload(); 
+      } else {
+        const errText = await res.text();
+        alert(`Failed to update appeal (${res.status}): ${errText}`);
+      }
+    } catch(err) {
+      console.error(err);
+      alert(`Network error: ${err.message}`);
+    }
+    setIsUpdating(false);
+  };
+
+  return (
+    <AppealThreadModal 
+      appeal={appealData} 
+      onClose={onClose} 
+      onAction={handleUpdate} 
+      isUpdating={isUpdating}
+      role="OFFICER"
+    />
+  );
+}
+
+
+
+
+function AllAppealsModal({ appeals, onClose, onSelectAppeal }) {
+  const [filter, setFilter] = React.useState('ALL');
+  
+  const displayed = appeals.filter(a => {
+    if (filter === 'PENDING') return a.status === 'PENDING' || a.status === 'REVIEWING';
+    if (filter === 'REPLIES') return a.status === 'AWAITING_INFO';
+    if (filter === 'RESOLVED') return a.status === 'APPROVED' || a.status === 'REJECTED';
+    return true;
+  });
+
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[99998] flex items-center justify-center p-4 sm:p-6 bg-[#003624]/40 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}>
+      <div className="bg-white rounded-[2rem] w-full max-w-[600px] overflow-hidden shadow-2xl flex flex-col max-h-[85vh] relative" onClick={e => e.stopPropagation()}>
+        
+        <div className="shrink-0 p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center">
+               <span className="material-symbols-outlined text-[20px]">history</span>
+             </div>
+             <h2 className="text-[18px] font-pjs font-extrabold text-[#003624]">Appeals History</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors">
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+
+        <div className="shrink-0 p-4 border-b border-slate-100 flex gap-2 overflow-x-auto custom-scrollbar bg-white">
+           {['ALL', 'PENDING', 'REPLIES', 'RESOLVED'].map(f => (
+             <button 
+               key={f}
+               onClick={() => setFilter(f)}
+               className={`px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest whitespace-nowrap transition-all ${filter === f ? 'bg-[#003624] text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
+             >
+               {f}
+             </button>
+           ))}
+        </div>
+
+        <div className="flex-grow overflow-y-auto custom-scrollbar p-6 bg-slate-50/50">
+          <div className="flex flex-col gap-3">
+             {displayed.length === 0 ? (
+               <div className="py-12 flex flex-col items-center justify-center text-center">
+                 <span className="material-symbols-outlined text-[32px] text-slate-300 mb-3">inbox</span>
+                 <p className="text-[14px] font-medium text-slate-500">No appeals found in this category.</p>
+               </div>
+             ) : (
+               displayed.map(a => {
+                 const timeStr = new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                 const dateStr = new Date(a.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+                 
+                 let badge = null;
+                 if (['PENDING', 'REVIEWING'].includes(a.status)) badge = <span className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-700">PENDING</span>;
+                 else if (a.status === 'AWAITING_INFO') badge = <span className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-blue-100 text-blue-700">REPLY</span>;
+                 else if (a.status === 'APPROVED') badge = <span className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700">APPROVED</span>;
+                 else if (a.status === 'REJECTED') badge = <span className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-rose-100 text-rose-700">DENIED</span>;
+                 else badge = <span className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-700">{a.status}</span>;
+
+                 return (
+                   <div 
+                     key={a.id} 
+                     onClick={() => onSelectAppeal(a)}
+                     className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:border-emerald-300 hover:ring-2 hover:ring-emerald-500/20 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                   >
+                     <div>
+                       <div className="flex items-center gap-2 mb-1">
+                         <span className="text-[14px] font-bold text-gray-900">{a.student_name}</span>
+                         {badge}
+                       </div>
+                       <p className="text-[12px] font-bold text-slate-500">Ref: {a.violation_code} • Subj: {a.subject}</p>
+                     </div>
+                     <div className="text-right shrink-0">
+                       <span className="text-[11px] font-bold text-slate-400 block">{dateStr}</span>
+                       <span className="text-[11px] font-bold text-slate-400 block">{timeStr}</span>
+                     </div>
+                   </div>
+                 );
+               })
+             )}
+          </div>
+        </div>
+
+      </div>
+    </div>,
+    document.body
   );
 }

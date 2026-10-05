@@ -1,6 +1,44 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { API_ENDPOINTS } from '../../api/config';
 
+const getSynonyms = (query) => {
+  const synonyms = {
+    "fake id": ["someone else's id", "forged id", "tampered id"],
+    "uniform": ["dress code", "clothing", "attire", "shirt", "blouse", "pants", "shoes"],
+    "fighting": ["brawl", "physical assault", "hitting", "punching", "violence"],
+    "cheating": ["plagiarism", "copying", "academic dishonesty", "leakage"],
+    "drinking": ["liquor", "alcohol", "intoxicated", "drunk"],
+    "smoking": ["vape", "e-cigarette", "tobacco"],
+    "cutting": ["skipping classes", "truancy", "absent without"],
+    "late": ["tardiness", "not on time"]
+  };
+  
+  let related = [];
+  for (const [key, values] of Object.entries(synonyms)) {
+    if (key.includes(query) || query.includes(key)) {
+      related = [...related, ...values];
+    }
+  }
+  return related;
+};
+
+const HighlightMatch = ({ text, query }) => {
+  if (!query || !query.trim() || !text) return <>{text}</>;
+  
+  const escapedQuery = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${escapedQuery})`, 'gi'));
+  
+  return (
+    <>
+      {parts.map((part, i) => 
+        part.toLowerCase() === query.trim().toLowerCase() ? 
+          <mark key={i} className="bg-[#2bd99b]/40 text-[#006b5d] px-1 rounded">{part}</mark> : 
+          <span key={i}>{part}</span>
+      )}
+    </>
+  );
+};
+
 export default function StudentHandbook() {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,16 +102,67 @@ export default function StudentHandbook() {
   const filteredSections = useMemo(() => {
     if (!searchQuery.trim()) return sections;
     
-    const lowerQuery = searchQuery.toLowerCase();
+    const lowerQuery = searchQuery.toLowerCase().trim();
+    const relatedTerms = getSynonyms(lowerQuery);
     
-    return sections.filter(sec => {
-      if (sec.title.toLowerCase().includes(lowerQuery)) return true;
-      return sec.subItems.some(sub => 
-        sub.title.toLowerCase().includes(lowerQuery) || 
-        sub.content.toLowerCase().includes(lowerQuery)
-      );
+    let resultSections = [];
+
+    sections.forEach(sec => {
+      const exactCodeMatches = [];
+      const matchingSubItems = [];
+
+      sec.subItems.forEach(sub => {
+        const titleLower = sub.title.toLowerCase();
+        const contentLower = sub.content.toLowerCase();
+        
+        // Exact Clause Number Match
+        if (titleLower === lowerQuery) {
+          exactCodeMatches.push(sub);
+        } 
+        // Granular Keyword or Semantic Match
+        else if (
+          titleLower.includes(lowerQuery) || 
+          contentLower.includes(lowerQuery) ||
+          relatedTerms.some(term => titleLower.includes(term) || contentLower.includes(term))
+        ) {
+          matchingSubItems.push(sub);
+        }
+      });
+
+      const combined = [...exactCodeMatches, ...matchingSubItems];
+      if (combined.length > 0) {
+        resultSections.push({
+          ...sec,
+          subItems: combined,
+          hasExactMatch: exactCodeMatches.length > 0
+        });
+      }
     });
+
+    const hasAnyExactMatch = resultSections.some(s => s.hasExactMatch);
+    if (hasAnyExactMatch) {
+       // Priority Ranking: return only the exact matches
+       return resultSections
+         .filter(s => s.hasExactMatch)
+         .map(s => ({
+           ...s,
+           subItems: s.subItems.filter(sub => sub.title.toLowerCase() === lowerQuery)
+         }));
+    }
+
+    return resultSections;
   }, [searchQuery, sections]);
+
+  // Auto-expand sections when searching
+  useEffect(() => {
+    if (searchQuery.trim() && filteredSections.length > 0) {
+      setExpandedSections(prev => {
+        const next = new Set(prev);
+        filteredSections.forEach(s => next.add(s.id));
+        return next;
+      });
+    }
+  }, [searchQuery]);
 
   return (
     <div className="max-w-[1100px] mx-auto space-y-6 animate-fade-in-up pb-12">
@@ -99,10 +188,16 @@ export default function StudentHandbook() {
           </p>
         </div>
 
-        <button className="relative z-10 shrink-0 self-start md:self-center flex items-center justify-center gap-2 bg-white text-[#0a6c4c] px-6 py-3 md:px-8 md:py-3.5 rounded-full font-pjs font-bold text-[14px] shadow-sm hover:bg-emerald-50 active:scale-95 transition-all outline-none">
-          <span className="material-symbols-outlined text-[18px]">download</span>
-          Download PDF
-        </button>
+        <a 
+          href="/DLSU-D-Student-Handbook-SY2023-2027.pdf" 
+          download
+          className="relative z-10 shrink-0 self-start md:self-center outline-none"
+        >
+          <button className="flex items-center justify-center gap-2 bg-white text-[#0a6c4c] px-6 py-3 md:px-8 md:py-3.5 rounded-full font-pjs font-bold text-[14px] shadow-sm hover:bg-emerald-50 active:scale-95 transition-all outline-none">
+            <span className="material-symbols-outlined text-[18px]">download</span>
+            Download PDF
+          </button>
+        </a>
       </div>
 
       {/* ═══════════════════════ SEARCH BAR ═══════════════════════ */}
@@ -183,10 +278,10 @@ export default function StudentHandbook() {
                         {section.subItems.map((item, index) => (
                           <div key={index} className="flex flex-col gap-1.5">
                             <h4 className="text-[13px] font-pjs font-bold text-[#006b5d]">
-                              {item.title}
+                              <HighlightMatch text={item.title} query={searchQuery} />
                             </h4>
                             <p className="text-[13px] font-manrope font-medium text-portal-text-muted/80 leading-relaxed">
-                              {item.content}
+                              <HighlightMatch text={item.content} query={searchQuery} />
                             </p>
                           </div>
                         ))}

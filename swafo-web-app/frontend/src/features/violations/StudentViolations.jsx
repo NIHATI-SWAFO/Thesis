@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from "../../context/AuthContext";
 import { API_ENDPOINTS } from "../../api/config";
+import SentAppealsWidget from './SentAppealsWidget';
 
 export default function StudentViolations() {
   const { user } = useAuth();
@@ -10,6 +11,52 @@ export default function StudentViolations() {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [selectedViolation, setSelectedViolation] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [isAppealing, setIsAppealing] = useState(false);
+  const [appealData, setAppealData] = useState({ subject: '', description: '' });
+  const [isSubmittingAppeal, setIsSubmittingAppeal] = useState(false);
+  const [appealSuccess, setAppealSuccess] = useState(false);
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setTimeout(() => {
+      setIsAppealing(false);
+      setAppealSuccess(false);
+      setAppealData({ subject: '', description: '' });
+    }, 300);
+  };
+
+  const handleAppealSubmit = async (e) => {
+    e.preventDefault();
+    if (!appealData.subject || !appealData.description) return;
+    
+    setIsSubmittingAppeal(true);
+    try {
+      const payload = {
+        violation: selectedViolation.rawId,
+        subject: appealData.subject,
+        description: appealData.description,
+      };
+
+      const res = await fetch(API_ENDPOINTS.VIOLATIONS_APPEALS_SUBMIT, {
+        method: "POST",
+        headers: { 
+          "Authorization": `Bearer ${user.token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        setAppealSuccess(true);
+      } else {
+        console.error("Failed to submit appeal");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmittingAppeal(false);
+    }
+  };
 
   useEffect(() => {
     if (user?.email) {
@@ -105,8 +152,14 @@ export default function StudentViolations() {
         </p>
       </div>
 
-      {/* Top Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Main Content & Sidebar Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* Main 70% Content */}
+        <div className="lg:col-span-8 space-y-10">
+        
+          {/* Top Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 flex flex-col justify-between">
           <div>
             <p className="text-[12px] font-pjs font-bold text-[#003624]/40 uppercase tracking-widest leading-none mb-1">Pending Actions</p>
@@ -281,6 +334,15 @@ export default function StudentViolations() {
         </div>
       </div>
 
+        </div>
+        
+        {/* Sidebar 30% Content */}
+        <div className="lg:col-span-4 space-y-6">
+          <SentAppealsWidget />
+        </div>
+        
+      </div>
+
       <div className="mt-16 pt-8 pb-4 flex flex-col md:flex-row items-center justify-between gap-6 border-t border-emerald-50/80 px-2">
         <div className="max-w-xl text-center md:text-left">
           <h3 className="text-lg font-pjs font-bold text-[#003624] tracking-tight mb-1">Incident Inquiry or Appeal?</h3>
@@ -295,29 +357,92 @@ export default function StudentViolations() {
       </div>
 
       {showModal && createPortal(
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-6 bg-[#003624]/40 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-[500px] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.4)] border border-white/20 animate-in zoom-in-95 duration-200">
-            <div className="p-10 text-center flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-6">
-                <span className="material-symbols-outlined text-[32px] font-bold">gavel</span>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={handleCloseModal}></div>
+          <div className="relative w-full max-w-lg bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-2xl shadow-emerald-900/10 animate-in zoom-in-95 duration-300 overflow-hidden">
+            
+            {!isAppealing ? (
+              <div className="flex flex-col items-center text-center relative z-10">
+                <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-6">
+                  <span className="material-symbols-outlined text-[32px] font-bold">gavel</span>
+                </div>
+                <h2 className="text-[24px] font-pjs font-extrabold text-[#003624] mb-2 tracking-tight">Case Details</h2>
+                <p className="text-[14px] text-slate-500 font-manrope leading-relaxed mb-8 max-w-[340px]">
+                  This record is currently in the <span className="font-bold text-[#003624]">Institutional Workflow</span>. You may request an appeal or monitor for updates.
+                </p>
+                <div className="w-full space-y-3">
+                  <button 
+                    onClick={() => setIsAppealing(true)} 
+                    className="w-full h-[65px] bg-[#003624] text-white rounded-2xl font-pjs font-black text-[13px] uppercase tracking-[0.2em] hover:bg-[#004d33] transition-all shadow-lg shadow-emerald-950/20 active:scale-[0.98]"
+                  >
+                    Initiate Appeal (In-App)
+                  </button>
+                  <button onClick={handleCloseModal} className="w-full h-[65px] border-2 border-slate-100 text-slate-600 rounded-2xl font-pjs font-bold text-[13px] uppercase tracking-[0.2em] hover:bg-slate-50 transition-all active:scale-[0.98]">Close Details</button>
+                </div>
               </div>
-              <h2 className="text-[24px] font-pjs font-extrabold text-[#003624] mb-2 tracking-tight">Case Details</h2>
-              <p className="text-[14px] text-slate-500 font-manrope leading-relaxed mb-8 max-w-[340px]">
-                This record is currently in the <span className="font-bold text-[#003624]">Institutional Workflow</span>. You may request an appeal or monitor for updates.
-              </p>
-              <div className="w-full space-y-3">
-                <button 
-                  onClick={() => { 
-                    window.open(`mailto:swafo@dlsud.edu.ph?subject=Appeal Request: Case ${selectedViolation?.id}&body=Violation: ${selectedViolation?.title}%0D%0AReason for Appeal: `); 
-                    setShowModal(false); 
-                  }} 
-                  className="w-full h-[65px] bg-[#003624] text-white rounded-2xl font-pjs font-black text-[13px] uppercase tracking-[0.2em] hover:bg-[#004d33] transition-all shadow-lg shadow-emerald-950/20 active:scale-[0.98]"
-                >
-                  Initiate Appeal (Email)
-                </button>
-                <button onClick={() => setShowModal(false)} className="w-full h-[65px] border-2 border-slate-100 text-slate-600 rounded-2xl font-pjs font-bold text-[13px] uppercase tracking-[0.2em] hover:bg-slate-50 transition-all active:scale-[0.98]">Close Details</button>
+            ) : appealSuccess ? (
+              <div className="flex flex-col items-center text-center relative z-10 py-4">
+                <div className="w-20 h-20 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-6">
+                  <span className="material-symbols-outlined text-[40px]">check_circle</span>
+                </div>
+                <h2 className="text-[24px] font-pjs font-extrabold text-[#003624] mb-2">Appeal Submitted</h2>
+                <p className="text-[14px] text-slate-500 font-manrope mb-8">
+                  Your appeal has been securely forwarded to the SWAFO authorities.
+                </p>
+                <button onClick={handleCloseModal} className="w-full h-[60px] bg-[#003624] text-white rounded-2xl font-pjs font-black text-[13px] uppercase tracking-widest hover:bg-[#004d33] transition-all">Done</button>
               </div>
-            </div>
+            ) : (
+              <div className="flex flex-col relative z-10">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                  <button onClick={() => setIsAppealing(false)} className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors">
+                    <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                  </button>
+                  <div>
+                    <h2 className="text-[18px] font-pjs font-extrabold text-[#003624]">Submit Appeal</h2>
+                    <p className="text-[12px] text-slate-500 font-manrope">Reference: {selectedViolation?.id}</p>
+                  </div>
+                </div>
+                
+                <form onSubmit={handleAppealSubmit} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Subject Title</label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="Briefly state your reason..."
+                      value={appealData.subject}
+                      onChange={e => setAppealData({...appealData, subject: e.target.value})}
+                      className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold text-[#003624] outline-none focus:ring-2 focus:ring-[#2bd99b] transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category</label>
+                    <select disabled className="w-full bg-slate-100 border-0 ring-1 ring-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold text-slate-500 outline-none appearance-none cursor-not-allowed">
+                      <option>Violation Appeal</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Detailed Description</label>
+                    <textarea 
+                      required
+                      placeholder="Provide your justification here..."
+                      value={appealData.description}
+                      onChange={e => setAppealData({...appealData, description: e.target.value})}
+                      rows="4"
+                      className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl px-4 py-3 text-[14px] font-medium text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#2bd99b] transition-all resize-none"
+                    />
+                  </div>
+                  <button 
+                    type="submit" 
+                    disabled={isSubmittingAppeal}
+                    className="w-full h-[60px] mt-4 bg-[#006b5d] text-white rounded-2xl font-pjs font-black text-[13px] uppercase tracking-widest hover:bg-[#004d33] transition-all disabled:opacity-70 flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingAppeal ? <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span> : <span className="material-symbols-outlined text-[20px]">send</span>}
+                    Submit Securely
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         </div>,
         document.body

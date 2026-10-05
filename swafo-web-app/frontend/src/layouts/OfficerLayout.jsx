@@ -13,6 +13,7 @@ const navItems = [
   { name: 'Reports & Analytics', path: '/officer/analytics', icon: 'bar_chart' },
   { name: 'Patrol History', path: '/officer/patrol-history', icon: 'history' },
   { name: 'Campus Map', path: '/officer/campus-map', icon: 'map' },
+  { name: 'SWAFO Connect', path: '/officer/freedom-wall', icon: 'campaign' },
 ];
 
 export default function OfficerLayout() {
