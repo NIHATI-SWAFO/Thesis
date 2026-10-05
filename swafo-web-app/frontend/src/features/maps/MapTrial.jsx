@@ -102,6 +102,7 @@ export default function MapTrial() {
   const [loading,  setLoading]  = useState(false);
   const [stats,    setStats]    = useState({ total: 0, locations: 0, topLocation: null });
   const [filters,  setFilters]  = useState({ date_from: '', date_to: '', category: '' });
+  const [showLegend, setShowLegend] = useState(false);
 
   // ── Add cluster layers once after source exists ─────────────────────────
   const addClusterLayers = useCallback((mapObj) => {
@@ -279,34 +280,38 @@ export default function MapTrial() {
     transition-all shadow-sm appearance-none w-full`;
 
   return (
-    <div className="max-w-[1400px] mx-auto px-6 py-6 animate-fade-in font-pjs">
+    <div className="max-w-[1400px] mx-auto px-3.5 sm:px-6 py-4 sm:py-6 animate-fade-in font-pjs pb-20">
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 sm:mb-6 gap-3 sm:gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-2xl bg-[#003624] flex items-center justify-center text-emerald-400 shadow-lg">
-              <span className="material-symbols-outlined text-[22px]">map</span>
+          <div className="flex items-center gap-2.5 sm:gap-3 mb-1">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[#003624] flex items-center justify-center text-emerald-400 shadow-md shrink-0">
+              <span className="material-symbols-outlined text-[20px] sm:text-[22px]">map</span>
             </div>
-            <h1 className="text-[28px] font-black text-[#003624] tracking-tight leading-none">Campus Violation Heatmap</h1>
+            <h1 className="text-xl sm:text-[26px] md:text-[28px] font-black text-[#003624] tracking-tight leading-tight">
+              Campus Violation Heatmap
+            </h1>
           </div>
-          <p className="text-[13px] text-slate-400 font-medium ml-1 uppercase tracking-[0.12em]">
+          <p className="text-[11px] sm:text-[13px] text-slate-400 font-medium ml-0.5 sm:ml-1 uppercase tracking-[0.1em]">
             Spatial violation analytics · DLSU-D Campus
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-white border border-slate-100 rounded-2xl px-5 py-3 shadow-sm flex flex-col items-center min-w-[90px]">
+
+        {/* Stats grid: 2 cols on mobile, flex on desktop */}
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
+          <div className="bg-white border border-slate-100 rounded-2xl px-3.5 sm:px-5 py-2.5 sm:py-3 shadow-sm flex flex-col items-center">
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Violations</span>
-            <span className="text-[26px] font-black text-[#003624] leading-none">{loading ? '…' : stats.total}</span>
+            <span className="text-xl sm:text-[26px] font-black text-[#003624] leading-none">{loading ? '…' : stats.total}</span>
           </div>
-          <div className="bg-white border border-slate-100 rounded-2xl px-5 py-3 shadow-sm flex flex-col items-center min-w-[90px]">
+          <div className="bg-white border border-slate-100 rounded-2xl px-3.5 sm:px-5 py-2.5 sm:py-3 shadow-sm flex flex-col items-center">
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Locations</span>
-            <span className="text-[26px] font-black text-emerald-600 leading-none">{loading ? '…' : stats.locations}</span>
+            <span className="text-xl sm:text-[26px] font-black text-emerald-600 leading-none">{loading ? '…' : stats.locations}</span>
           </div>
           {stats.topLocation && (
-            <div className="bg-white border border-slate-100 rounded-2xl px-5 py-3 shadow-sm flex flex-col max-w-[200px]">
+            <div className="col-span-2 sm:col-span-1 bg-white border border-slate-100 rounded-2xl px-3.5 sm:px-5 py-2 sm:py-3 shadow-sm flex flex-col max-w-full sm:max-w-[200px]">
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Hottest Spot</span>
-              <span className="text-[13px] font-black text-[#CC0000] leading-tight truncate">{stats.topLocation.name}</span>
+              <span className="text-xs sm:text-[13px] font-black text-[#CC0000] leading-tight truncate">{stats.topLocation.name}</span>
               <span className="text-[10px] font-bold text-slate-400">{stats.topLocation.count} violations</span>
             </div>
           )}
@@ -314,143 +319,155 @@ export default function MapTrial() {
       </div>
 
       {/* Filter bar */}
-      <div className="bg-white border border-slate-100 rounded-3xl px-6 py-5 mb-4 shadow-sm">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex flex-col gap-1.5 min-w-[160px]">
+      <div className="bg-white border border-slate-100 rounded-2xl sm:rounded-3xl p-3.5 sm:px-6 sm:py-5 mb-4 shadow-sm">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2.5 sm:gap-4 items-end">
+          <div className="col-span-1 flex flex-col gap-1 sm:min-w-[150px]">
             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Date From</label>
             <div className="relative">
-              <input type="date" className={fieldBase} style={{ paddingLeft:'2.5rem' }}
-                value={filters.date_from} onChange={e => handleFilter('date_from', e.target.value)} />
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[16px] pointer-events-none">event</span>
+              <input type="date" className={fieldBase} style={{ paddingLeft:'2.2rem' }}
+                value={filters.date_from || ""} onChange={e => handleFilter('date_from', e.target.value)} />
+              <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px] pointer-events-none">event</span>
             </div>
           </div>
-          <div className="flex flex-col gap-1.5 min-w-[160px]">
+          <div className="col-span-1 flex flex-col gap-1 sm:min-w-[150px]">
             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Date To</label>
             <div className="relative">
-              <input type="date" className={fieldBase} style={{ paddingLeft:'2.5rem' }}
-                value={filters.date_to} onChange={e => handleFilter('date_to', e.target.value)} />
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[16px] pointer-events-none">event</span>
+              <input type="date" className={fieldBase} style={{ paddingLeft:'2.2rem' }}
+                value={filters.date_to || ""} onChange={e => handleFilter('date_to', e.target.value)} />
+              <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px] pointer-events-none">event</span>
             </div>
           </div>
-          <div className="flex flex-col gap-1.5 min-w-[180px]">
+          <div className="col-span-2 sm:col-span-1 flex flex-col gap-1 sm:min-w-[180px]">
             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Category</label>
             <div className="relative">
-              <select className={fieldBase} style={{ paddingRight:'2.5rem' }}
-                value={filters.category} onChange={e => handleFilter('category', e.target.value)}>
+              <select className={fieldBase} style={{ paddingRight:'2.2rem' }}
+                value={filters.category || ""} onChange={e => handleFilter('category', e.target.value)}>
                 <option value="">All Categories</option>
                 <option value="minor">⚠️ Minor Offenses</option>
                 <option value="major">🔴 Major Offenses</option>
                 <option value="traffic">🚗 Traffic Violations</option>
               </select>
-              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[16px] pointer-events-none">expand_more</span>
+              <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px] pointer-events-none">expand_more</span>
             </div>
           </div>
-          <div className="flex items-end gap-3 ml-auto">
+          <div className="col-span-2 sm:col-span-1 flex items-center justify-between sm:justify-start gap-2 sm:ml-auto">
             {loading && (
-              <div className="flex items-center gap-2 text-[12px] font-bold text-emerald-600 h-[44px]">
-                <div className="w-4 h-4 border-2 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
+              <div className="flex items-center gap-1.5 text-[11px] sm:text-[12px] font-bold text-emerald-600 h-[40px] sm:h-[44px]">
+                <div className="w-3.5 h-3.5 border-2 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
                 Refreshing…
               </div>
             )}
             {hasFilters && (
               <button onClick={clearFilters}
-                className="h-[44px] px-5 rounded-2xl bg-red-50 text-[12px] font-black text-red-500 uppercase tracking-widest hover:bg-red-100 transition-all border border-red-100 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[15px]">close</span>Clear
+                className="h-[40px] sm:h-[44px] px-4 rounded-xl sm:rounded-2xl bg-red-50 text-[11px] sm:text-[12px] font-black text-red-500 uppercase tracking-widest hover:bg-red-100 transition-all border border-red-100 flex items-center gap-1.5 ml-auto cursor-pointer">
+                <span className="material-symbols-outlined text-[14px]">close</span>Clear
               </button>
             )}
           </div>
         </div>
         {hasFilters && (
-          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap">
+          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Active:</span>
-            {filters.date_from && <span className="bg-emerald-50 text-emerald-700 text-[11px] font-black px-3 py-1 rounded-full border border-emerald-100">From: {filters.date_from}</span>}
-            {filters.date_to   && <span className="bg-emerald-50 text-emerald-700 text-[11px] font-black px-3 py-1 rounded-full border border-emerald-100">To: {filters.date_to}</span>}
-            {filters.category  && <span className="bg-emerald-50 text-emerald-700 text-[11px] font-black px-3 py-1 rounded-full border border-emerald-100 capitalize">{filters.category}</span>}
+            {filters.date_from && <span className="bg-emerald-50 text-emerald-700 text-[10px] sm:text-[11px] font-black px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-emerald-100">From: {filters.date_from}</span>}
+            {filters.date_to   && <span className="bg-emerald-50 text-emerald-700 text-[10px] sm:text-[11px] font-black px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-emerald-100">To: {filters.date_to}</span>}
+            {filters.category  && <span className="bg-emerald-50 text-emerald-700 text-[10px] sm:text-[11px] font-black px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-emerald-100 capitalize">{filters.category}</span>}
           </div>
         )}
       </div>
 
       {/* Summary line */}
       {mapReady && !loading && stats.total > 0 && (
-        <div className="mb-3 text-[12px] font-bold text-slate-500 flex items-center gap-2">
+        <div className="mb-3 text-[11px] sm:text-[12px] font-bold text-slate-500 flex items-center gap-2 flex-wrap">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
-          Showing <span className="font-black text-[#003624] mx-1">{stats.total}</span>
-          violation{stats.total !== 1 ? 's' : ''} across
-          <span className="font-black text-[#003624] mx-1">{stats.locations}</span>
-          location{stats.locations !== 1 ? 's' : ''}
-          {stats.topLocation && <>
-            &nbsp;· Hottest: <span className="text-[#CC0000] font-black ml-1">{stats.topLocation.name} ({stats.topLocation.count})</span>
-          </>}
+          <span>
+            Showing <strong className="text-[#003624] font-black">{stats.total}</strong> violation{stats.total !== 1 ? 's' : ''} across <strong className="text-[#003624] font-black">{stats.locations}</strong> location{stats.locations !== 1 ? 's' : ''}
+          </span>
+          {stats.topLocation && (
+            <span className="text-slate-400 hidden sm:inline">
+              · Hottest: <strong className="text-[#CC0000] font-black">{stats.topLocation.name} ({stats.topLocation.count})</strong>
+            </span>
+          )}
         </div>
       )}
 
-      {/* Map */}
-      <div className="relative w-full rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12)] border border-black/5"
-           style={{ height: 'calc(100vh - 330px)', minHeight: '560px' }}>
+      {/* Map Container */}
+      <div className="relative w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12)] border border-black/5"
+           style={{ height: 'calc(100vh - 340px)', minHeight: '440px' }}>
 
         <div ref={mapContainer} style={{ position:'absolute', inset:0, opacity: mapReady ? 1 : 0, transition:'opacity 0.6s ease' }} />
 
         {!mapReady && !error && (
           <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-emerald-50 flex flex-col items-center justify-center z-20">
-            <div className="w-16 h-16 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mb-4" />
-            <p className="text-[12px] font-black uppercase tracking-widest text-slate-400">Loading Campus Map…</p>
+            <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mb-4" />
+            <p className="text-[11px] sm:text-[12px] font-black uppercase tracking-widest text-slate-400">Loading Campus Map…</p>
           </div>
         )}
 
         {error && (
-          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-red-50/90 backdrop-blur-md p-10 text-center">
-            <span className="material-symbols-outlined text-[48px] text-red-400 mb-3">wifi_off</span>
-            <h3 className="text-red-900 font-black text-[16px] mb-2">Map Connection Failed</h3>
-            <p className="text-red-700/70 text-[13px] max-w-md mb-6">{error}</p>
-            <button onClick={() => window.location.reload()} className="px-8 py-3 bg-[#003624] text-white rounded-full font-black text-[12px] uppercase tracking-widest">Retry</button>
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-red-50/90 backdrop-blur-md p-6 sm:p-10 text-center">
+            <span className="material-symbols-outlined text-[40px] sm:text-[48px] text-red-400 mb-2 sm:mb-3">wifi_off</span>
+            <h3 className="text-red-900 font-black text-sm sm:text-[16px] mb-1 sm:mb-2">Map Connection Failed</h3>
+            <p className="text-red-700/70 text-xs sm:text-[13px] max-w-md mb-4 sm:mb-6">{error}</p>
+            <button onClick={() => window.location.reload()} className="px-6 sm:px-8 py-2.5 sm:py-3 bg-[#003624] text-white rounded-full font-black text-[11px] sm:text-[12px] uppercase tracking-widest">Retry</button>
           </div>
         )}
 
         {/* Empty state */}
         {isEmpty && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-            <div className="bg-white/95 backdrop-blur-md rounded-3xl px-10 py-8 shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col items-center text-center max-w-xs">
-              <span className="material-symbols-outlined text-[40px] text-slate-300 mb-3">location_off</span>
-              <p className="text-[14px] font-black text-[#003624] mb-1">No Violations Found</p>
-              <p className="text-[12px] font-medium text-slate-400">
+          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none p-4">
+            <div className="bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-3xl p-6 sm:px-10 sm:py-8 shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col items-center text-center max-w-xs">
+              <span className="material-symbols-outlined text-[32px] sm:text-[40px] text-slate-300 mb-2 sm:mb-3">location_off</span>
+              <p className="text-xs sm:text-[14px] font-black text-[#003624] mb-1">No Violations Found</p>
+              <p className="text-[11px] sm:text-[12px] font-medium text-slate-400">
                 {hasFilters ? 'No violations match the selected filters.' : 'No violation records with location data exist yet.'}
               </p>
             </div>
           </div>
         )}
 
-        {/* Legend */}
+        {/* Legend & Status */}
         {mapReady && (
-          <div className="absolute bottom-5 left-5 z-10 flex flex-col gap-2.5">
-            <div className="bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white shadow-lg flex items-center gap-2.5">
+          <div className="absolute bottom-4 left-3.5 sm:left-5 z-10 flex flex-col gap-2 max-w-[calc(100%-2rem)]">
+            <button 
+              onClick={() => setShowLegend(!showLegend)}
+              className="bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-xl sm:rounded-2xl border border-white shadow-lg flex items-center gap-2 text-left cursor-pointer active:scale-95 transition-transform w-fit"
+            >
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] font-black text-[#003624] uppercase tracking-widest">Heatmap Live</span>
-            </div>
-            <div className="bg-white/95 backdrop-blur-md px-5 py-4 rounded-2xl border border-white shadow-lg">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Cluster Intensity</p>
-              <div className="flex flex-col gap-2">
-                {LEGEND_ITEMS.map(({ color, label, range }) => (
-                  <div key={label} className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full flex-shrink-0 shadow-sm" style={{ background: color }} />
-                    <div className="flex flex-col leading-none">
-                      <span className="text-[11px] font-black text-slate-700">{label}</span>
-                      <span className="text-[9px] font-bold text-slate-400">{range} violations</span>
+              <span className="text-[10px] font-black text-[#003624] uppercase tracking-wider">
+                Heatmap Live
+              </span>
+              <span className="material-symbols-outlined text-[15px] text-slate-400">
+                {showLegend ? 'expand_less' : 'expand_more'}
+              </span>
+            </button>
+
+            {showLegend && (
+              <div className="bg-white/95 backdrop-blur-md px-4 py-3 sm:px-5 sm:py-4 rounded-2xl border border-white shadow-lg animate-in fade-in slide-in-from-bottom-2">
+                <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-3">Cluster Intensity</p>
+                <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
+                  {LEGEND_ITEMS.map(({ color, label, range }) => (
+                    <div key={label} className="flex items-center gap-2 sm:gap-3">
+                      <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full flex-shrink-0 shadow-sm" style={{ background: color }} />
+                      <div className="flex flex-col leading-none">
+                        <span className="text-[10px] sm:text-[11px] font-black text-slate-700">{label}</span>
+                        <span className="text-[8px] sm:text-[9px] font-bold text-slate-400">{range} violations</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
         {/* Coord readout */}
         {mapReady && (
-          <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-xl border border-white shadow-md flex items-center gap-4">
-            <div className="flex flex-col"><span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">LNG</span><span className="text-[12px] font-bold text-[#003624]">{coords.lng}</span></div>
-            <div className="w-px h-6 bg-slate-100" />
-            <div className="flex flex-col"><span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">LAT</span><span className="text-[12px] font-bold text-[#003624]">{coords.lat}</span></div>
-            <div className="w-px h-6 bg-slate-100" />
-            <div className="flex flex-col"><span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Z</span><span className="text-[12px] font-bold text-[#003624]">{coords.zoom}</span></div>
+          <div className="hidden sm:flex absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm px-3.5 py-1.5 rounded-xl border border-white shadow-md items-center gap-3">
+            <div className="flex flex-col"><span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">LNG</span><span className="text-[11px] font-bold text-[#003624]">{coords.lng}</span></div>
+            <div className="w-px h-5 bg-slate-100" />
+            <div className="flex flex-col"><span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">LAT</span><span className="text-[11px] font-bold text-[#003624]">{coords.lat}</span></div>
+            <div className="w-px h-5 bg-slate-100" />
+            <div className="flex flex-col"><span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Z</span><span className="text-[11px] font-bold text-[#003624]">{coords.zoom}</span></div>
           </div>
         )}
       </div>

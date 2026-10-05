@@ -11,20 +11,29 @@ class MockLoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        email = request.data.get('email')
-        if not email:
-            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        identifier = (request.data.get('email') or request.data.get('username') or '').strip()
+        password = request.data.get('password')
+        if not identifier:
+            return Response({"error": "Email or ID is required"}, status=status.HTTP_400_BAD_REQUEST)
         
-        try:
-            user = User.objects.get(email=email)
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'user': UserSerializer(user).data
-            })
-        except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        user = (
+            User.objects.filter(email__iexact=identifier).first() or
+            User.objects.filter(username__iexact=identifier).first() or
+            User.objects.filter(full_name__iexact=identifier).first()
+        )
+        
+        if not user:
+            return Response({"error": "User account not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if password and not user.check_password(password):
+            return Response({"error": "Invalid password"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': UserSerializer(user).data
+        })
 
 class StudentSearchView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -73,6 +82,11 @@ class StudentListView(generics.ListAPIView):
             queryset = queryset.filter(course__iexact=college)
         return queryset
 
+class StudentProfileDetailView(generics.RetrieveUpdateAPIView):
+    permission_classes = [permissions.AllowAny]
+    queryset = StudentProfile.objects.all()
+    serializer_class = StudentProfileSerializer
+
 class CollegeListView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -85,7 +99,7 @@ class CollegeListView(APIView):
         )
         return Response({'colleges': [c for c in colleges if c]})
 
-class UserListView(generics.ListAPIView):
+class UserListView(generics.ListCreateAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = UserSerializer
 
@@ -93,22 +107,10 @@ class UserListView(generics.ListAPIView):
         role = self.request.query_params.get('role')
         queryset = User.objects.all().order_by('full_name')
         if role:
-            queryset = queryset.filter(role=role)
+            queryset = queryset.filter(role__iexact=role)
         return queryset
-from .serializers import NotificationSerializer
-from .models import Notification
 
-class NotificationListView(generics.ListAPIView):
-    serializer_class = NotificationSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user)
-
-class NotificationUpdateView(generics.UpdateAPIView):
-    serializer_class = NotificationSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    queryset = Notification.objects.all()
-
-    def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user)
+class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [permissions.AllowAny]
+    queryset = User.objects.all()
+    serializer_class = UserSerializer

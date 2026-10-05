@@ -3,8 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Sum, Avg, F, ExpressionWrapper, DurationField
-from .models import PatrolSession
-from .serializers import PatrolSessionSerializer
+from .models import PatrolSession, PatrolAssignment, PatrolZoneMapping
+from .serializers import PatrolSessionSerializer, PatrolAssignmentSerializer, PatrolZoneMappingSerializer
 
 class PatrolSessionViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
@@ -96,3 +96,149 @@ class PatrolSessionViewSet(viewsets.ModelViewSet):
             .distinct()
         )
         return Response({ "patrolled_locations": list(locations) })
+
+class PatrolAssignmentViewSet(viewsets.ModelViewSet):
+    permission_classes = [permissions.AllowAny]
+    queryset = PatrolAssignment.objects.all().order_by('-year', '-month', 'officer__first_name')
+    serializer_class = PatrolAssignmentSerializer
+
+    @action(detail=False, methods=['get'])
+    def current(self, request):
+        now = timezone.now()
+        assignments = PatrolAssignment.objects.filter(month=now.month, year=now.year)
+        serializer = self.get_serializer(assignments, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def my_assignment(self, request):
+        now = timezone.now()
+        officer_id = request.query_params.get('officer_id')
+        officer_email = request.query_params.get('officer_email')
+        officer_name = request.query_params.get('officer_name')
+        
+        q = PatrolAssignment.objects.filter(month=now.month, year=now.year)
+        assignment = None
+        if officer_id:
+            assignment = q.filter(officer_id=officer_id).first()
+        elif officer_email:
+            assignment = q.filter(officer__email__iexact=officer_email).first()
+        elif officer_name:
+            # Try full name or first name match
+            names = officer_name.strip().split()
+            first = names[0] if names else ''
+            assignment = q.filter(officer__first_name__icontains=first).first()
+        elif request.user and request.user.is_authenticated:
+            assignment = q.filter(officer=request.user).first()
+
+        if assignment:
+            data = self.get_serializer(assignment).data
+            mappings = list(PatrolZoneMapping.objects.filter(zone_name=assignment.zone).values_list('location_name', flat=True))
+            if not mappings:
+                mappings = DEFAULT_ZONE_MAPPINGS.get(assignment.zone, [])
+            data['locations'] = mappings
+            return Response(data)
+        
+        return Response({"detail": "No assignment found for current month"}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['post'])
+    def auto_assign(self, request):
+        from django.contrib.auth import get_user_model
+        import random
+        User = get_user_model()
+        now = timezone.now()
+        month = now.month
+        year = now.year
+
+        zones = [
+            "Zone 1: Magdalo Gate & Entry",
+            "Zone 2: South Admin & Academic",
+            "Zone 3: Library, Chapel & Cultural",
+            "Zone 4: Food Court & Dormitory",
+            "Zone 5: Central Academic (West)",
+            "Zone 6: MTH & GMH Quad Area",
+            "Zone 7: High School Complex",
+            "Zone 8: Gate 3 & Sports Area"
+        ]
+        
+        # Get all officers
+        officers = list(User.objects.filter(role='OFFICER', is_active=True))
+        
+        # We need exactly 8 to match the zones nicely, but let's handle any number
+        random.shuffle(zones)
+        random.shuffle(officers)
+
+        PatrolAssignment.objects.filter(month=month, year=year).delete()
+
+        new_assignments = []
+        for i, officer in enumerate(officers):
+            zone = zones[i % len(zones)]
+            assignment = PatrolAssignment(officer=officer, zone=zone, month=month, year=year)
+            new_assignments.append(assignment)
+        
+        PatrolAssignment.objects.bulk_create(new_assignments)
+
+        return Response({"message": f"Successfully auto-assigned {len(new_assignments)} officers."})
+
+
+DEFAULT_ZONE_MAPPINGS = {
+    'Zone 1: Magdalo Gate & Entry': [
+        'Magdalo Gate', 'La Porteria De San Benildo', 'ICTC Building', 'Mariano Alvarez Hall'
+    ],
+    'Zone 2: South Admin & Academic': [
+        'Ayuntamiento De Gonzalez', 'Paulo Campos Hall', 'Julian Felipe Hall',
+        'Doctor Fe Del Mundo Hall', 'University Clinic', 'Motor Pool'
+    ],
+    'Zone 3: Library, Chapel & Cultural': [
+        'Aklatang Emilio Aguinaldo', 'Antonio and Victoria Cojuanco Memorial Chapel',
+        'Museo De La Salle', 'Rizal Library', 'Botanical Garden Park'
+    ],
+    'Zone 4: Food Court & Dormitory': [
+        'University Food Square', 'Food Square Extension', 'Cafe Museo', 'Guest House',
+        'Ladies Dormitory Complex', 'Residencia La Salle'
+    ],
+    'Zone 5: Central Academic (West)': [
+        'CTH Building A & B', 'Felipe Calderon Hall', 'Francisco Barzaga Hall',
+        'Ladislao Diwa Hall', 'LDH Kubo', 'Vito Belarmino Hall'
+    ],
+    'Zone 6: MTH & GMH Quad Area': [
+        'Mariano Trias Hall', 'MTH Covered Court', 'Santiago Alvarez Hall',
+        'Gregoria De Jesus Hall', 'Maria Salome Llanera Hall', 'GMH Quadrangle'
+    ],
+    'Zone 7: High School Complex': [
+        'DLSU-D High School', 'De La Salle University - Dasmariñas High School Complex',
+        'High School Annex Building', 'High School Chapel', 'Basic Education Covered Court',
+        'Saint La Salle Hall'
+    ],
+    'Zone 8: Gate 3 & Sports Area': [
+        'Gate 3', 'Ugnayang La Salle', 'DLSU-D Grandstand', 'Oval / Track',
+        'DLSU-D Faculty/Staff/Student Parking Areas'
+    ]
+}
+
+class PatrolZoneMappingViewSet(viewsets.ModelViewSet):
+    permission_classes = [permissions.AllowAny]
+    queryset = PatrolZoneMapping.objects.all().order_by('location_name')
+    serializer_class = PatrolZoneMappingSerializer
+
+    @action(detail=False, methods=['post'])
+    def reset_defaults(self, request):
+        PatrolZoneMapping.objects.all().delete()
+        mappings = []
+        for zone, locations in DEFAULT_ZONE_MAPPINGS.items():
+            for loc in locations:
+                mappings.append(PatrolZoneMapping(zone_name=zone, location_name=loc))
+        PatrolZoneMapping.objects.bulk_create(mappings)
+        return Response(PatrolZoneMappingSerializer(PatrolZoneMapping.objects.all().order_by('location_name'), many=True).data)
+
+    @action(detail=False, methods=['post'])
+    def initialize(self, request):
+        if PatrolZoneMapping.objects.exists():
+            return Response({"message": "Already initialized"})
+        
+        mappings = []
+        for zone, locations in DEFAULT_ZONE_MAPPINGS.items():
+            for loc in locations:
+                mappings.append(PatrolZoneMapping(zone_name=zone, location_name=loc))
+        PatrolZoneMapping.objects.bulk_create(mappings)
+        return Response({"message": "Successfully initialized."})
+

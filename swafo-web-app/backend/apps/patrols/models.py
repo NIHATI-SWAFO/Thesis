@@ -31,3 +31,24 @@ class PatrolSession(models.Model):
     
     def __str__(self):
         return f"Patrol {self.id} - {self.location} ({self.officer.full_name})"
+
+class PatrolAssignment(models.Model):
+    officer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='assignments')
+    zone = models.CharField(max_length=255)
+    month = models.IntegerField(help_text="1=Jan, 2=Feb, etc.")
+    year = models.IntegerField()
+    is_manual = models.BooleanField(default=False, help_text="True if Director manually assigned this")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['officer', 'month', 'year']
+        
+    def __str__(self):
+        return f"{self.officer.full_name} -> {self.zone} ({self.month}/{self.year})"
+
+class PatrolZoneMapping(models.Model):
+    zone_name = models.CharField(max_length=255)
+    location_name = models.CharField(max_length=255, unique=True)
+    
+    def __str__(self):
+        return f"{self.location_name} -> {self.zone_name}"

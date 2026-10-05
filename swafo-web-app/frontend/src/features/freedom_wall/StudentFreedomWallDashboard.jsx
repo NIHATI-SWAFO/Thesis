@@ -88,7 +88,7 @@ export default function StudentFreedomWallDashboard() {
   };
 
   const getStatusColor = (status) => {
-    switch(status) {
+    switch (status) {
       case "Submitted": return "bg-blue-50 text-blue-600 border-blue-200";
       case "Acknowledged": return "bg-purple-50 text-purple-600 border-purple-200";
       case "Under Review":
@@ -105,95 +105,109 @@ export default function StudentFreedomWallDashboard() {
       <div className="relative w-full max-w-[1580px] mx-auto rounded-[2.5rem] bg-[#003624] overflow-hidden mb-8 shadow-2xl shadow-emerald-900/20">
         <div className="absolute top-[-50%] left-[-10%] w-[500px] h-[500px] rounded-full bg-emerald-500/20 blur-[100px]"></div>
         <div className="absolute bottom-[-20%] right-[-5%] w-[400px] h-[400px] rounded-full bg-[#10b981]/10 blur-[80px]"></div>
-        
+
         <div className="relative z-10 px-8 py-10 md:px-12 md:py-12 flex flex-col lg:flex-row items-center justify-between gap-8">
-            <div className="max-w-xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-4 text-emerald-300 text-[10px] font-bold uppercase tracking-widest">
-                    <MessageSquare size={12} /> Student Voice Module
-                </div>
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-pjs font-extrabold text-white tracking-tight mb-3 leading-tight">
-                    SWAFO Connect
-                </h1>
-                <p className="text-emerald-100/80 text-base md:text-lg font-medium leading-relaxed max-w-lg mb-6">
-                    Your voice matters. Share your concerns, suggestions, feedback, or ideas with SWAFO securely and privately.
-                </p>
+          <div className="max-w-xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-4 text-emerald-300 text-[10px] font-bold uppercase tracking-widest">
+              <MessageSquare size={12} /> Student Voice Module
             </div>
-            
-            <div className="hidden lg:flex max-w-md bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-6 items-start gap-4 shadow-2xl">
-                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-emerald-100 shrink-0">
-                    <ShieldCheck size={20} />
-                </div>
-                <div>
-                    <h4 className="font-pjs font-bold text-white text-base mb-1">Private & Secure</h4>
-                    <p className="text-sm text-emerald-100/80 font-medium leading-relaxed">
-                        Your submission is strictly private and accessible only by authorized SWAFO Directors. Provide accurate details so we can assist you properly.
-                    </p>
-                </div>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-pjs font-extrabold text-white tracking-tight mb-3 leading-tight">
+              SWAFO Connect
+            </h1>
+            <p className="text-emerald-100/80 text-base md:text-lg font-medium leading-relaxed max-w-lg mb-6">
+              Your voice matters. Share your concerns, suggestions, feedback, or ideas with SWAFO securely and privately.
+            </p>
+          </div>
+
+          <div className="hidden lg:flex max-w-md bg-white/10 backdrop-blur-md border border-white/20 rounded-[2rem] p-6 items-start gap-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-emerald-100 shrink-0">
+              <ShieldCheck size={20} />
             </div>
+            <div>
+              <h4 className="font-pjs font-bold text-white text-base mb-1">Private & Secure</h4>
+              <p className="text-sm text-emerald-100/80 font-medium leading-relaxed">
+                Your submission is strictly private and accessible only by authorized SWAFO Directors. Provide accurate details so we can assist you properly.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* MAIN AREA */}
         <div className="lg:col-span-8 space-y-6">
-          
-          {/* SUBMISSION FORM */}
-          <div className="bg-white rounded-[1.5rem] p-7 shadow-sm border border-emerald-50 relative">
-            <h3 className="text-lg font-bold text-[#003624] mb-4 flex items-center gap-2"><Send size={18} className="text-[#2bd99b]" /> Submit a Report or Feedback</h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Subject Title</label>
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="Briefly describe your concern..."
-                    value={formData.title}
-                    onChange={e => setFormData({...formData, title: e.target.value})}
-                    className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold text-[#003624] outline-none focus:ring-2 focus:ring-[#2bd99b] focus:bg-white transition-all placeholder:text-slate-300"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category</label>
-                  <select
-                    value={formData.category}
-                    onChange={e => setFormData({...formData, category: e.target.value})}
-                    className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold text-[#003624] outline-none focus:ring-2 focus:ring-[#2bd99b] focus:bg-white transition-all appearance-none"
-                  >
-                    {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                  </select>
-                </div>
-              </div>
-              
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Detailed Description</label>
-                <textarea 
-                  required
-                  placeholder="Share the full details of your experience or concern here..."
-                  value={formData.description}
-                  onChange={e => setFormData({...formData, description: e.target.value})}
-                  rows="4"
-                  className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl px-4 py-3 text-[14px] font-medium text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#2bd99b] focus:bg-white transition-all placeholder:text-slate-300 resize-none"
-                />
-              </div>
 
-              <div className="flex flex-col md:flex-row items-center justify-between pt-2 gap-4 border-t border-slate-100">
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className={`w-10 h-6 rounded-full p-1 transition-colors ${formData.is_anonymous ? "bg-[#2bd99b]" : "bg-slate-200"}`}>
-                    <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${formData.is_anonymous ? "translate-x-4" : "translate-x-0"}`} />
-                  </div>
-                  <input type="checkbox" className="hidden" checked={formData.is_anonymous} onChange={(e) => setFormData({...formData, is_anonymous: e.target.checked})} />
-                  <span className="text-sm font-bold text-slate-600 group-hover:text-[#003624] transition-colors">Submit Anonymously</span>
-                </label>
-                
-                <button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                  className="w-full md:w-auto bg-[#006b5d] hover:bg-[#004d33] text-white px-8 py-3 rounded-xl font-bold text-sm shadow-md shadow-emerald-900/10 flex items-center justify-center gap-2 transition-all disabled:opacity-70"
-                >
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                  {isSubmitting ? "Submitting..." : "Submit Securely"}
-                </button>
+          {/* INLINE CREATE POST */}
+          <div className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-emerald-50 relative">
+            <div className="flex gap-4 items-start">
+              <img
+                src={getAvatarUrl(user?.full_name || 'Student', false, 'self')}
+                alt="Your Avatar"
+                className="w-10 h-10 rounded-full border-2 border-emerald-50 shrink-0"
+              />
+              <div className="flex-1">
+                {!isPostFormExpanded ? (
+                  <button
+                    onClick={() => setIsPostFormExpanded(true)}
+                    className="w-full text-left bg-slate-50 hover:bg-slate-100 transition-colors rounded-full px-5 py-2.5 text-slate-500 font-medium text-sm border border-slate-100/60"
+                  >
+                    What's on your mind?
+                  </button>
+                ) : (
+                  <form onSubmit={handleCreatePost} className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <input
+                      autoFocus
+                      type="text"
+                      required
+                      placeholder="Post Title..."
+                      value={newPostData.title || ""}
+                      onChange={e => setNewPostData({ ...newPostData, title: e.target.value })}
+                      className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold text-[#003624] outline-none focus:ring-2 focus:ring-[#2bd99b] focus:bg-white transition-all placeholder:text-slate-300"
+                    />
+                    <textarea
+                      required
+                      placeholder="Share the details..."
+                      value={newPostData.description || ""}
+                      onChange={e => setNewPostData({ ...newPostData, description: e.target.value })}
+                      className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl px-4 py-3 text-[14px] font-medium text-slate-700 outline-none focus:ring-2 focus:ring-[#2bd99b] focus:bg-white transition-all min-h-[100px] resize-none placeholder:text-slate-300"
+                    ></textarea>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                      <label className="flex items-center gap-2 cursor-pointer group">
+                        <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${newPostData.is_anonymous ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-transparent group-hover:bg-slate-300'}`}>
+                          <ShieldCheck size={12} />
+                        </div>
+                        <span className="text-xs font-bold text-slate-600 select-none">Post Anonymously</span>
+                        <input
+                          type="checkbox"
+                          className="hidden"
+                          checked={newPostData.is_anonymous}
+                          onChange={(e) => setNewPostData({ ...newPostData, is_anonymous: e.target.checked })}
+                        />
+                      </label>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsPostFormExpanded(false);
+                            setNewPostData({ title: '', description: '', is_anonymous: false });
+                          }}
+                          className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isSubmittingPost || !newPostData.title || !newPostData.description}
+                          className="flex items-center gap-2 bg-[#003624] text-white px-5 py-2 rounded-lg font-bold text-xs hover:bg-[#004d33] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isSubmittingPost ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Post
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                )}
               </div>
             </form>
           </div>
@@ -237,41 +251,120 @@ export default function StudentFreedomWallDashboard() {
                     )}
                   </div>
                 </div>
-              ))
-            )}
-          </div>
 
+                  {/* COMMENTS SECTION */ }
+                  { expandedPostId === post.id && (
+                  <div className="mt-6 pt-6 border-t border-slate-100 animate-in slide-in-from-top-4 duration-300">
+                    <h4 className="text-[13px] font-black uppercase tracking-widest text-slate-400 mb-4">Comments</h4>
+
+                    <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                      {(!post.comments || post.comments.length === 0) ? (
+                        <p className="text-sm text-slate-500 font-medium italic text-center py-4 bg-slate-50 rounded-xl">No comments yet. Be the first to share your thoughts!</p>
+                      ) : (
+                        post.comments.map(comment => (
+                          <div key={comment.id} className="flex gap-3">
+                            <img
+                              src={getAvatarUrl(comment.author_name, comment.is_anonymous, comment.id + 'c')}
+                              alt="avatar"
+                              className="w-8 h-8 rounded-full object-cover border border-slate-200 mt-1"
+                            />
+                            <div className="bg-slate-50 rounded-2xl rounded-tl-none p-4 flex-1 group/comment relative">
+                              <div className="flex items-baseline justify-between mb-1">
+                                <span className="text-[13px] font-bold text-slate-700 flex items-center gap-1">
+                                  {comment.is_anonymous && <ShieldCheck size={12} className="text-emerald-500" />}
+                                  {comment.author_name}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  {comment.is_owner && (
+                                    <button
+                                      onClick={() => handleDeleteComment(post.id, comment.id)}
+                                      className="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover/comment:opacity-100"
+                                      title="Delete Comment"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  )}
+                                  <span className="text-[10px] text-slate-400 font-medium">{new Date(comment.created_at).toLocaleDateString()}</span>
+                                </div>
+                              </div>
+                              <p className="text-sm text-slate-600 font-medium leading-relaxed">{comment.content}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* ADD COMMENT FORM */}
+                    <form onSubmit={(e) => handleCommentSubmit(e, post.id)} className="flex gap-3 items-start">
+                      <img
+                        src={getAvatarUrl(isCommentAnonymous ? "Anonymous" : user.name, isCommentAnonymous, 'preview')}
+                        alt="avatar"
+                        className="w-10 h-10 rounded-full object-cover border border-slate-200"
+                      />
+                      <div className="flex-1 space-y-2">
+                        <textarea
+                          required
+                          placeholder="Write a comment..."
+                          value={commentText || ""}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-[#2bd99b] focus:bg-white transition-all min-h-[44px] resize-none"
+                          rows={2}
+                        ></textarea>
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 transition-colors ${isCommentAnonymous ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-transparent group-hover:bg-slate-300'}`}>
+                              <ShieldCheck size={12} />
+                            </div>
+                            <span className="text-[12px] font-bold text-slate-500 group-hover:text-slate-700">Comment Anonymously</span>
+                          </label>
+                          <button
+                            type="submit"
+                            disabled={isSubmittingComment || !commentText.trim()}
+                            className="bg-[#003624] text-white px-5 py-2 rounded-lg font-bold text-sm hover:bg-[#004d33] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isSubmittingComment ? 'Posting...' : 'Post Comment'}
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                )}
+          </div>
+          ))
+            )}
         </div>
 
-        {/* SIDEBAR */}
-        <div className="lg:col-span-4 space-y-6">
-          <div className="bg-white rounded-[1.5rem] p-6 border border-emerald-50 shadow-sm">
-            <h3 className="text-[14px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-4">
-              <ShieldCheck size={16} className="text-emerald-500" /> Privacy Guarantee
-            </h3>
-            <div className="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100 mb-4">
-              <p className="text-[13px] font-medium text-emerald-800 leading-relaxed">
-                All submissions are strictly confidential. If you submit anonymously, your identity is entirely stripped from the system and cannot be viewed by any officer or director.
-              </p>
-            </div>
-            <ul className="space-y-4">
-              <li className="flex gap-3 items-start">
-                <CheckCircle2 size={16} className="text-[#2bd99b] shrink-0 mt-0.5" />
-                <p className="text-[13px] font-medium text-slate-600">Your concerns are routed directly to authorized SWAFO personnel only.</p>
-              </li>
-              <li className="flex gap-3 items-start">
-                <CheckCircle2 size={16} className="text-[#2bd99b] shrink-0 mt-0.5" />
-                <p className="text-[13px] font-medium text-slate-600">No student can view your submissions.</p>
-              </li>
-              <li className="flex gap-3 items-start">
-                <CheckCircle2 size={16} className="text-[#2bd99b] shrink-0 mt-0.5" />
-                <p className="text-[13px] font-medium text-slate-600">Anonymous toggle guarantees complete identity protection.</p>
-              </li>
-            </ul>
+      </div>
+
+      {/* SIDEBAR */}
+      <div className="lg:col-span-4 space-y-6">
+        <div className="bg-white rounded-[1.5rem] p-6 border border-emerald-50 shadow-sm">
+          <h3 className="text-[14px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-4">
+            <ShieldCheck size={16} className="text-emerald-500" /> Privacy Guarantee
+          </h3>
+          <div className="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100 mb-4">
+            <p className="text-[13px] font-medium text-emerald-800 leading-relaxed">
+              All submissions are strictly confidential. If you submit anonymously, your identity is entirely stripped from the system and cannot be viewed by any officer or director.
+            </p>
           </div>
+          <ul className="space-y-4">
+            <li className="flex gap-3 items-start">
+              <CheckCircle2 size={16} className="text-[#2bd99b] shrink-0 mt-0.5" />
+              <p className="text-[13px] font-medium text-slate-600">Your concerns are routed directly to authorized SWAFO personnel only.</p>
+            </li>
+            <li className="flex gap-3 items-start">
+              <CheckCircle2 size={16} className="text-[#2bd99b] shrink-0 mt-0.5" />
+              <p className="text-[13px] font-medium text-slate-600">No student can view your submissions.</p>
+            </li>
+            <li className="flex gap-3 items-start">
+              <CheckCircle2 size={16} className="text-[#2bd99b] shrink-0 mt-0.5" />
+              <p className="text-[13px] font-medium text-slate-600">Anonymous toggle guarantees complete identity protection.</p>
+            </li>
+          </ul>
         </div>
       </div>
     </div>
+    </div >
   );
 }
 

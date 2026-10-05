@@ -315,7 +315,7 @@ export default function StudentSubmissionForm() {
                                             required 
                                             type="text" 
                                             name="other_category" 
-                                            value={formData.other_category} 
+                                            value={formData.other_category || ''} 
                                             onChange={handleChange} 
                                             placeholder="Please specify..." 
                                             className="w-full bg-slate-50 border-0 ring-1 ring-emerald-200 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-bold text-slate-700 text-sm placeholder:text-emerald-600/50 hover:ring-emerald-300" 
@@ -350,14 +350,14 @@ export default function StudentSubmissionForm() {
                                             <MessageSquare size={12} /> Subject / Title *
                                         </label>
                                         <div className="relative">
-                                            <input required type="text" name="title" value={formData.title} onChange={handleChange} placeholder={getTitlePlaceholder()} className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-2xl px-5 py-4 pl-5 focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-bold text-slate-800 text-[15px] placeholder:text-slate-400 placeholder:font-medium hover:ring-emerald-300 hover:bg-white shadow-sm" />
+                                            <input required type="text" name="title" value={formData.title || ''} onChange={handleChange} placeholder={getTitlePlaceholder()} className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-2xl px-5 py-4 pl-5 focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-bold text-slate-800 text-[15px] placeholder:text-slate-400 placeholder:font-medium hover:ring-emerald-300 hover:bg-white shadow-sm" />
                                         </div>
                                     </div>
                                     <div className="space-y-2 group">
                                         <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
                                             <AlignLeft size={12} /> Description *
                                         </label>
-                                        <textarea required name="description" value={formData.description} onChange={handleChange} placeholder={getPlaceholderText()} rows={6} className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-3xl px-6 py-5 focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-bold text-slate-700 text-[15px] resize-none placeholder:text-slate-400 placeholder:font-medium hover:ring-emerald-300 hover:bg-white shadow-inner leading-relaxed"></textarea>
+                                        <textarea required name="description" value={formData.description || ''} onChange={handleChange} placeholder={getPlaceholderText()} rows={6} className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-3xl px-6 py-5 focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-bold text-slate-700 text-[15px] resize-none placeholder:text-slate-400 placeholder:font-medium hover:ring-emerald-300 hover:bg-white shadow-inner leading-relaxed"></textarea>
                                     </div>
                                 </div>
 
@@ -368,7 +368,7 @@ export default function StudentSubmissionForm() {
                                         <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
                                             <MapPin size={12} /> Location (Optional)
                                         </label>
-                                        <input type="text" name="location" value={formData.location} onChange={handleChange} placeholder="e.g. Building B, Cafeteria" className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-bold text-slate-700 text-sm placeholder:text-slate-400 placeholder:font-medium hover:ring-emerald-300 hover:bg-white shadow-sm" />
+                                        <input type="text" name="location" value={formData.location || ''} onChange={handleChange} placeholder="e.g. Building B, Cafeteria" className="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-bold text-slate-700 text-sm placeholder:text-slate-400 placeholder:font-medium hover:ring-emerald-300 hover:bg-white shadow-sm" />
                                     </div>
                                     <div className="space-y-3">
                                         <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">

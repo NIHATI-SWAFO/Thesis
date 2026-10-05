@@ -8,8 +8,7 @@ django.setup()
 from apps.handbook.models import HandbookEntry
 
 def seed_handbook():
-    print("🗑️  Cleaning existing handbook data...")
-    HandbookEntry.objects.all().delete()
+    print("[*] Seeding/updating institutional handbook rules...")
 
     HANDBOOK_DATA = [
         # --- MINOR OFFENSES (27.1.1) ---
@@ -41,18 +40,20 @@ def seed_handbook():
     ]
 
     for item in HANDBOOK_DATA:
-        HandbookEntry.objects.create(
+        HandbookEntry.objects.update_or_create(
             rule_code=item["rule_code"],
-            category=item["category"],
-            description=item["description"],
-            penalty_1st=item.get("p1"),
-            penalty_2nd=item.get("p2"),
-            penalty_3rd=item.get("p3"),
-            penalty_4th=item.get("p4"),
-            penalty_5th=item.get("p5"),
+            defaults={
+                "category": item["category"],
+                "description": item["description"],
+                "penalty_1st": item.get("p1"),
+                "penalty_2nd": item.get("p2"),
+                "penalty_3rd": item.get("p3"),
+                "penalty_4th": item.get("p4"),
+                "penalty_5th": item.get("p5"),
+            }
         )
     
-    print(f"✅ Successfully seeded {len(HANDBOOK_DATA)} institutional rules.")
+    print(f"[OK] Successfully seeded {len(HANDBOOK_DATA)} institutional rules.")
 
 if __name__ == "__main__":
     seed_handbook()

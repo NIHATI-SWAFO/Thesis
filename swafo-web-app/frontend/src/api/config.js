@@ -14,6 +14,8 @@ export const API_ENDPOINTS = {
   // Users
   SEARCH_USERS: `${API_BASE_URL}/api/users/search/`,
   USERS_LIST: `${API_BASE_URL}/api/users/list/`,
+  USERS_ALL: `${API_BASE_URL}/api/users/users/`,
+  USER_DETAIL: (id) => `${API_BASE_URL}/api/users/users/${id}/`,
   USERS_BY_ROLE: (role) => `${API_BASE_URL}/api/users/users/?role=${role}`,
   PROFILE_BY_EMAIL: `${API_BASE_URL}/api/users/profile-by-email/`,
   COLLEGES_LIST: `${API_BASE_URL}/api/users/colleges/`,
@@ -42,12 +44,21 @@ export const API_ENDPOINTS = {
   PATROLS_STATISTICS: `${API_BASE_URL}/api/patrols/statistics/`,
   PATROLS_END: (id) => `${API_BASE_URL}/api/patrols/${id}/end_session/`,
   PATROLS_PATROLLED_TODAY: `${API_BASE_URL}/api/patrols/patrolled_today/`,
+  PATROLS_ASSIGNMENTS_CURRENT: `${API_BASE_URL}/api/patrols/assignments/current/`,
+  PATROLS_ASSIGNMENTS_MY: `${API_BASE_URL}/api/patrols/assignments/my_assignment/`,
+  PATROLS_ZONE_MAPPINGS: `${API_BASE_URL}/api/patrols/zone-mappings/`,
 
   
   // Analytics
   OFFICER_DASHBOARD: `${API_BASE_URL}/api/analytics/officer-dashboard/`,
   ADMIN_DASHBOARD: `${API_BASE_URL}/api/analytics/admin-dashboard/`,
-  COLLEGE_REPORT: (college) => `${API_BASE_URL}/api/analytics/college-report/?college=${encodeURIComponent(college)}`,
+  NOTIFICATIONS: (email = '', role = '') => {
+    const params = new URLSearchParams();
+    if (email) params.append('email', email);
+    if (role) params.append('role', role);
+    const q = params.toString();
+    return `${API_BASE_URL}/api/analytics/notifications/${q ? `?${q}` : ''}`;
+  },
   
   // Handbook
   HANDBOOK_RULES: `${API_BASE_URL}/api/handbook/rules/`,

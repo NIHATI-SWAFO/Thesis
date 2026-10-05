@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, EyeOff, Database, LogIn, AlertTriangle, ChevronLeft, ChevronRight, Copy, BookOpen, Trash2 } from 'lucide-react';
+import { X, EyeOff, Database, LogIn, AlertTriangle, ChevronLeft, ChevronRight, Copy, Check, BookOpen, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,6 +12,40 @@ const SwafoDevTools = () => {
   const [errors, setErrors] = useState([]);
   const [isErrorOverlayOpen, setIsErrorOverlayOpen] = useState(false);
   const [currentErrorIndex, setCurrentErrorIndex] = useState(0);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyError = (err) => {
+    if (!err) return;
+    const errorText = `[${err.type || 'Error'}] ${err.message || ''}\nTime: ${err.time || ''}\n\nCall Stack:\n${err.stack || 'No stack trace available'}`;
+    
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(errorText)
+        .then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        })
+        .catch(() => fallbackCopy(errorText));
+    } else {
+      fallbackCopy(errorText);
+    }
+  };
+
+  const fallbackCopy = (text) => {
+    try {
+      const el = document.createElement('textarea');
+      el.value = text;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      console.warn('Copy failed:', e);
+    }
+  };
   
   const auth = useAuth();
   const navigate = useNavigate();
@@ -28,8 +62,6 @@ const SwafoDevTools = () => {
         stack: event.error?.stack || ''
       };
       setErrors(prev => [errObj, ...prev]);
-      setIsErrorOverlayOpen(true);
-      setCurrentErrorIndex(0);
     };
 
     const handlePromiseRejection = (event) => {
@@ -40,8 +72,6 @@ const SwafoDevTools = () => {
         stack: event.reason?.stack || ''
       };
       setErrors(prev => [errObj, ...prev]);
-      setIsErrorOverlayOpen(true);
-      setCurrentErrorIndex(0);
     };
 
     // Override console.error safely
@@ -63,9 +93,15 @@ const SwafoDevTools = () => {
         try { throw new Error(); } catch(e) { stack = e.stack.split('\n').slice(2).join('\n'); }
       }
 
-      setErrors(prev => [{ type: 'Console Error', message: msg, time: new Date().toLocaleTimeString(), stack }, ...prev]);
-      setIsErrorOverlayOpen(true);
-      setCurrentErrorIndex(0);
+      // Defer state update to next tick so it doesn't trigger "Cannot update component while rendering"
+      setTimeout(() => {
+        setErrors(prev => [{ type: 'Console Error', message: msg, time: new Date().toLocaleTimeString(), stack }, ...prev]);
+        // Do not auto-open intrusive overlay on every console error unless it's a critical fatal error
+        if (msg.includes('Uncaught') || msg.includes('FATAL')) {
+          setIsErrorOverlayOpen(true);
+          setCurrentErrorIndex(0);
+        }
+      }, 0);
       
       originalConsoleError.apply(console, args);
     };
@@ -96,7 +132,7 @@ const SwafoDevTools = () => {
       navigate('/admin/dashboard');
     }
     if (role === 'officer') {
-      auth.loginAsOfficer("Officer Timothy De Guzman", "officer1@dlsud.edu.ph");
+      auth.loginAsOfficer("Erica Aclag", "officer1@dlsud.edu.ph");
       navigate('/officer/dashboard');
     }
     if (role === 'student') {
@@ -165,8 +201,16 @@ const SwafoDevTools = () => {
 
                 {/* Top Right Actions */}
                 <div className="flex items-center gap-2">
-                  <button className="p-2 rounded-full border border-[#f3f4f6] text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors" title="Copy Error">
-                    <Copy size={14} />
+                  <button 
+                    onClick={() => handleCopyError(currentError)} 
+                    className={`p-2 rounded-full border transition-all cursor-pointer ${
+                      copied 
+                        ? 'border-emerald-300 bg-emerald-50 text-emerald-600' 
+                        : 'border-[#f3f4f6] text-gray-400 hover:text-gray-700 hover:bg-gray-50'
+                    }`} 
+                    title={copied ? "Copied to clipboard!" : "Copy Error"}
+                  >
+                    {copied ? <Check size={14} /> : <Copy size={14} />}
                   </button>
                   <button className="p-2 rounded-full border border-[#f3f4f6] text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors" title="Documentation">
                     <BookOpen size={14} />

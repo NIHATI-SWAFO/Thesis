@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import PatrolSession
+from .models import PatrolSession, PatrolAssignment, PatrolZoneMapping
 
 class PatrolSessionSerializer(serializers.ModelSerializer):
     officer_details = serializers.SerializerMethodField()
@@ -32,3 +32,15 @@ class PatrolSessionSerializer(serializers.ModelSerializer):
             "email": obj.officer.email,
             "role": getattr(obj.officer, 'role', 'Institutional Officer')
         }
+
+class PatrolAssignmentSerializer(serializers.ModelSerializer):
+    officer_name = serializers.CharField(source='officer.full_name', read_only=True)
+    
+    class Meta:
+        model = PatrolAssignment
+        fields = ['id', 'officer', 'officer_name', 'zone', 'month', 'year', 'is_manual', 'created_at']
+
+class PatrolZoneMappingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PatrolZoneMapping
+        fields = ['id', 'zone_name', 'location_name']
