@@ -11,6 +11,54 @@ export default function PatrolMonitoring() {
     weeklyPatrols: 0, totalEvidence: 0, areasCoveredPercent: 0 
   });
   const [violationsStats, setViolationsStats] = useState({ total_reports: 0, uniform: 0, curfew: 0, id_pass: 0, smoking: 0 });
+  const [assignment, setAssignment] = useState(null);
+  const [loadingAssignment, setLoadingAssignment] = useState(true);
+
+  const loggedInUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('swafo_mock_user') || '{}');
+    } catch (e) {
+      return {};
+    }
+  })();
+
+  const getOfficerEvidenceThumb = (patrol) => {
+    const photos = Array.isArray(patrol?.capturedPhotos) ? patrol.capturedPhotos : [];
+    const officerPhotos = photos.filter(p => {
+      const url = p?.url || p;
+      if (!url || typeof url !== 'string') return Boolean(url);
+      return !url.includes('/images/buildings/') && !url.includes('/media/buildings/');
+    });
+    if (officerPhotos.length > 0) {
+      const first = officerPhotos[0];
+      return first.url || (typeof first === 'string' ? first : null);
+    }
+    return null;
+  };
+
+  const fetchAssignment = async () => {
+    try {
+      setLoadingAssignment(true);
+      const user = JSON.parse(localStorage.getItem('swafo_mock_user') || '{}');
+      const param = user.id ? `?officer_id=${user.id}` : user.email ? `?officer_email=${encodeURIComponent(user.email)}` : '';
+      const res = await fetch(`${API_ENDPOINTS.PATROLS_ASSIGNMENTS_MY}${param}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAssignment(data);
+      } else {
+        const allRes = await fetch(API_ENDPOINTS.PATROLS_ASSIGNMENTS_CURRENT);
+        if (allRes.ok) {
+          const allData = await allRes.json();
+          const found = Array.isArray(allData) && allData.find(a => (user.id && a.officer === user.id) || (user.name && a.officer_name === user.name));
+          if (found) setAssignment(found);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch assignment", e);
+    } finally {
+      setLoadingAssignment(false);
+    }
+  };
 
   // fetch on mount + every 15 seconds so new patrols appear automatically
   useEffect(() => {
@@ -19,10 +67,12 @@ export default function PatrolMonitoring() {
 
     fetchData();
     fetchViolations();
+    fetchAssignment();
 
     const interval = setInterval(() => {
       fetchData();
       fetchViolations();
+      fetchAssignment();
     }, 15000);
 
     return () => {
@@ -178,6 +228,39 @@ export default function PatrolMonitoring() {
           </div>
         </div>
 
+        {/* Officer Assigned Patrol Zone Banner (Mobile) */}
+        <div className="bg-gradient-to-br from-[#0D2F1E] to-[#1A5C3A] rounded-[28px] p-5 mb-4 text-white shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-[9px] font-black uppercase tracking-widest text-[#39E58C] bg-white/10 px-2.5 py-1 rounded-full backdrop-blur-sm">
+              OCTOBER 2026 ASSIGNMENT
+            </span>
+            <span className="text-[10px] font-bold text-white/70">
+              {assignment?.is_manual ? 'Director Assigned' : 'Roster Active'}
+            </span>
+          </div>
+
+          <h2 className="font-manrope font-black text-[20px] text-white leading-tight mb-1 tracking-tight">
+            {assignment ? assignment.zone : (loadingAssignment ? 'Loading Assignment...' : 'No Zone Assigned')}
+          </h2>
+          <p className="text-[11px] text-white/80 font-medium mb-3">
+            Assigned Officer: <span className="font-bold text-white">{loggedInUser.name || 'SWAFO Officer'}</span>
+          </p>
+
+          {assignment?.locations && assignment.locations.length > 0 && (
+            <div>
+              <p className="text-[8px] font-black text-white/60 uppercase tracking-widest mb-1.5">Designated Buildings / Sectors</p>
+              <div className="flex flex-wrap gap-1.5">
+                {assignment.locations.map((loc, i) => (
+                  <span key={i} className="text-[10px] font-bold bg-white/15 px-2.5 py-1 rounded-lg text-white backdrop-blur-sm">
+                    {loc}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         <button onClick={handleStartNewPatrol} className="w-full h-[60px] bg-[#1A5C3A] rounded-[24px] shadow-xl flex items-center justify-center gap-2.5 text-white font-black text-[16px] tracking-tight mb-10"><span className="material-symbols-outlined text-[20px]">{isPatrolActive ? 'play_arrow' : 'verified'}</span> {isPatrolActive ? 'Resume Active Patrol' : 'Start New Patrol'}</button>
 
         <div className="mb-10">
@@ -203,19 +286,43 @@ export default function PatrolMonitoring() {
         <section>
           <div className="flex justify-between items-center mb-5 px-1"><h2 className="font-manrope font-black text-[22px] text-[#000000] tracking-tight">Recent Patrols</h2><button className="text-[10px] font-black text-[#1A5C3A] uppercase tracking-widest">View All</button></div>
           <div className="space-y-3.5">
-            {history.length > 0 ? history.map((patrol, idx) => (
-              <div key={patrol.id || idx} onClick={() => handleViewArchive(patrol)} className="bg-white rounded-[24px] p-4 shadow-sm flex items-center gap-4 border border-white active:scale-[0.98] transition-all cursor-pointer">
-                <div className="w-11 h-11 bg-[#F2F4F7] rounded-xl shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-black text-[16px] text-[#000000] truncate tracking-tight leading-none mb-1">{patrol.location || 'Institutional Patrol'}</h3>
-                  <div className="flex items-center gap-2.5 text-gray-400 text-[10px] font-bold"><div>Officer Timothy</div><div className="w-1 h-1 bg-gray-200 rounded-full" /><div>{patrol.duration_display || '45m'}</div></div>
+            {history.length > 0 ? history.map((patrol, idx) => {
+              const evidenceThumb = getOfficerEvidenceThumb(patrol);
+              const officerPhotosCount = Array.isArray(patrol?.capturedPhotos)
+                ? patrol.capturedPhotos.filter(p => {
+                    const u = p?.url || p;
+                    return typeof u === 'string' ? (!u.includes('/images/buildings/') && !u.includes('/media/buildings/')) : Boolean(u);
+                  }).length
+                : (patrol.photos_count || 0);
+
+              return (
+                <div key={patrol.id || idx} onClick={() => handleViewArchive(patrol)} className="bg-white rounded-[24px] p-4 shadow-sm flex items-center gap-4 border border-white active:scale-[0.98] transition-all cursor-pointer">
+                  {evidenceThumb ? (
+                    <div className="w-11 h-11 rounded-xl shrink-0 overflow-hidden border border-gray-100 bg-gray-50 shadow-sm">
+                      <img src={evidenceThumb} alt="Officer Evidence" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="w-11 h-11 bg-[#F2F4F7] rounded-xl shrink-0 flex items-center justify-center text-gray-400 border border-gray-100">
+                      <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-black text-[16px] text-[#000000] truncate tracking-tight leading-none mb-1">{patrol.location || 'Institutional Patrol'}</h3>
+                    <div className="flex items-center gap-2.5 text-gray-400 text-[10px] font-bold">
+                      <div>{patrol.officer_details?.full_name || patrol.officer_name || loggedInUser.name || 'SWAFO Officer'}</div>
+                      <div className="w-1 h-1 bg-gray-200 rounded-full" />
+                      <div>{patrol.duration_display || '45m'}</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                     <div className="bg-[#39E58C]/15 px-1.5 py-0.5 rounded-md mb-0.5">
+                       <span className="text-[8px] font-black text-[#1A5C3A]">📷 {officerPhotosCount}</span>
+                     </div>
+                     <p className="text-[9px] font-black text-gray-300 uppercase">{patrol.actual_end ? new Date(patrol.actual_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:45 AM'}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                   <div className="bg-[#39E58C]/15 px-1.5 py-0.5 rounded-md mb-0.5"><span className="text-[8px] font-black text-[#1A5C3A]">📷 {patrol.photos_count || (patrol.capturedPhotos ? patrol.capturedPhotos.length : 0)}</span></div>
-                   <p className="text-[9px] font-black text-gray-300 uppercase">{patrol.actual_end ? new Date(patrol.actual_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:45 AM'}</p>
-                </div>
-              </div>
-            )) : (
+              );
+            }) : (
               <p className="text-center py-10 text-gray-300 font-bold italic text-[11px]">No patrols recorded yet.</p>
             )}
           </div>
@@ -233,7 +340,7 @@ export default function PatrolMonitoring() {
             <p className="text-[10px] font-black text-gray-400 tracking-[0.2em] uppercase mb-1.5">ACTIVITY TRACKING</p>
             <h1 className="font-manrope font-black text-[44px] text-[#000000] leading-none tracking-tight">Patrol Monitoring</h1>
           </div>
-          <div className="flex items-center gap-3.5 bg-white px-6 py-3 rounded-2xl shadow-sm border border-white mb-1">
+          <div className="flex items-center gap-3.5 bg-white px-6 py-3 rounded-2xl shadow-sm border border-white">
              <div className="w-2.5 h-2.5 bg-[#39E58C] rounded-full animate-pulse shadow-[0_0_10px_#39E58C]" />
              <span className="font-black text-[13px] text-[#1A5C3A] uppercase tracking-widest">SYSTEM ONLINE</span>
           </div>
@@ -261,6 +368,57 @@ export default function PatrolMonitoring() {
 
         <div className="grid grid-cols-3 gap-8">
           <div className="col-span-2 space-y-10">
+            {/* Officer Zone Assignment Card (Desktop) */}
+            <div className="bg-gradient-to-br from-[#0D2F1E] via-[#113a26] to-[#1A5C3A] rounded-[36px] p-8 text-white shadow-xl relative overflow-hidden border border-emerald-500/20">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-400/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+              <div className="relative z-10 flex items-start justify-between">
+                <div className="flex-1 pr-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[#39E58C] bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
+                      MONTHLY PATROL ASSIGNMENT • OCTOBER 2026
+                    </span>
+                    <span className="text-[11px] font-bold text-white/70">
+                      {assignment?.is_manual ? 'Designated by Director' : 'Active Duty Assignment'}
+                    </span>
+                  </div>
+
+                  <h2 className="font-manrope font-black text-[28px] text-white leading-tight mb-2 tracking-tight">
+                    {assignment ? assignment.zone : (loadingAssignment ? 'Loading Assignment...' : 'No Zone Assigned')}
+                  </h2>
+                  <p className="text-[13px] text-white/80 font-medium mb-4">
+                    Assigned Officer: <span className="font-bold text-white">{loggedInUser.name || 'SWAFO Officer'}</span>
+                  </p>
+
+                  {assignment?.locations && assignment.locations.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-2">Designated Buildings in this Zone</p>
+                      <div className="flex flex-wrap gap-2">
+                        {assignment.locations.map((loc, i) => (
+                          <span key={i} className="text-[11px] font-bold bg-white/15 hover:bg-white/20 transition-colors px-3 py-1.5 rounded-xl text-white backdrop-blur-sm flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#39E58C]" />
+                            {loc}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="shrink-0 flex flex-col items-end gap-3">
+                  <button
+                    onClick={handleStartNewPatrol}
+                    className="px-6 py-4 bg-[#39E58C] hover:bg-[#2fd37f] text-[#0D2F1E] font-black text-[14px] rounded-2xl shadow-lg transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">{isPatrolActive ? 'play_arrow' : 'verified'}</span>
+                    <span>{isPatrolActive ? 'Resume Active Patrol' : 'Start Zone Patrol'}</span>
+                  </button>
+                  <p className="text-[10px] font-semibold text-white/50 text-right">
+                    Synced with Director Roster
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <section>
               <div className="flex justify-between items-center mb-6 px-1">
                 <h2 className="font-manrope font-black text-[26px] text-[#000000] tracking-tight">Violation Summary</h2>
@@ -283,23 +441,43 @@ export default function PatrolMonitoring() {
             <section>
               <div className="flex justify-between items-center mb-6 px-1"><h2 className="font-manrope font-black text-[26px] text-[#000000] tracking-tight">Recent Patrol Activity</h2><button className="text-[11px] font-black text-[#1A5C3A] uppercase tracking-widest">View Archives</button></div>
               <div className="space-y-4">
-                {history.length > 0 ? history.map((patrol, idx) => (
-                  <div key={patrol.id || idx} onClick={() => handleViewArchive(patrol)} className="bg-white rounded-[32px] p-6 shadow-sm flex items-center gap-6 border border-white hover:shadow-lg transition-all duration-300 group cursor-pointer">
-                    <div className="w-16 h-16 bg-[#F2F4F7] rounded-[20px] shrink-0 group-hover:scale-105 transition-transform" />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-black text-[20px] text-[#000000] truncate tracking-tight leading-none mb-2">{patrol.location || 'Institutional Patrol'}</h3>
-                      <div className="flex items-center gap-5 text-gray-400 text-[12px] font-bold">
-                        <div>Officer Timothy</div>
-                        <div className="w-1 h-1 bg-gray-200 rounded-full" />
-                        <div>{patrol.duration_display || '45m Duration'}</div>
+                {history.length > 0 ? history.map((patrol, idx) => {
+                  const evidenceThumb = getOfficerEvidenceThumb(patrol);
+                  const officerPhotosCount = Array.isArray(patrol?.capturedPhotos)
+                    ? patrol.capturedPhotos.filter(p => {
+                        const u = p?.url || p;
+                        return typeof u === 'string' ? (!u.includes('/images/buildings/') && !u.includes('/media/buildings/')) : Boolean(u);
+                      }).length
+                    : (patrol.photos_count || 0);
+
+                  return (
+                    <div key={patrol.id || idx} onClick={() => handleViewArchive(patrol)} className="bg-white rounded-[32px] p-6 shadow-sm flex items-center gap-6 border border-white hover:shadow-lg transition-all duration-300 group cursor-pointer">
+                      {evidenceThumb ? (
+                        <div className="w-16 h-16 rounded-[20px] shrink-0 overflow-hidden border border-gray-100 bg-gray-50 shadow-sm group-hover:scale-105 transition-transform">
+                          <img src={evidenceThumb} alt="Officer Evidence" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 bg-[#F2F4F7] rounded-[20px] shrink-0 flex items-center justify-center text-gray-400 border border-gray-100 group-hover:scale-105 transition-transform">
+                          <span className="material-symbols-outlined text-[24px]">photo_camera</span>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-black text-[20px] text-[#000000] truncate tracking-tight leading-none mb-2">{patrol.location || 'Institutional Patrol'}</h3>
+                        <div className="flex items-center gap-5 text-gray-400 text-[12px] font-bold">
+                          <div>{patrol.officer_details?.full_name || patrol.officer_name || loggedInUser.name || 'SWAFO Officer'}</div>
+                          <div className="w-1 h-1 bg-gray-200 rounded-full" />
+                          <div>{patrol.duration_display || '45m Duration'}</div>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                         <div className="bg-[#39E58C]/15 px-3 py-1 rounded-lg mb-1 inline-block">
+                           <span className="text-[11px] font-black text-[#1A5C3A]">📷 {officerPhotosCount}</span>
+                         </div>
+                         <p className="text-[11px] font-black text-gray-400 uppercase">{patrol.actual_end ? new Date(patrol.actual_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:45 AM • TODAY'}</p>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                       <div className="bg-[#39E58C]/15 px-3 py-1 rounded-lg mb-1 inline-block"><span className="text-[11px] font-black text-[#1A5C3A]">📷 {patrol.photos_count || (patrol.capturedPhotos ? patrol.capturedPhotos.length : 0)}</span></div>
-                       <p className="text-[11px] font-black text-gray-400 uppercase">{patrol.actual_end ? new Date(patrol.actual_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:45 AM • TODAY'}</p>
-                    </div>
-                  </div>
-                )) : (
+                  );
+                }) : (
                   <p className="text-center py-10 text-gray-300 font-bold italic">No patrol activity recorded.</p>
                 )}
               </div>

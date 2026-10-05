@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, AlertTriangle, Clock } from 'lucide-react';
 
 const mockNotifications = [
-  { id: 1, title: 'New error detected', message: 'API failed to connect to database in Officer Layout.', timestamp: '2 mins ago', read: false },
-  { id: 2, title: 'Patrol started', message: 'Officer Timothy started a patrol in North Wing.', timestamp: '1 hour ago', read: false },
+  { id: 1, title: 'Campus Patrol Schedule', message: 'Monthly patrol assignments updated for current period.', timestamp: '2 mins ago', read: false },
+  { id: 2, title: 'Patrol Started', message: 'Designated patrol started in East Campus Zone.', timestamp: '1 hour ago', read: false },
   { id: 3, title: 'Violation logged', message: 'New uniform violation logged in ICTC.', timestamp: '3 hours ago', read: false },
   { id: 4, title: 'System update', message: 'SWAFO portal updated successfully.', timestamp: '1 day ago', read: true }
 ];

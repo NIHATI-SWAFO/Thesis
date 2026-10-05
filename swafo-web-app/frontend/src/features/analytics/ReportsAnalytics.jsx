@@ -186,9 +186,11 @@ export default function ReportsAnalytics() {
           ...(analytics.kpis || []),
           {
             label: 'Resolution Speed',
-            value: analytics.stats?.avg_resolution_hours > 24 
-              ? `${Math.floor(analytics.stats.avg_resolution_hours / 24)}d ${Math.round(analytics.stats.avg_resolution_hours % 24)}h`
-              : `${Math.floor(analytics.stats.avg_resolution_hours)}h ${Math.round((analytics.stats.avg_resolution_hours % 1) * 60)}m`,
+            value: typeof analytics.stats?.avg_resolution_hours === 'number'
+              ? (analytics.stats.avg_resolution_hours > 24 
+                  ? `${Math.floor(analytics.stats.avg_resolution_hours / 24)}d ${Math.round(analytics.stats.avg_resolution_hours % 24)}h`
+                  : `${Math.floor(analytics.stats.avg_resolution_hours)}h ${Math.round((analytics.stats.avg_resolution_hours % 1) * 60)}m`)
+              : '--',
             trend: `${Math.abs(analytics.stats?.resolution_trend || 0)}%`,
             trendUp: (analytics.stats?.resolution_trend || 0) > 0,
             icon: 'Clock',

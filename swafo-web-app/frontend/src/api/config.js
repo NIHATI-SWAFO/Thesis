@@ -36,6 +36,9 @@ export const API_ENDPOINTS = {
   PATROLS_STATISTICS: `${API_BASE_URL}/api/patrols/statistics/`,
   PATROLS_END: (id) => `${API_BASE_URL}/api/patrols/${id}/end_session/`,
   PATROLS_PATROLLED_TODAY: `${API_BASE_URL}/api/patrols/patrolled_today/`,
+  PATROLS_ASSIGNMENTS_CURRENT: `${API_BASE_URL}/api/patrols/assignments/current/`,
+  PATROLS_ASSIGNMENTS_MY: `${API_BASE_URL}/api/patrols/assignments/my_assignment/`,
+  PATROLS_ZONE_MAPPINGS: `${API_BASE_URL}/api/patrols/zone-mappings/`,
 
   
   // Analytics

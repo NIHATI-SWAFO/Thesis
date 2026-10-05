@@ -6,6 +6,7 @@ const adminNavItems = [
   { name: 'Case Oversight', path: '/admin/cases', icon: 'gavel' },
   { name: 'Student Records', path: '/admin/students', icon: 'groups' },
   { name: 'Patrol Oversight', path: '/admin/patrols', icon: 'history', isInProgress: true },
+    { name: 'Patrol Assignments', path: '/admin/patrol-assignments', icon: 'assignment_ind' },
   { name: 'Institutional Analytics', path: '/admin/analytics', icon: 'analytics' },
   { name: 'Handbook Master', path: '/admin/handbook', icon: 'menu_book' },
   { name: 'SWAFO Connect', path: '/admin/freedom-wall', icon: 'campaign' },
@@ -195,3 +196,4 @@ function NavButton({ active, onClick, icon, label, isCenter = false }) {
     </button>
   );
 }
+

@@ -25,6 +25,18 @@ export default function OfficerLayout() {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
+  const officerDisplayName = user?.name || user?.full_name || 'SWAFO Officer';
+
+  // Compute clean initials for avatar fallback (e.g. "Erica Aclag" -> "EA")
+  const initials = (officerDisplayName || 'SO')
+    .replace(/^Officer\s+/i, '')
+    .split(' ')
+    .filter(Boolean)
+    .map(p => p[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || 'SO';
+
   // Scroll to top on navigation
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -74,9 +86,18 @@ export default function OfficerLayout() {
             )
           })}
         </nav>
-        <div className="px-5 mt-auto flex flex-col gap-1 pt-6">
-          <button className="flex items-center gap-4 px-6 py-3 rounded-full text-slate-500 hover:text-[#003624] hover:bg-emerald-50 transition-all w-full text-left"><span className="material-symbols-outlined text-[20px]">help_outline</span><span className="text-[13px] font-pjs font-semibold">Help Center</span></button>
-          <button onClick={handleLogout} className="flex items-center gap-4 px-6 py-3 rounded-full text-red-500 hover:bg-red-50 transition-all w-full text-left"><span className="material-symbols-outlined text-[20px]">logout</span><span className="text-[13px] font-pjs font-semibold">Logout</span></button>
+        <div className="px-5 mt-auto flex flex-col gap-2 pt-6 border-t border-emerald-50/60">
+          <div className="flex items-center gap-3 px-3 py-2 rounded-2xl bg-white border border-emerald-100/60 shadow-sm">
+            <div className="w-8 h-8 rounded-full bg-[#003624] text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
+              {initials}
+            </div>
+            <div className="flex flex-col overflow-hidden min-w-0">
+              <span className="text-[12px] font-pjs font-bold text-[#003624] truncate leading-tight">{officerDisplayName}</span>
+              <span className="text-[9px] font-bold text-emerald-700/80 uppercase tracking-wider">SWAFO Officer</span>
+            </div>
+          </div>
+          <button className="flex items-center gap-4 px-6 py-2.5 rounded-full text-slate-500 hover:text-[#003624] hover:bg-emerald-50 transition-all w-full text-left"><span className="material-symbols-outlined text-[20px]">help_outline</span><span className="text-[13px] font-pjs font-semibold">Help Center</span></button>
+          <button onClick={handleLogout} className="flex items-center gap-4 px-6 py-2.5 rounded-full text-red-500 hover:bg-red-50 transition-all w-full text-left"><span className="material-symbols-outlined text-[20px]">logout</span><span className="text-[13px] font-pjs font-semibold">Logout</span></button>
         </div>
       </aside>
 
@@ -92,10 +113,16 @@ export default function OfficerLayout() {
           <div className="flex items-center gap-3">
              <NotificationBell isDarkBg={false} />
              <div className="flex flex-col items-end">
-                <span className="text-[13px] font-black text-[#000000] leading-none mb-1">Officer Timothy</span>
+                <span className="text-[13px] font-black text-[#000000] leading-none mb-1">{officerDisplayName}</span>
                 <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">SWAFO Officer</span>
              </div>
-             <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-md"><img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100" className="w-full h-full object-cover" /></div>
+             <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-100 shadow-md bg-[#003624] text-white flex items-center justify-center font-bold text-xs uppercase tracking-wider shrink-0">
+               {user?.avatar ? (
+                 <img src={user.avatar} className="w-full h-full object-cover" alt={officerDisplayName} />
+               ) : (
+                 <span>{initials}</span>
+               )}
+             </div>
           </div>
         </header>
 
@@ -107,8 +134,17 @@ export default function OfficerLayout() {
           </div>
           <div className="flex items-center gap-4 ml-6 pl-8 border-l border-white/10">
             <NotificationBell isDarkBg={true} />
-            <div className="flex flex-col items-end"><span className="text-[14px] font-pjs font-bold text-white mb-1">Officer Timothy</span><span className="text-[10px] text-emerald-400/80 font-black uppercase">SWAFO Officer</span></div>
-            <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-white border border-white/20"><span className="material-symbols-outlined text-[28px]">account_circle</span></div>
+            <div className="flex flex-col items-end">
+              <span className="text-[14px] font-pjs font-bold text-white mb-1">{officerDisplayName}</span>
+              <span className="text-[10px] text-emerald-400/80 font-black uppercase">SWAFO Officer</span>
+            </div>
+            <div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center text-white border border-white/20 font-bold text-xs uppercase tracking-wider shrink-0">
+              {user?.avatar ? (
+                <img src={user.avatar} className="w-full h-full object-cover rounded-2xl" alt={officerDisplayName} />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
           </div>
         </header>
 

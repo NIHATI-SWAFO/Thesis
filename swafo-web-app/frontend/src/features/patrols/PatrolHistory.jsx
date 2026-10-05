@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../../api/config';
+import { getBuildingImage } from '../../utils/buildingImages';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function fmt(iso, opts) { return iso ? new Date(iso).toLocaleString('en-US', opts) : '--'; }
@@ -134,13 +135,21 @@ function PatrolCard({ patrol: p, active, onClick }) {
   const st    = STATUS_COLORS[p.status] || STATUS_COLORS.IN_PROGRESS;
   const mins  = durationMins(p.start_time || p.actual_start, p.end_time || p.actual_end);
   const viol  = p.violations_count ?? 0;
-  const photos = typeof p.photos_count === 'number' ? p.photos_count
-    : Array.isArray(p.capturedPhotos) ? p.capturedPhotos.length : 0;
+  const rawCaptured = Array.isArray(p.capturedPhotos) ? p.capturedPhotos : [];
+  const officerPhotos = rawCaptured.filter(ph => {
+    const url = ph?.url || ph;
+    if (!url || typeof url !== 'string') return Boolean(url);
+    return !url.includes('/images/buildings/') && !url.includes('/media/buildings/');
+  });
+  const photos = officerPhotos.length;
+  const officerThumb = officerPhotos.length > 0 ? (officerPhotos[0].url || officerPhotos[0]) : null;
+  const cardThumb = officerThumb || getBuildingImage(p.location) || 
+    (p.checkpoints_data?.[0] && getBuildingImage(p.checkpoints_data[0].name || p.checkpoints_data[0].building));
 
   return (
     <div
       onClick={onClick}
-      className={`relative bg-white rounded-[24px] p-5 cursor-pointer transition-all duration-200 overflow-hidden
+      className={`relative bg-white rounded-[24px] p-4 cursor-pointer transition-all duration-200 overflow-hidden
         ${active
           ? 'shadow-lg ring-2 ring-[#1A5C3A]/20'
           : 'shadow-sm hover:shadow-md hover:-translate-y-0.5 border border-white'}`}
@@ -148,18 +157,29 @@ function PatrolCard({ patrol: p, active, onClick }) {
       {/* accent bar */}
       <div className={`absolute top-0 left-0 w-[3px] h-full bg-[#1A5C3A] transition-transform duration-300 ${active ? 'scale-y-100' : 'scale-y-0'}`} />
 
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h3 className="font-black text-[16px] text-[#000] leading-tight truncate max-w-[200px]">
-            {p.location || 'Campus Patrol'}
-          </h3>
-          <p className="text-[11px] font-bold text-gray-400 mt-0.5">
+      <div className="flex gap-3.5 items-center">
+        {cardThumb ? (
+          <div className="w-14 h-14 rounded-[16px] overflow-hidden shrink-0 border border-gray-100 bg-gray-50 shadow-sm">
+            <img src={cardThumb} alt={p.location} className="w-full h-full object-cover" />
+          </div>
+        ) : (
+          <div className="w-14 h-14 rounded-[16px] bg-[#E8F5E9] flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[#1A5C3A] text-[24px]">photo_camera</span>
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start mb-1">
+            <h3 className="font-black text-[15px] text-[#000] leading-tight truncate">
+              {p.location || 'Campus Patrol'}
+            </h3>
+            <span className={`px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-widest ${st.bg} ${st.text} shrink-0 ml-1`}>
+              {p.status?.replace('_', ' ')}
+            </span>
+          </div>
+          <p className="text-[11px] font-bold text-gray-400">
             {fmtDate(p.start_time || p.actual_start)}
           </p>
         </div>
-        <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${st.bg} ${st.text}`}>
-          {p.status?.replace('_', ' ')}
-        </span>
       </div>
 
       <div className="flex items-center gap-4 text-[11px] font-bold text-gray-500 mt-3 pt-3 border-t border-gray-50">
@@ -182,6 +202,7 @@ function PatrolCard({ patrol: p, active, onClick }) {
 
 // ── Full detail panel (desktop right pane & mobile detail screen) ──────────
 function DetailPanel({ patrol: p }) {
+  const [viewingPhoto, setViewingPhoto] = useState(null);
   if (!p) return null;
 
   const startIso  = p.start_time  || p.actual_start;
@@ -190,15 +211,40 @@ function DetailPanel({ patrol: p }) {
   const sc        = score(p);
   const officer   = p.officer_details?.full_name || 'Officer on Duty';
   const shift     = p.shift_type || '--';
-  const photos    = typeof p.photos_count === 'number' ? p.photos_count
-    : Array.isArray(p.capturedPhotos) ? p.capturedPhotos.length : 0;
   const viol      = p.violations_count ?? 0;
   const notes     = p.notes || null;
   const checkpoints = Array.isArray(p.checkpoints_data) ? p.checkpoints_data : [];
-  const capturedPhotos = Array.isArray(p.capturedPhotos) ? p.capturedPhotos : [];
+  const rawCaptured = Array.isArray(p.capturedPhotos) ? p.capturedPhotos : [];
+
+  // Only actual officer-captured photos, excluding static building catalog images
+  const allEvidence = rawCaptured.filter(ph => {
+    const url = ph?.url || ph;
+    if (!url || typeof url !== 'string') return Boolean(url);
+    return !url.includes('/images/buildings/') && !url.includes('/media/buildings/');
+  });
+
+  const photos = allEvidence.length;
 
   return (
-    <div className="rounded-[32px] overflow-hidden shadow-2xl">
+    <div className="rounded-[32px] overflow-hidden shadow-2xl relative">
+
+      {/* Lightbox Modal */}
+      {viewingPhoto && (
+        <div 
+          className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setViewingPhoto(null)}
+        >
+          <div className="relative max-w-3xl max-h-[85vh] rounded-3xl overflow-hidden shadow-2xl border border-white/20" onClick={e => e.stopPropagation()}>
+            <img src={viewingPhoto} alt="Building Clearance Evidence" className="w-full h-full object-contain max-h-[80vh] rounded-2xl" />
+            <button 
+              onClick={() => setViewingPhoto(null)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-all border border-white/30"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Dark header (PATROL COMPLETE style) ── */}
       <div className="bg-[#0D2F1E] px-8 pt-8 pb-10">
@@ -263,7 +309,7 @@ function DetailPanel({ patrol: p }) {
           </div>
         </Section>
 
-        {/* Officer Notes — NEW */}
+        {/* Officer Notes */}
         {notes && (
           <Section label="Officer Notes">
             <div className="bg-amber-50 border border-amber-100 rounded-[16px] p-4 flex gap-3">
@@ -273,50 +319,84 @@ function DetailPanel({ patrol: p }) {
           </Section>
         )}
 
-        {/* Patrol Route */}
+        {/* Patrol Route with Building Visual Thumbnails */}
         {checkpoints.length > 0 && (
-          <Section label="Patrol Route">
-            <div className="space-y-0">
-              {checkpoints.map((cp, i) => (
-                <div key={i} className="flex gap-3 relative">
-                  {/* connector line */}
-                  {i < checkpoints.length - 1 && (
-                    <div className="absolute left-[15px] top-8 w-[2px] h-full bg-gray-100 z-0" />
-                  )}
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 mt-1
-                    ${i === 0 ? 'bg-[#1A5C3A]' : i === checkpoints.length - 1 ? 'bg-[#39E58C]' : 'bg-white border-2 border-gray-200'}`}>
-                    {i === 0
-                      ? <span className="material-symbols-outlined text-white text-[14px]">radio_button_checked</span>
-                      : i === checkpoints.length - 1
-                        ? <span className="material-symbols-outlined text-[#003624] text-[14px]">flag</span>
-                        : <span className="text-[11px] font-black text-gray-400">{i + 1}</span>
-                    }
-                  </div>
-                  <div className="flex-1 flex justify-between items-start py-2 pb-4">
-                    <div>
-                      <p className="font-bold text-[14px] text-[#000]">{cp.name || cp.building || `Checkpoint ${i + 1}`}</p>
-                      {cp.note && <p className="text-[11px] text-gray-400 font-medium">{cp.note}</p>}
+          <Section label="Patrol Route Checkpoints" badge={`${checkpoints.length} CHECKPOINTS`}>
+            <div className="space-y-2">
+              {checkpoints.map((cp, i) => {
+                const bldgImg = getBuildingImage(cp.name || cp.building);
+                return (
+                  <div key={i} className="flex gap-3 relative items-center bg-gray-50/70 p-3 rounded-2xl border border-gray-100">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10
+                      ${i === 0 ? 'bg-[#1A5C3A]' : i === checkpoints.length - 1 ? 'bg-[#39E58C]' : 'bg-white border-2 border-gray-200'}`}>
+                      {i === 0
+                        ? <span className="material-symbols-outlined text-white text-[14px]">radio_button_checked</span>
+                        : i === checkpoints.length - 1
+                          ? <span className="material-symbols-outlined text-[#003624] text-[14px]">flag</span>
+                          : <span className="text-[11px] font-black text-gray-400">{i + 1}</span>
+                      }
+                    </div>
+
+                    {bldgImg && (
+                      <div 
+                        onClick={() => setViewingPhoto(bldgImg)}
+                        className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-gray-200 bg-white shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-transform group relative"
+                        title="Click to view building photo"
+                      >
+                        <img src={bldgImg} alt={cp.name} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="material-symbols-outlined text-white text-[16px]">zoom_in</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-[14px] text-[#000] truncate">{cp.name || cp.building || `Checkpoint ${i + 1}`}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                          ✓ Cleared
+                        </span>
+                        {cp.note && <span className="text-[11px] text-gray-400 truncate">{cp.note}</span>}
+                      </div>
                     </div>
                     <span className="text-[11px] font-bold text-gray-400 shrink-0 ml-2">{cp.time || ''}</span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Section>
         )}
 
         {/* Evidence Photos */}
-        {capturedPhotos.length > 0 && (
-          <Section label="Evidence" badge={`${capturedPhotos.length} PHOTOS`}>
+        {allEvidence.length > 0 && (
+          <Section label="Patrol Evidence" badge={`${allEvidence.length} PHOTOS`}>
             <div className="grid grid-cols-3 gap-3">
-              {capturedPhotos.slice(0, 6).map((ph, i) => (
-                <div key={i} className="aspect-square rounded-[16px] overflow-hidden bg-gray-100">
-                  <img src={ph.url || ph} alt={`Evidence ${i + 1}`} className="w-full h-full object-cover" />
-                </div>
-              ))}
-              {capturedPhotos.length > 6 && (
-                <div className="aspect-square rounded-[16px] bg-gray-100 flex items-center justify-center">
-                  <p className="font-black text-gray-400 text-[13px]">+{capturedPhotos.length - 6}</p>
+              {allEvidence.slice(0, 6).map((ph, i) => {
+                const src = ph.url || ph;
+                return (
+                  <div 
+                    key={i} 
+                    onClick={() => setViewingPhoto(src)}
+                    className="aspect-square rounded-[16px] overflow-hidden bg-gray-100 cursor-pointer shadow-sm hover:scale-105 active:scale-95 transition-transform group relative"
+                  >
+                    <img src={src} alt={`Evidence ${i + 1}`} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="material-symbols-outlined text-white text-[22px]">zoom_in</span>
+                    </div>
+                    {ph.location && (
+                      <div className="absolute bottom-1 inset-x-1 bg-black/60 backdrop-blur-sm rounded-lg py-0.5 px-1.5 text-center">
+                        <p className="text-[9px] font-bold text-white truncate">{ph.location}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {allEvidence.length > 6 && (
+                <div 
+                  onClick={() => setViewingPhoto(allEvidence[6].url || allEvidence[6])}
+                  className="aspect-square rounded-[16px] bg-gray-100 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors"
+                >
+                  <p className="font-black text-gray-500 text-[13px]">+{allEvidence.length - 6} more</p>
                 </div>
               )}
             </div>

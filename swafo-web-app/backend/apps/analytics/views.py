@@ -34,7 +34,7 @@ class AdminDashboardAPIView(APIView):
             ).order_by('-count')[:5]
 
             # 2. Officer Activity
-            officer_activity = base_qs.values('officer__first_name', 'officer__last_name', 'officer__username').annotate(
+            officer_activity = base_qs.filter(officer__isnull=False).values('officer__first_name', 'officer__last_name', 'officer__username').annotate(
                 count=Count('id')
             ).order_by('-count')[:5]
 
@@ -305,11 +305,11 @@ class AdminDashboardAPIView(APIView):
                 ],
                 "officer_activity": [
                     {
-                        "name": f"{o['officer__first_name']} {o['officer__last_name']}".strip() or o['officer__username'],
+                        "name": f"{o.get('officer__first_name') or ''} {o.get('officer__last_name') or ''}".strip() or (o.get('officer__username') or 'SWAFO Officer'),
                         "reports": o['count'],
-                        "id": f"OFF-{o['officer__username'][:3].upper()}",
+                        "id": f"OFF-{((o.get('officer__username') or 'OFF')[:3]).upper()}",
                         "status": "Active"
-                    } for o in officer_activity
+                    } for o in officer_activity if o.get('officer__username') or o.get('officer__first_name')
                 ],
                 "temporal": temporal_data,
                 "seasonality_trend": seasonality_trend,

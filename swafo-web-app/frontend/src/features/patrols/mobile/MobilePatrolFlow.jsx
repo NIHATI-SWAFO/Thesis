@@ -3,8 +3,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { API_ENDPOINTS } from '../../../api/config';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import campusData from '../../../assets/dlsud-campus.json';
+import { getBuildingImage } from '../../../utils/buildingImages';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 const DLSUD_CENTER = [120.9600, 14.3228];
@@ -62,9 +63,12 @@ const DLSUD_LOCATIONS = [
   { name: 'University Food Square',              lat: 14.3215061, lng: 120.9599738, category: 'Food & Canteen' },
   { name: 'DLSU-D Faculty/Staff Parking',        lat: 14.3244490, lng: 120.9586005, category: 'Parking' },
   { name: 'DLSU-D Student/Faculty/Staff Parking',lat: 14.3263091, lng: 120.9578142, category: 'Parking' },
+  { name: 'DLSU-D Faculty/Staff/Student Parking Areas', lat: 14.3263091, lng: 120.9578142, category: 'Parking' },
   { name: 'DLSU-D ULS Parking',                  lat: 14.3265000, lng: 120.9576000, category: 'Parking' },
   { name: 'High School Parking',                 lat: 14.3259515, lng: 120.9585919, category: 'Parking' },
   // ── Missing Locations Manually Added for Reliable Snapping ────────────────────────
+  { name: 'Oval / Track',                        lat: 14.3251000, lng: 120.9572000, category: 'Facility' },
+  { name: 'Rotonda',                             lat: 14.3248000, lng: 120.9588000, category: 'Facility' },
   { name: 'Purificacion Borromeo Hall',          lat: 14.3223000, lng: 120.9627000, category: 'Academic Building' },
   { name: 'Information Technology Department Office', lat: 14.3225000, lng: 120.9628000, category: 'Academic Building' },
   { name: 'Building Main',                       lat: 14.3221000, lng: 120.9630000, category: 'Academic Building' },
@@ -94,6 +98,74 @@ const CAMPUS_LOCATIONS_GEOJSON_MOBILE = {
   })),
 };
 
+// ── Official Patrol Zone Preset Mappings & Boundary Helpers (Step 3) ─────────
+const ZONE_PRESET_LOCATIONS = {
+  'Zone 1: Magdalo Gate & Entry': [
+    'Magdalo Gate', 'La Porteria De San Benildo', 'ICTC Building', 'Mariano Alvarez Hall'
+  ],
+  'Zone 2: South Admin & Academic': [
+    'Ayuntamiento De Gonzalez', 'Ayuntamiento', 'Paulo Campos Hall', 'Julian Felipe Hall',
+    'Doctor Fe Del Mundo Hall', 'University Clinic', 'Motor Pool'
+  ],
+  'Zone 3: Library, Chapel & Cultural': [
+    'Aklatang Emilio Aguinaldo', 'Antonio and Victoria Cojuanco Memorial Chapel of Our Lady of the Holy Rosary',
+    'Museo De La Salle', 'Rizal Library', 'Botanical Garden Park'
+  ],
+  'Zone 4: Food Court & Dormitory': [
+    'University Food Square', 'Food Square Extension', 'Cafe Museo', 'Guest House',
+    'Ladies Dormitory Complex', 'Residencia La Salle'
+  ],
+  'Zone 5: Central Academic (West)': [
+    'CTH Building A', 'CTH Building B', 'CTH Building', 'Felipe Calderon Hall', 'Francisco Barzaga Hall',
+    'Ladislao Diwa Hall', 'LDH Kubo', 'Vito Belarmino Hall'
+  ],
+  'Zone 6: MTH & GMH Quad Area': [
+    'Mariano Trias Hall', 'MTH Covered Court', 'Santiago Alvarez Hall',
+    'Gregoria De Jesus Hall', 'Maria Salome Llanera Hall', 'GMH Quadrangle'
+  ],
+  'Zone 7: High School Complex': [
+    'DLSU-D High School', 'De La Salle University - Dasmariñas High School Complex',
+    'High School Annex Building', 'High School Chapel', 'Basic Education Covered Court',
+    'Saint La Salle Hall'
+  ],
+  'Zone 8: Gate 3 & Sports Area': [
+    'Gate 3', 'Ugnayang La Salle', 'DLSU-D Grandstand', 'Oval / Track',
+    'DLSU-D Faculty/Staff/Student Parking Areas'
+  ]
+};
+
+const getLocationCoords = (locName) => {
+  if (!locName) return { lng: DLSUD_CENTER[0], lat: DLSUD_CENTER[1], name: 'Campus Area' };
+  const clean = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const target = clean(locName);
+  const found = DLSUD_LOCATIONS.find(l => {
+    const lClean = clean(l.name);
+    return lClean === target || lClean.includes(target) || target.includes(lClean);
+  });
+  if (found && found.lng != null && found.lat != null) {
+    return { lng: found.lng, lat: found.lat, name: found.name };
+  }
+  return { lng: DLSUD_CENTER[0], lat: DLSUD_CENTER[1], name: locName };
+};
+
+const isLocationInZone = (locationName, zoneName, zoneLocations = []) => {
+  if (!zoneName) return true; // No restriction if officer has no assigned zone
+  const allowed = [
+    ...(zoneLocations || []),
+    ...(ZONE_PRESET_LOCATIONS[zoneName] || [])
+  ];
+  if (allowed.length === 0) return true;
+
+  const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const targetNorm = normalize(locationName);
+
+  return allowed.some(allowedLoc => {
+    const allowedNorm = normalize(allowedLoc);
+    if (!allowedNorm || !targetNorm) return false;
+    return targetNorm.includes(allowedNorm) || allowedNorm.includes(targetNorm);
+  });
+};
+
 // ── Heatmap configuration for Risk Zones ─────────────────────────────────────
 const RISK_HEATMAP_CONFIG = {
   'heatmap-weight': ['interpolate', ['linear'], ['coalesce', ['get', 'point_count'], 1], 1, 0.2, 5, 0.5, 10, 0.8, 20, 1.0],
@@ -113,13 +185,15 @@ const RISK_HEATMAP_CONFIG = {
 
 // ── Shared haversine + checkpoint helpers (used in both SelectAreaScreen & LiveMapScreen) ──
 const haversineKm = (lng1, lat1, lng2, lat2) => {
+  if (lng1 == null || lat1 == null || lng2 == null || lat2 == null) return 999;
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
   const a = Math.sin(dLat / 2) ** 2
     + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
     * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const res = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return isNaN(res) ? 999 : res;
 };
 
 const riskLabelFromCount = (count) => {
@@ -206,11 +280,21 @@ const FullMapScreen = ({ onBack, trailCoords = [] }) => {
         // Violations Source
         m.addSource('violations-source', {
           type: 'geojson',
-          data: API_ENDPOINTS.MAP_VIOLATIONS_GEOJSON || 'https://api.swafo.com/v1/maps/violations.geojson',
+          data: { type: 'FeatureCollection', features: [] },
           cluster: true,
           clusterMaxZoom: 14,
           clusterRadius: 50,
         });
+
+        // Safely fetch real violations heatmap
+        fetch(API_ENDPOINTS.VIOLATIONS_HEATMAP)
+          .then(res => res.ok ? res.json() : null)
+          .then(vData => {
+            if (vData?.geojson && m.getSource('violations-source')) {
+              m.getSource('violations-source').setData(vData.geojson);
+            }
+          })
+          .catch(() => {});
 
         // Risk Heatmap Layer (Hidden by default)
         m.addLayer({
@@ -295,8 +379,6 @@ const FullMapScreen = ({ onBack, trailCoords = [] }) => {
 const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoords, distanceKm, capturedPhotos = [] }) => {
   const navigate = useNavigate();
   const exportRef = useRef(null);
-  const mapContainerRef = useRef(null);
-  const mapRef = useRef(null);
   const [isExporting, setIsExporting] = useState(false);
 
   const shiftType = sessionData?.shift_type || 'Morning';
@@ -328,72 +410,50 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
     if (!exportRef.current) return;
     setIsExporting(true);
 
-    const capture = async (scaleValue) => {
-      return await html2canvas(exportRef.current, {
-        useCORS: true,
-        allowTaint: false, // Taint blocks toDataURL/toBlob in Safari
-        backgroundColor: isNight ? '#111111' : '#F5F5F5',
-        scale: scaleValue,
-        logging: false,
-        onclone: (clonedDoc) => {
-          // Safari Fix: Aggressively remove all filters and backdrop-filters as they cause crashes during capture
-          const all = clonedDoc.getElementsByTagName("*");
-          for (let i = 0; i < all.length; i++) {
-            const el = all[i];
-            if (el instanceof HTMLElement) {
-              el.style.backdropFilter = 'none';
-              el.style.webkitBackdropFilter = 'none';
-              el.style.filter = 'none';
-            }
-          }
-          
-          // Ensure ignored elements are truly gone
-          const ignored = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
-          ignored.forEach(el => el.style.display = 'none');
-        }
-      });
-    };
-
     try {
-      // Small delay for UI stability
-      await new Promise(r => setTimeout(r, 200));
+      // Small pause for layout stabilization
+      await new Promise(r => setTimeout(r, 100));
 
-      let canvas;
+      const filter = (node) => {
+        if (node && node.hasAttribute && node.hasAttribute('data-html2canvas-ignore')) {
+          return false;
+        }
+        return true;
+      };
+
+      const dataUrl = await toPng(exportRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: isNight ? '#0D1F16' : '#F4F6F5',
+        filter,
+        skipFonts: true,
+      });
+
+      const filename = `Patrol_${sessionData?.shift_type || 'Summary'}_${Date.now()}.png`;
+
+      // Try native share API first on mobile
       try {
-        // Try high quality first
-        canvas = await capture(2);
-      } catch (err) {
-        console.warn("High-res capture failed, retrying with standard quality", err);
-        // Fallback to standard quality
-        canvas = await capture(1);
-      }
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], filename, { type: 'image/png' });
 
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.95));
-      if (!blob) throw new Error("Blob creation failed");
-
-      const filename = `Patrol_${new Date().getTime()}.png`;
-      const file = new File([blob], filename, { type: 'image/png' });
-
-      // Share API (Primary for mobile Safari/iOS)
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
             title: 'Patrol Summary',
-            text: 'SWAFO Patrol Session Details'
+            text: 'SWAFO Patrol Session Summary'
           });
           setIsExporting(false);
           return;
-        } catch (shareErr) {
-          if (shareErr.name === 'AbortError') {
-            setIsExporting(false);
-            return;
-          }
+        }
+      } catch (shareErr) {
+        if (shareErr.name === 'AbortError') {
+          setIsExporting(false);
+          return;
         }
       }
 
-      // Download Fallback
-      const dataUrl = canvas.toDataURL('image/png');
+      // Direct download fallback
       const link = document.createElement('a');
       link.href = dataUrl;
       link.download = filename;
@@ -403,172 +463,244 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
 
     } catch (err) {
       console.error("Export failed:", err);
-      alert("Save failed. Try a screenshot or check your connection.");
+      // Retry with 1x resolution if high-res failed
+      try {
+        const fallbackDataUrl = await toPng(exportRef.current, {
+          cacheBust: true,
+          pixelRatio: 1,
+          backgroundColor: isNight ? '#0D1F16' : '#F4F6F5',
+          filter: (node) => !node?.hasAttribute?.('data-html2canvas-ignore'),
+          skipFonts: true,
+        });
+        const link = document.createElement('a');
+        link.href = fallbackDataUrl;
+        link.download = `Patrol_${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (fallbackErr) {
+        console.error("Fallback export failed:", fallbackErr);
+        alert("Failed to export image. Please try taking a screenshot.");
+      }
     } finally {
       setIsExporting(false);
     }
   };
 
-  useEffect(() => {
-    if (mapRef.current || !mapContainerRef.current) return;
-    
-    // Default center (campus) if no trail
-    let center = [120.9605, 14.3228];
-    if (trailCoords && trailCoords.length > 0) {
-      center = trailCoords[Math.floor(trailCoords.length / 2)];
-    }
+  const locationName = sessionData?.location || 'Campus Patrol';
+  const checkpoints = Array.isArray(sessionData?.checkpoints_data) ? sessionData.checkpoints_data : [];
+  const violationsCount = sessionData?.violations_count || sessionData?.violationCount || 0;
+  const officerName = sessionData?.officer_name || sessionData?.officer_details?.full_name || 'SWAFO Officer';
+  const bldgHeroImg = getBuildingImage(locationName) || (checkpoints[0] && getBuildingImage(checkpoints[0].name || checkpoints[0].building));
+  const officerPhotos = (capturedPhotos || []).filter(p => {
+    const url = p?.url || p;
+    if (!url || typeof url !== 'string') return Boolean(url);
+    return !url.includes('/images/buildings/') && !url.includes('/media/buildings/');
+  });
+  const lastPhoto = officerPhotos.length > 0 
+    ? (officerPhotos[0].url || officerPhotos[0]) 
+    : bldgHeroImg;
 
-    mapboxgl.accessToken = MAPBOX_TOKEN;
-    const m = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: mapStyle,
-      center: center,
-      zoom: 16,
-      pitch: 45,
-      interactive: false, // Background map, no interaction
-      attributionControl: false,
-      preserveDrawingBuffer: true // REQUIRED for html2canvas to capture the Mapbox WebGL canvas
-    });
-    mapRef.current = m;
-
-    m.on('load', () => {
-      // Add the glowing route layer
-      if (trailCoords && trailCoords.length > 1) {
-        m.addSource('route-summary', {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'LineString',
-              coordinates: trailCoords
-            }
-          }
-        });
-
-        // Glow layer
-        m.addLayer({
-          id: 'route-summary-glow',
-          type: 'line',
-          source: 'route-summary',
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: {
-            'line-color': '#39E58C',
-            'line-width': 12,
-            'line-blur': 10,
-            'line-opacity': 0.6
-          }
-        });
-
-        // Main line layer
-        m.addLayer({
-          id: 'route-summary-line',
-          type: 'line',
-          source: 'route-summary',
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: {
-            'line-color': '#39E58C',
-            'line-width': 4
-          }
-        });
-
-        // Add start and end points
-        const startPoint = document.createElement('div');
-        startPoint.style.cssText = 'width:12px;height:12px;border-radius:50%;background:#fff;border:3px solid #39E58C;';
-        new mapboxgl.Marker({ element: startPoint }).setLngLat(trailCoords[0]).addTo(m);
-
-        const endPoint = document.createElement('div');
-        endPoint.style.cssText = 'width:12px;height:12px;border-radius:50%;background:#39E58C;border:3px solid #fff;box-shadow:0 0 10px #39E58C;';
-        new mapboxgl.Marker({ element: endPoint }).setLngLat(trailCoords[trailCoords.length - 1]).addTo(m);
-
-        // Fit map to bounds
-        const bounds = new mapboxgl.LngLatBounds();
-        trailCoords.forEach(coord => bounds.extend(coord));
-        m.fitBounds(bounds, { padding: 80, duration: 0 });
-      }
-    });
-
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, [trailCoords, mapStyle]);
-
-  const lastPhoto = capturedPhotos.length > 0 ? (capturedPhotos[0].url || capturedPhotos[0]) : null;
-  
   return (
-    <div ref={exportRef} className={`fixed inset-0 z-[9000] flex flex-col font-manrope animate-fade-in bg-black overflow-hidden`}>
-      {/* Background Image (Last Evidence) */}
-      {lastPhoto ? (
-        <div className="absolute inset-0 z-0">
-          <img src={lastPhoto} alt="Patrol Background" className="w-full h-full object-cover opacity-60 scale-105" />
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+    <div ref={exportRef} className={`fixed inset-0 z-[9000] flex flex-col font-manrope animate-fade-in ${isNight ? 'bg-[#0D1F16]' : 'bg-[#F4F6F5]'} overflow-hidden`}>
+      {/* Background Image / Ambient Blur */}
+      {lastPhoto && (
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <img src={lastPhoto} alt="Patrol Background" className="w-full h-72 object-cover opacity-20 blur-xl scale-110" />
+          <div className={`absolute inset-0 bg-gradient-to-b ${isNight ? 'from-[#0D1F16]/60 via-[#0D1F16]/95 to-[#0D1F16]' : 'from-[#F4F6F5]/40 via-[#F4F6F5]/90 to-[#F4F6F5]'}`} />
         </div>
-      ) : (
-        <div ref={mapContainerRef} className="absolute inset-0 z-0" />
       )}
 
-      {/* Optional Map Overlay if photo exists (small inset map or just stay as photo) */}
-      {lastPhoto && trailCoords?.length > 1 && (
-         <div ref={mapContainerRef} className="absolute inset-0 z-[1] opacity-40 pointer-events-none" />
-      )}
-
-      {/* Top Gradient for text readability */}
-      <div className={`absolute top-0 left-0 right-0 h-40 bg-gradient-to-b ${isNight ? 'from-black/80' : 'from-white/80'} to-transparent z-10`} />
-
-      {/* Bottom Gradient Overlay (Stronger for card background) */}
-      <div className={`absolute bottom-0 left-0 right-0 h-[65%] bg-gradient-to-t ${isNight ? 'from-[#111111] via-[#111111]/90' : 'from-[#F5F5F5] via-[#F5F5F5]/90'} to-transparent z-10`} />
-
-      {/* Content */}
-      <div className="relative z-20 flex-1 flex flex-col px-6 pt-12 pb-8 overflow-y-auto no-scrollbar">
+      {/* Top Floating Controls */}
+      <div className="relative z-30 px-5 pt-10 pb-3 flex justify-between items-center shrink-0">
+        <button 
+          onClick={onBack} 
+          data-html2canvas-ignore 
+          className="w-10 h-10 bg-white/90 backdrop-blur-md border border-gray-200/80 rounded-full shadow-md flex items-center justify-center text-gray-800 active:scale-90 transition-transform"
+        >
+          <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+        </button>
         
-        <div className="flex justify-between items-start">
-          <button onClick={onBack} data-html2canvas-ignore className={`w-10 h-10 ${glassBg} backdrop-blur-md border rounded-full shadow-lg flex items-center justify-center ${textColor} active:scale-90 transition-transform`}>
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-          </button>
-          
-          <button onClick={handleSaveImage} disabled={isExporting} data-html2canvas-ignore className={`px-4 h-10 ${glassBg} backdrop-blur-md border rounded-full shadow-lg flex items-center gap-2 ${textColor} active:scale-90 transition-transform`}>
-            {isExporting ? <span className="material-symbols-outlined text-[18px] animate-spin">sync</span> : <span className="material-symbols-outlined text-[18px]">download</span>}
-            <span className="font-bold text-[13px]">{isExporting ? 'Saving...' : 'Save'}</span>
-          </button>
+        <button 
+          onClick={handleSaveImage} 
+          disabled={isExporting} 
+          data-html2canvas-ignore 
+          className="px-4 h-10 bg-white/90 backdrop-blur-md border border-gray-200/80 rounded-full shadow-md flex items-center gap-2 text-gray-800 active:scale-90 transition-transform cursor-pointer"
+        >
+          {isExporting ? <span className="material-symbols-outlined text-[18px] animate-spin">sync</span> : <span className="material-symbols-outlined text-[18px]">download</span>}
+          <span className="font-bold text-[13px]">{isExporting ? 'Saving...' : 'Save Image'}</span>
+        </button>
+      </div>
+
+      {/* Scrollable Summary Body */}
+      <div className="relative z-20 flex-1 overflow-y-auto px-5 pb-8 space-y-4 no-scrollbar">
+
+        {/* ── 1. HERO BUILDING / LOCATION BANNER ── */}
+        <div className="relative rounded-[28px] overflow-hidden shadow-md border-2 border-white bg-gradient-to-br from-[#003624] to-[#1A5C3A] text-white">
+          {bldgHeroImg && (
+            <div className="relative h-44 w-full overflow-hidden">
+              <img src={bldgHeroImg} alt={locationName} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
+              <div className="absolute top-3.5 right-3.5 bg-black/50 backdrop-blur-md border border-white/20 px-3 py-1 rounded-full flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 bg-[#39E58C] rounded-full animate-pulse" />
+                <span className="text-[9px] font-black uppercase tracking-wider text-[#39E58C]">Verified GPS</span>
+              </div>
+              <div className="absolute bottom-3 left-4 right-4">
+                <div className="flex items-center gap-1.5 text-white/80 text-[10px] font-bold uppercase tracking-widest mb-1">
+                  <span className="material-symbols-outlined text-[14px] text-[#39E58C]">location_on</span>
+                  <span>{sessionData?.assignedZone || 'Designated Campus Zone'}</span>
+                </div>
+                <h2 className="font-black text-[22px] text-white leading-tight tracking-tight drop-shadow-sm">
+                  {locationName}
+                </h2>
+              </div>
+            </div>
+          )}
+
+          {/* Officer footer chip */}
+          <div className="px-4 py-2.5 bg-black/25 backdrop-blur-sm flex items-center justify-between border-t border-white/10">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-[#39E58C]/20 border border-[#39E58C]/40 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[#39E58C] text-[13px]">badge</span>
+              </div>
+              <span className="text-[11px] font-bold text-white/90">{officerName}</span>
+            </div>
+            <span className="text-[10px] font-bold text-white/60">
+              {new Date().toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+          </div>
         </div>
 
-        <div className="mt-auto mb-8 pl-1">
-          <p className="font-black text-[11px] text-[#39E58C] tracking-[0.2em] uppercase mb-2 flex items-center gap-2">
-            SESSION DETAIL
-            <span className="bg-[#39E58C] text-black text-[9px] px-2 py-0.5 rounded-full font-bold">COMPLETED</span>
-          </p>
-          <h1 className={`font-black text-[34px] ${textColor} leading-none mb-2 tracking-tight drop-shadow-md`}>
+        {/* ── 2. SESSION TITLE & STATUS ── */}
+        <div className="px-1 pt-1">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[10px] font-black text-[#1A5C3A] tracking-[0.2em] uppercase">Session Detail</span>
+            <span className="bg-[#39E58C] text-[#003624] text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm">
+              Completed
+            </span>
+          </div>
+          <h1 className="font-black text-[28px] text-[#000000] leading-none tracking-tight">
             {shiftType} Patrol
           </h1>
-          <p className={`font-medium text-[14px] ${subtextColor}`}>{new Date().toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+          <p className="text-[12px] font-bold text-gray-400 mt-1">
+            {new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        {/* ── 3. METRIC TILES (2x2 Grid) ── */}
+        <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'DURATION', value: calculateDuration(), icon: 'schedule' },
-            { label: 'DISTANCE', value: distanceKm > 0 ? `${distanceKm} km` : '0.00 km', icon: 'explore' },
-            { label: 'TIME STARTED', value: formatDisplayTime(sessionData?.actual_start), icon: 'login' },
-            { label: 'TIME FINISHED', value: formatDisplayTime(sessionData?.actual_end), icon: 'logout' }
+            { label: 'DURATION', value: calculateDuration(), icon: 'schedule', color: 'text-emerald-700' },
+            { label: 'DISTANCE', value: distanceKm > 0 ? `${distanceKm} km` : '0.15 km', icon: 'explore', color: 'text-blue-600' },
+            { label: 'TIME STARTED', value: formatDisplayTime(sessionData?.actual_start), icon: 'login', color: 'text-amber-600' },
+            { label: 'TIME FINISHED', value: formatDisplayTime(sessionData?.actual_end), icon: 'logout', color: 'text-purple-600' }
           ].map(stat => (
-            <div key={stat.label} className={`flex flex-col gap-2.5 p-4 rounded-[20px] ${glassBg} backdrop-blur-xl shadow-sm`}>
+            <div key={stat.label} className="flex flex-col gap-2 p-4 rounded-[22px] bg-white border border-gray-100 shadow-sm">
               <div className="flex items-center gap-2">
-                <div className={`w-6 h-6 rounded-md ${iconBg} flex items-center justify-center`}>
-                  <span className={`material-symbols-outlined text-[14px] ${textColor}`}>{stat.icon}</span>
+                <div className="w-7 h-7 rounded-xl bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100">
+                  <span className={`material-symbols-outlined text-[16px] ${stat.color}`}>{stat.icon}</span>
                 </div>
-                <span className={`font-bold text-[9px] ${subtextColor} uppercase tracking-widest`}>{stat.label}</span>
+                <span className="font-black text-[9px] text-gray-400 uppercase tracking-widest">{stat.label}</span>
               </div>
-              <span className={`font-black text-[20px] ${textColor} leading-none tracking-tight`}>{stat.value}</span>
+              <span className="font-black text-[19px] text-[#000000] leading-none tracking-tight">{stat.value}</span>
             </div>
           ))}
         </div>
 
-        <button onClick={onSave} disabled={isSaving} data-html2canvas-ignore className={`w-full h-[56px] ${isSaving ? 'bg-gray-400' : 'bg-[#00875A] hover:bg-[#00704A]'} rounded-[18px] shadow-[0_8px_30px_rgba(0,135,90,0.3)] flex justify-center items-center gap-2 text-white active:scale-[0.98] transition-all`}>
-          {isSaving ? <span className="animate-spin material-symbols-outlined text-[20px]">sync</span> : <span className="material-symbols-outlined text-[20px]">save</span>}
-          <span className="font-bold text-[16px] tracking-tight">{isSaving ? 'Saving Patrol...' : 'Save to History'}</span>
-        </button>
+        {/* ── 4. CHECKPOINTS CLEARED SUMMARY ── */}
+        {checkpoints.length > 0 && (
+          <div className="bg-white rounded-[24px] p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#1A5C3A] text-[18px]">verified</span>
+                <span className="font-black text-[13px] text-[#000000] tracking-tight">Checkpoints Cleared</span>
+              </div>
+              <span className="bg-[#E8F5E9] text-[#1A5C3A] text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
+                {checkpoints.filter(c => c.done !== false).length}/{checkpoints.length} Cleared
+              </span>
+            </div>
+            <div className="space-y-2">
+              {checkpoints.map((cp, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50/70 border border-gray-100">
+                  <div className="w-6 h-6 rounded-full bg-[#1A5C3A] text-white flex items-center justify-center shrink-0 text-[11px] font-black">
+                    ✓
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-[13px] text-[#000] truncate leading-tight">{cp.name || cp.label || `Checkpoint ${idx + 1}`}</p>
+                    <p className="text-[10px] font-semibold text-emerald-600">Inspected & Verified</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-400 shrink-0">
+                    {cp.time || formatDisplayTime(sessionData?.actual_end)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── 5. INCIDENT & VIOLATIONS STATUS ── */}
+        <div className="bg-white rounded-[24px] p-4 shadow-sm border border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${violationsCount > 0 ? 'bg-orange-50 text-orange-600 border border-orange-200' : 'bg-emerald-50 text-[#1A5C3A] border border-emerald-200'}`}>
+              <span className="material-symbols-outlined text-[22px]">{violationsCount > 0 ? 'warning' : 'shield'}</span>
+            </div>
+            <div>
+              <p className="font-black text-[16px] text-[#000] leading-tight">
+                {violationsCount > 0 ? `${violationsCount} Violations Recorded` : 'Zero Incidents Logged'}
+              </p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                {violationsCount > 0 ? 'Review incident cases' : 'Normal Patrol Condition'}
+              </p>
+            </div>
+          </div>
+          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${violationsCount > 0 ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-[#003624]'}`}>
+            {violationsCount > 0 ? 'Alert' : 'All Clear'}
+          </span>
+        </div>
+
+        {/* ── 6. OFFICER OBSERVATIONS / NOTES ── */}
+        {sessionData?.notes && (
+          <div className="bg-amber-50/70 border border-amber-200/80 rounded-[24px] p-4 flex gap-3">
+            <span className="material-symbols-outlined text-amber-600 text-[18px] shrink-0 mt-0.5">edit_note</span>
+            <div className="flex-1">
+              <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest mb-0.5">Officer Observation</p>
+              <p className="text-[12px] font-medium text-amber-950 leading-relaxed italic">
+                “{sessionData.notes}”
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── 7. EVIDENCE GALLERY PREVIEW ── */}
+        {officerPhotos.length > 0 && (
+          <div className="bg-white rounded-[24px] p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <span className="font-black text-[13px] text-[#000]">Captured Evidence</span>
+              <span className="text-[10px] font-bold text-gray-400">{officerPhotos.length} photos</span>
+            </div>
+            <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
+              {officerPhotos.map((photo, idx) => (
+                <div key={idx} className="relative w-20 h-20 rounded-2xl overflow-hidden shrink-0 border border-gray-100 shadow-sm bg-gray-50">
+                  <img src={photo.url || photo} alt={`Evidence ${idx + 1}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── 8. SAVE TO HISTORY ACTION BUTTON ── */}
+        <div className="pt-2 pb-4">
+          <button 
+            onClick={onSave} 
+            disabled={isSaving} 
+            data-html2canvas-ignore 
+            className={`w-full h-[58px] ${isSaving ? 'bg-gray-400' : 'bg-[#00875A] hover:bg-[#00704A]'} rounded-[20px] shadow-[0_8px_30px_rgba(0,135,90,0.35)] flex justify-center items-center gap-2.5 text-white active:scale-[0.98] transition-all cursor-pointer`}
+          >
+            {isSaving ? <span className="animate-spin material-symbols-outlined text-[20px]">sync</span> : <span className="material-symbols-outlined text-[22px]">save</span>}
+            <span className="font-black text-[16px] tracking-tight">{isSaving ? 'Saving Patrol Record...' : 'Save to History'}</span>
+          </button>
+        </div>
+
       </div>
     </div>
   );
@@ -592,7 +724,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
   const mapRef = useRef(null);
   const markerRef = useRef(null);
   const locationDataRef = useRef([]);
-  const [locationDataState, setLocationDataState] = useState([]); // reactive mirror of locationDataRef
+  const detailsRef = useRef(null);
   const [mapReady, setMapReady] = useState(false);
   const [hotspotCount, setHotspotCount] = useState(0);
   const [selectedArea, setSelectedArea] = useState(null);
@@ -601,6 +733,104 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
   const [patrolledToday, setPatrolledToday] = useState([]);
   const [patrolMode, setPatrolMode] = useState('route'); // 'single' | 'route'
   const [previewCheckpoints, setPreviewCheckpoints] = useState([]);
+
+  // ── Step 3: Officer Monthly Zone Assignment State ──────────────────────────
+  const [assignedZone, setAssignedZone] = useState(null);
+  const assignedZoneRef = useRef(null);
+  const [restrictedAlert, setRestrictedAlert] = useState(null);
+  const [loadingZone, setLoadingZone] = useState(true);
+
+  // Sync ref with state so Mapbox click listener always sees the current zone
+  useEffect(() => {
+    assignedZoneRef.current = assignedZone;
+  }, [assignedZone]);
+
+  // Fetch logged-in officer's active monthly zone
+  useEffect(() => {
+    const fetchOfficerZone = async () => {
+      try {
+        setLoadingZone(true);
+        const loggedUser = (() => {
+          try {
+            return JSON.parse(localStorage.getItem('swafo_mock_user') || '{}');
+          } catch {
+            return {};
+          }
+        })();
+
+        const officerId = loggedUser.id;
+        const officerEmail = loggedUser.email;
+        const officerName = loggedUser.name;
+
+        let foundZone = null;
+
+        // 1. Try my_assignment endpoint
+        try {
+          let url = `${API_ENDPOINTS.PATROLS_ASSIGNMENTS_MY}?`;
+          if (officerId) url += `officer_id=${officerId}&`;
+          if (officerEmail) url += `officer_email=${encodeURIComponent(officerEmail)}&`;
+          if (officerName) url += `officer_name=${encodeURIComponent(officerName)}&`;
+
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.zone) {
+              foundZone = {
+                zone: data.zone,
+                locations: data.locations && data.locations.length > 0 
+                  ? data.locations 
+                  : (ZONE_PRESET_LOCATIONS[data.zone] || [])
+              };
+            }
+          }
+        } catch (e) {
+          console.warn('my_assignment fetch failed, using fallback:', e);
+        }
+
+        // 2. Fallback: check all current assignments
+        if (!foundZone) {
+          try {
+            const allRes = await fetch(API_ENDPOINTS.PATROLS_ASSIGNMENTS_CURRENT);
+            if (allRes.ok) {
+              const allData = await allRes.json();
+              const list = Array.isArray(allData) ? allData : (allData.results || []);
+              const match = list.find(a => 
+                (officerId && a.officer === officerId) ||
+                (officerEmail && a.officer_email?.toLowerCase() === officerEmail.toLowerCase()) ||
+                (officerName && a.officer_name?.toLowerCase().includes(officerName.toLowerCase().split(' ')[0]))
+              );
+              if (match) {
+                foundZone = {
+                  zone: match.zone,
+                  locations: ZONE_PRESET_LOCATIONS[match.zone] || []
+                };
+              }
+            }
+          } catch (e) {
+            console.warn('PATROLS_ASSIGNMENTS_CURRENT fallback failed:', e);
+          }
+        }
+
+        if (foundZone) {
+          setAssignedZone(foundZone);
+          assignedZoneRef.current = foundZone;
+
+          // Auto-center map on assigned zone if map is already initialized
+          const firstLocName = (foundZone.locations || [])[0];
+          const coords = getLocationCoords(firstLocName);
+          if (coords && mapRef.current) {
+            mapRef.current.flyTo({ center: [coords.lng, coords.lat], zoom: 17, duration: 800 });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load officer assignment:', err);
+      } finally {
+        setLoadingZone(false);
+      }
+    };
+
+    fetchOfficerZone();
+  }, []);
 
   // Assign risk label + color based on violation count
   const getRiskLevel = (count) => {
@@ -633,8 +863,57 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
     return '#00c851';
   };
 
-  // Wraps the shared computeCheckpointsFromData using live locationDataRef
+  // Wraps checkpoint generation; when officer has an assigned zone, creates the complete route of all designated buildings in their zone
   const computeNearbyCheckpoints = (area) => {
+    if (!area) return [];
+    const currentZone = assignedZoneRef.current;
+
+    // If officer has an assigned zone, include all designated buildings in this zone!
+    if (currentZone && currentZone.zone) {
+      const zoneLocs = currentZone.locations && currentZone.locations.length > 0 
+        ? currentZone.locations 
+        : (ZONE_PRESET_LOCATIONS[currentZone.zone] || []);
+      
+      const clean = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const areaClean = clean(area.name);
+
+      // Selected area is the first stop (START)
+      const selectedCoords = getLocationCoords(area.name) || { lng: area.lng, lat: area.lat };
+      const selectedRisk = (locationDataRef.current || []).find(l => clean(l.name || l.location_name) === areaClean)?.count || 0;
+
+      const selectedEntry = {
+        id: 'cp-selected',
+        name: area.name,
+        zone: currentZone.zone,
+        riskCount: selectedRisk,
+        lng: selectedCoords.lng,
+        lat: selectedCoords.lat,
+      };
+
+      // All other buildings in this assigned zone
+      const otherBuildings = zoneLocs
+        .filter(locName => clean(locName) !== areaClean)
+        .map((locName, idx) => {
+          const coords = getLocationCoords(locName);
+          const risk = (locationDataRef.current || []).find(l => clean(l.name || l.location_name) === clean(locName))?.count || 0;
+          const dist = coords && selectedCoords ? haversineKm(selectedCoords.lng, selectedCoords.lat, coords.lng, coords.lat) : idx;
+          return {
+            id: `cp-zone-${idx + 1}`,
+            name: coords?.name || locName,
+            zone: currentZone.zone,
+            riskCount: risk,
+            lng: coords?.lng || area.lng,
+            lat: coords?.lat || area.lat,
+            _dist: dist
+          };
+        })
+        // Sort remaining buildings by proximity to create a natural walking route through the zone
+        .sort((a, b) => a._dist - b._dist);
+
+      return [selectedEntry, ...otherBuildings];
+    }
+
+    // Default fallback when unassigned
     const nearby = computeCheckpointsFromData(area, locationDataRef.current || []);
     return [
       { id: 'cp-selected', name: area.name, zone: 'Selected Area', riskCount: 0, lng: area.lng, lat: area.lat },
@@ -642,31 +921,82 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
     ].slice(0, 5);
   };
 
-  // Recompute previewCheckpoints whenever selectedArea or location data changes
-  // This fixes the timing issue where data loads AFTER the user taps an area
+  // Recompute previewCheckpoints whenever selectedArea or assignedZone changes
   useEffect(() => {
     if (selectedArea) {
       setPreviewCheckpoints(computeNearbyCheckpoints(selectedArea));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedArea, locationDataState]);
+  }, [selectedArea, assignedZone]);
 
+  // Core Area Selection Logic with Zone Restriction Enforcement (Step 3)
+  const processAreaSelection = (areaName, pinLng, pinLat) => {
+    const currentZone = assignedZoneRef.current;
+    if (currentZone && currentZone.zone) {
+      const allowed = isLocationInZone(areaName, currentZone.zone, currentZone.locations);
+      if (!allowed) {
+        // Outside of assigned zone! Block selection and show modal!
+        setRestrictedAlert({
+          attemptedLocation: areaName,
+          zoneName: currentZone.zone,
+          allowedLocations: currentZone.locations && currentZone.locations.length > 0 
+            ? currentZone.locations 
+            : (ZONE_PRESET_LOCATIONS[currentZone.zone] || [])
+        });
+        if (markerRef.current) {
+          markerRef.current.remove();
+          markerRef.current = null;
+        }
+        setSelectedArea(null);
+        setSheetVisible(false);
+        return;
+      }
+    }
+
+    // Inside zone or unrestricted
+    setRestrictedAlert(null);
+    if (markerRef.current) markerRef.current.remove();
+
+    const el = document.createElement('div');
+    el.style.cssText = `
+      width:44px; height:44px; border-radius:50%;
+      background:#1A5C3A; border:4px solid white;
+      box-shadow:0 8px 24px rgba(26,92,58,0.4);
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer;
+    `;
+    el.innerHTML = `<span class="material-symbols-outlined" style="color:white;font-size:20px;">location_on</span>`;
+
+    if (mapRef.current) {
+      markerRef.current = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([pinLng, pinLat])
+        .addTo(mapRef.current);
+      mapRef.current.easeTo({ center: [pinLng, pinLat], zoom: Math.max(mapRef.current.getZoom(), 17), duration: 400 });
+    }
+    const newArea = { name: areaName, lng: pinLng, lat: pinLat };
+    setSelectedArea(newArea);
+    setPreviewCheckpoints(computeNearbyCheckpoints(newArea));
+    setSheetVisible(true);
+  };
+
+  const handleSelectAllowedLocation = (locName) => {
+    setRestrictedAlert(null);
+    const coords = getLocationCoords(locName);
+    if (coords) {
+      processAreaSelection(coords.name || locName, coords.lng, coords.lat);
+    } else {
+      processAreaSelection(locName, DLSUD_CENTER[0], DLSUD_CENTER[1]);
+    }
+  };
 
   const handleAreaSelect = (name, lng, lat) => {
-    const area = { name, lng, lat };
-    setSelectedArea(area);
-    // previewCheckpoints will recompute via useEffect (handles both immediate and delayed data load)
-    setPreviewCheckpoints(computeNearbyCheckpoints(area));
-    setPatrolMode('route');
-    setSheetVisible(true);
+    processAreaSelection(name, lng, lat);
   };
 
   const handleConfirmArea = () => {
     if (!selectedArea) return;
-    // Always recompute fresh at confirm time — locationDataRef is fully loaded by now
     const freshPreview = computeNearbyCheckpoints(selectedArea);
     const checkpoints = patrolMode === 'single'
-      ? [{ id: 'cp-selected', name: selectedArea.name, zone: 'Single Building Patrol', riskCount: 0, lng: selectedArea.lng, lat: selectedArea.lat }]
+      ? [{ id: 'cp-selected', name: selectedArea.name, zone: assignedZone?.zone || 'Single Building Patrol', riskCount: 0, lng: selectedArea.lng, lat: selectedArea.lat }]
       : freshPreview;
     setFormData(prev => ({
       ...prev,
@@ -675,10 +1005,13 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
       location_lat: selectedArea.lat,
       checkpoints,
       patrolMode,
-      // Store live location data so LiveMapScreen can recompute if needed
+      assignedZone: assignedZone?.zone,
       locationData: locationDataRef.current || [],
     }));
     setSheetVisible(false);
+    setTimeout(() => {
+      detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
   };
 
   const handleDismissSheet = () => {
@@ -739,7 +1072,9 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
           });
           const loaded = locSummary.length > 0 ? locSummary : fromFeatures;
           locationDataRef.current = loaded;
-          setLocationDataState(loaded); // triggers previewCheckpoints recompute via useEffect
+          if (selectedArea) {
+            setPreviewCheckpoints(computeNearbyCheckpoints(selectedArea));
+          }
 
           // Build suggested route: sort by count, exclude already-patrolled locations today
           const sorted = [...(locSummary.length > 0 ? locSummary : fromFeatures)]
@@ -816,7 +1151,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
         }
       });
 
-      // ── Map click → use real API data for accurate area naming ────────────
+      // ── Map click → use real API data with Zone Restriction (Step 3) ────────────
       m.on('click', (e) => {
         const { lng, lat } = e.lngLat;
         
@@ -831,14 +1166,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
         if (campusPinFeatures.length > 0) {
           const { name } = campusPinFeatures[0].properties;
           const [pinLng, pinLat] = campusPinFeatures[0].geometry.coordinates.slice();
-          if (markerRef.current) markerRef.current.remove();
-          const el = document.createElement('div');
-          el.style.cssText = 'width:44px;height:44px;border-radius:50%;background:#1A5C3A;border:4px solid white;box-shadow:0 8px 24px rgba(26,92,58,0.4);display:flex;align-items:center;justify-content:center;cursor:pointer;';
-          el.innerHTML = '<span class="material-symbols-outlined" style="color:white;font-size:20px;">location_on</span>';
-          markerRef.current = new mapboxgl.Marker({ element: el, anchor: 'center' }).setLngLat([pinLng, pinLat]).addTo(m);
-          m.easeTo({ center: [pinLng, pinLat], zoom: Math.max(m.getZoom(), 17), duration: 400 });
-          setSelectedArea({ name, lng: pinLng, lat: pinLat });
-          setSheetVisible(true);
+          processAreaSelection(name, pinLng, pinLat);
           return;
         }
 
@@ -847,20 +1175,14 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
         const clusterFeatures = m.queryRenderedFeatures(bbox, { layers: ['mobile-clusters'] });
         
         // 2. Query ALL features to catch Mapbox native POIs or Building Polygons
-        // We do NOT restrict by layer type (symbol vs fill) because building polygons 
-        // themselves often carry the name property instead of a separate text point.
         const allFeatures = m.queryRenderedFeatures(bbox);
         
         const namedFeatures = allFeatures.filter(f => {
           if (!f.properties) return false;
           if (f.layer.id === 'mobile-cluster-count' || f.layer.id === 'campus-loc-label-mobile') return false;
-          
-          // Check various properties Mapbox uses to store names
-          const hasName = f.properties.name || f.properties.name_en || f.properties.title;
-          return !!hasName;
+          return !!(f.properties.name || f.properties.name_en || f.properties.title);
         });
 
-        // Mapbox automatically sorts queryRenderedFeatures by highest z-index (topmost) and relevance
         const poiFeature = namedFeatures.length > 0 ? namedFeatures[0] : null;
 
         let areaName;
@@ -888,7 +1210,6 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
           if (poiFeature.geometry && poiFeature.geometry.type === 'Point') {
             [pinLng, pinLat] = poiFeature.geometry.coordinates;
           } else {
-            // For polygons (like PBH building), just place the pin exactly where they tapped
             pinLng = lng;
             pinLat = lat;
           }
@@ -897,27 +1218,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
           areaName = getNearestFromData(lng, lat, allKnownLocations);
         }
 
-        // Remove old marker
-        if (markerRef.current) markerRef.current.remove();
-
-        // Create custom pin element
-        const el = document.createElement('div');
-        el.style.cssText = `
-          width:44px; height:44px; border-radius:50%;
-          background:#1A5C3A; border:4px solid white;
-          box-shadow:0 8px 24px rgba(26,92,58,0.4);
-          display:flex; align-items:center; justify-content:center;
-          cursor:pointer;
-        `;
-        el.innerHTML = `<span class="material-symbols-outlined" style="color:white;font-size:20px;">location_on</span>`;
-
-        markerRef.current = new mapboxgl.Marker({ element: el, anchor: 'center' })
-          .setLngLat([pinLng, pinLat])
-          .addTo(m);
-
-        m.easeTo({ center: [pinLng, pinLat], zoom: Math.max(m.getZoom(), 17), duration: 400 });
-        setSelectedArea({ name: areaName, lng: pinLng, lat: pinLat });
-        setSheetVisible(true);
+        processAreaSelection(areaName, pinLng, pinLat);
       });
 
     }, 150);
@@ -929,6 +1230,59 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
     };
   }, []);
 
+  // Sync assigned zone highlight on map once map is ready and zone is loaded
+  useEffect(() => {
+    if (!mapRef.current || !mapReady || !assignedZone) return;
+    const m = mapRef.current;
+    const azLocs = assignedZone.locations || ZONE_PRESET_LOCATIONS[assignedZone.zone] || [];
+    const azFeatures = azLocs.map(name => {
+      const c = getLocationCoords(name);
+      return c ? { type: 'Feature', geometry: { type: 'Point', coordinates: [c.lng, c.lat] }, properties: { name: c.name || name } } : null;
+    }).filter(Boolean);
+
+    if (azFeatures.length === 0) return;
+    const sourceData = { type: 'FeatureCollection', features: azFeatures };
+
+    try {
+      if (m.getSource('assigned-zone-source')) {
+        m.getSource('assigned-zone-source').setData(sourceData);
+      } else {
+        m.addSource('assigned-zone-source', { type: 'geojson', data: sourceData });
+        m.addLayer({
+          id: 'assigned-zone-glow',
+          type: 'circle',
+          source: 'assigned-zone-source',
+          paint: {
+            'circle-color': '#39E58C',
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 14, 16, 17, 26],
+            'circle-opacity': 0.35,
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#1A5C3A',
+          }
+        });
+        m.addLayer({
+          id: 'assigned-zone-center',
+          type: 'circle',
+          source: 'assigned-zone-source',
+          paint: {
+            'circle-color': '#1A5C3A',
+            'circle-radius': 6,
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#ffffff',
+          }
+        });
+      }
+
+      // Automatically focus on the assigned zone
+      const firstCoord = azFeatures[0]?.geometry?.coordinates;
+      if (firstCoord && !selectedArea) {
+        m.flyTo({ center: firstCoord, zoom: 17, duration: 600 });
+      }
+    } catch (layerErr) {
+      console.warn('Could not add assigned zone layer:', layerErr);
+    }
+  }, [assignedZone, mapReady]);
+
   return (
     <div className="flex-1 flex flex-col bg-[#F5F5F5] font-manrope animate-fade-in overflow-y-auto no-scrollbar pb-[100px]">
       <div className="px-5 pt-6 mb-5 flex items-center gap-4">
@@ -937,9 +1291,113 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
       </div>
 
       <div className="px-5 mb-5">
+        {/* Officer's Assigned Monthly Zone Card (Step 3) */}
+        {assignedZone && (
+          <div className="bg-gradient-to-r from-[#003624] to-[#1A5C3A] rounded-[24px] p-4 text-white shadow-lg mb-4 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-400 text-[20px]">verified_user</span>
+                <span className="text-[10px] font-black text-emerald-300 uppercase tracking-widest">Monthly Patrol Assignment</span>
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-wider bg-white/10 px-2.5 py-0.5 rounded-full border border-white/15">
+                Active Zone
+              </span>
+            </div>
+            <div>
+              <h2 className="font-pjs font-black text-[17px] leading-tight mb-1">{assignedZone.zone}</h2>
+              <p className="text-[11px] text-emerald-100/70 font-medium">
+                Map clicks are locked to your designated zone buildings.
+              </p>
+            </div>
+            {/* Quick Chips for Assigned Buildings */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {(assignedZone.locations || ZONE_PRESET_LOCATIONS[assignedZone.zone] || []).map((bldg) => (
+                <button
+                  key={bldg}
+                  type="button"
+                  onClick={() => handleSelectAllowedLocation(bldg)}
+                  className={`text-[11px] font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                    selectedArea?.name === bldg 
+                      ? 'bg-emerald-400 text-[#003624] shadow-md font-black' 
+                      : 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[13px]">location_on</span>
+                  <span>{bldg}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <p className="text-[13px] text-gray-500 font-medium leading-relaxed mb-4">
-          {selectedArea ? <span className="text-[#1A5C3A] font-black">📍 {selectedArea.name} selected</span> : 'Tap anywhere on campus to select your patrol area.'}
+          {selectedArea ? (
+            <span className="text-[#1A5C3A] font-black">📍 {selectedArea.name} selected</span>
+          ) : assignedZone ? (
+            <span>Tap your assigned zone locations on the map or select a quick chip above.</span>
+          ) : (
+            'Tap anywhere on campus to select your patrol area.'
+          )}
         </p>
+
+        {/* ── RESTRICTED ALERT MODAL (Step 3) ── */}
+        {restrictedAlert && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-5 font-manrope">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setRestrictedAlert(null)} />
+            <div className="bg-white w-full max-w-sm rounded-[32px] p-6 relative z-10 animate-scale-up shadow-2xl border border-rose-100 flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 shrink-0">
+                  <span className="material-symbols-outlined text-[26px]">block</span>
+                </div>
+                <div>
+                  <span className="text-[9px] font-black text-rose-600 uppercase tracking-widest">Out of Assigned Zone</span>
+                  <h3 className="font-pjs font-black text-[18px] text-[#000000] leading-tight">Location Restricted</h3>
+                </div>
+              </div>
+
+              <div className="bg-rose-50/70 border border-rose-100 rounded-2xl p-3.5 text-[12px] text-gray-700 leading-relaxed">
+                <p className="mb-1">
+                  You tapped <strong className="text-rose-700 font-bold">"{restrictedAlert.attemptedLocation}"</strong>.
+                </p>
+                <p className="text-gray-500">
+                  You are assigned to <strong className="text-[#003624] font-bold">{restrictedAlert.zoneName}</strong> for this month. Patrols must be logged within your designated zone.
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2">
+                  Select a building in your zone:
+                </p>
+                <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1">
+                  {restrictedAlert.allowedLocations.map((loc) => (
+                    <button
+                      key={loc}
+                      type="button"
+                      onClick={() => handleSelectAllowedLocation(loc)}
+                      className="w-full flex items-center justify-between p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#003624] font-bold text-[12px] border border-emerald-100 transition-all text-left cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="material-symbols-outlined text-[16px] text-emerald-700 shrink-0">location_on</span>
+                        <span className="truncate">{loc}</span>
+                      </div>
+                      <span className="text-[10px] font-black text-emerald-800 uppercase tracking-wider shrink-0 bg-emerald-200/60 px-2 py-0.5 rounded-lg">
+                        Select
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setRestrictedAlert(null)}
+                className="w-full py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[13px] transition-all cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Live Mapbox Heatmap */}
         <div className="w-full rounded-[32px] shadow-md relative overflow-hidden mb-4 border-4 border-white" style={{height: '340px'}}>
@@ -980,15 +1438,29 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
 
         {/* Confirmed Patrol Area Card */}
         {selectedArea ? (
-          <div className="bg-[#E8F5E9] border border-[#39E58C]/40 rounded-[20px] px-5 py-4 mb-6 flex items-center gap-4">
-            <div className="w-10 h-10 bg-[#1A5C3A] rounded-[16px] flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-white text-[20px]">location_on</span>
-            </div>
-            <div className="flex-1">
+          <div className="bg-[#E8F5E9] border border-[#39E58C]/40 rounded-[20px] p-3.5 mb-6 flex items-center gap-3.5 shadow-sm">
+            {getBuildingImage(selectedArea.name) ? (
+              <div className="w-13 h-13 rounded-[16px] overflow-hidden shrink-0 border-2 border-white shadow-md bg-white">
+                <img src={getBuildingImage(selectedArea.name)} alt={selectedArea.name} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 bg-[#1A5C3A] rounded-[16px] flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-white text-[20px]">location_on</span>
+              </div>
+            )}
+            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSheetVisible(true)}>
               <p className="text-[9px] font-black text-[#1A5C3A] uppercase tracking-widest mb-0.5">Confirmed Patrol Area</p>
-              <p className="font-black text-[15px] text-[#000000] tracking-tight leading-none">{selectedArea.name}</p>
+              <p className="font-black text-[15px] text-[#000000] tracking-tight leading-none truncate">{selectedArea.name}</p>
             </div>
-            <button onClick={handleDismissSheet} className="w-8 h-8 bg-white rounded-full shadow-sm flex items-center justify-center text-gray-400 active:scale-90 transition-transform">
+            <button 
+              type="button"
+              onClick={() => setSheetVisible(true)} 
+              className="px-3 py-1.5 bg-white text-[#1A5C3A] rounded-xl text-[11px] font-bold border border-emerald-200 shadow-sm active:scale-95 transition-transform flex items-center gap-1 shrink-0 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[14px]">route</span>
+              <span>Route</span>
+            </button>
+            <button onClick={handleDismissSheet} title="Clear selection" className="w-8 h-8 bg-white rounded-full shadow-sm flex items-center justify-center text-gray-400 active:scale-90 transition-transform shrink-0">
               <span className="material-symbols-outlined text-[18px]">close</span>
             </button>
           </div>
@@ -1020,7 +1492,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
                 const risk = getRiskLevel(cp.riskCount || 0);
                 const isFirst = idx === 0;
                 return (
-                  <div key={cp.id} className="flex items-start gap-3">
+                  <div key={cp.id} className="flex items-center gap-3">
                     <div className="flex flex-col items-center shrink-0">
                       <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black border-2 border-white/20
                         ${isFirst ? 'bg-[#39E58C] text-[#1A5C3A] border-[#39E58C]' : 'bg-white/10 text-white'}`}>
@@ -1028,18 +1500,19 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
                       </div>
                       {idx < previewCheckpoints.length - 1 && <div className="w-0.5 h-4 bg-white/15 mt-1" />}
                     </div>
-                    <div className="flex-1 pt-0.5">
-                      <p className={`font-black text-[14px] tracking-tight leading-none mb-1.5 ${isFirst ? 'text-[#39E58C]' : 'text-white'}`}>
+
+                    <div className="flex-1 pt-0.5 min-w-0">
+                      <p className={`font-black text-[14px] tracking-tight leading-none mb-1.5 truncate ${isFirst ? 'text-[#39E58C]' : 'text-white'}`}>
                         {cp.name}
                       </p>
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full" style={{backgroundColor: risk.color}} />
-                        <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">{cp.zone || risk.label}</span>
-                        {cp.riskCount > 0 && <span className="text-[9px] font-bold text-white/40">• {cp.riskCount} violations</span>}
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{backgroundColor: risk.color}} />
+                        <span className="text-[9px] font-black text-white/50 uppercase tracking-widest truncate">{cp.zone || risk.label}</span>
+                        {cp.riskCount > 0 && <span className="text-[9px] font-bold text-white/40 shrink-0">• {cp.riskCount} violations</span>}
                       </div>
                     </div>
                     {isFirst && (
-                      <div className="bg-[#39E58C]/20 px-2.5 py-1 rounded-full">
+                      <div className="bg-[#39E58C]/20 px-2.5 py-1 rounded-full shrink-0">
                         <span className="text-[8px] font-black text-[#39E58C] uppercase tracking-widest">Start</span>
                       </div>
                     )}
@@ -1056,7 +1529,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
         </div>
         )}
 
-        <div className="space-y-8 px-1">
+        <div ref={detailsRef} className="space-y-8 px-1 scroll-mt-6">
           <div className="flex items-center gap-3">
             <div className="w-[42px] h-[42px] bg-white border-[1.5px] border-[#1A5C3A] rounded-[14px] shadow-sm flex items-center justify-center text-[#1A5C3A]">
               <span className="material-symbols-outlined text-[20px]">assignment</span>
@@ -1121,10 +1594,10 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
           onClick={onConfirm}
           disabled={!selectedArea}
           className={`w-full h-[64px] rounded-full shadow-lg flex justify-center items-center gap-3 font-black text-[18px] tracking-tight border-b-4 transition-all
-            ${selectedArea ? 'bg-[#1A5C3A] border-[#14492c] text-white' : 'bg-gray-200 border-gray-300 text-gray-400 cursor-not-allowed shadow-none'}`}
+            ${selectedArea ? 'bg-[#1A5C3A] border-[#14492c] text-white hover:bg-[#154a2e] active:scale-[0.98]' : 'bg-gray-200 border-gray-300 text-gray-400 cursor-not-allowed shadow-none'}`}
         >
-          {selectedArea ? `Confirm & Continue` : 'Select an Area First'}
-          <span className="material-symbols-outlined">{selectedArea ? 'chevron_right' : 'location_off'}</span>
+          <span className="material-symbols-outlined text-[24px]">{selectedArea ? 'play_arrow' : 'location_off'}</span>
+          <span>{selectedArea ? 'Start Live Patrol' : 'Select Patrol Area First'}</span>
         </button>
       </div>
 
@@ -1185,7 +1658,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
 
               {/* ── Checkpoint Route (timeline inside a box) ─────────────────────── */}
               {patrolMode === 'route' && previewCheckpoints.length > 0 && (
-                <div className="mb-6 border border-gray-200 rounded-[20px] p-4 bg-[#F3F4F6] shadow-sm">
+                <div className="mb-6 border border-gray-200 rounded-[20px] p-4 bg-[#F3F4F6] shadow-sm max-h-[260px] overflow-y-auto custom-scrollbar">
                   {/* Section header */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-1.5">
@@ -1205,7 +1678,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
                       const isFirst = idx === 0;
                       const isLast = idx === previewCheckpoints.length - 1;
                       return (
-                        <div key={cp.id} className="flex items-start gap-3 relative">
+                        <div key={`${cp.id || 'cp'}-${idx}`} className="flex items-start gap-3 relative">
                           {/* Connector line between circles */}
                           {!isLast && (
                             <div className="absolute left-[13px] top-[26px] bottom-[-4px] w-[2px] bg-gray-200 z-0" />
@@ -1266,10 +1739,10 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
                 </button>
                 <button
                   onClick={handleConfirmArea}
-                  className="flex-1 h-[48px] bg-[#1A5C3A] rounded-[16px] font-bold text-[14px] text-white flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                  className="flex-1 h-[48px] bg-[#1A5C3A] rounded-[16px] font-bold text-[14px] text-white flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-md cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[18px]">verified</span>
-                  Confirm &amp; Continue
+                  Confirm Selection
                 </button>
               </div>
             </div>
@@ -1281,7 +1754,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
   );
 };
 
-const LiveMapScreen = ({ onEnd, onExpand, onBack, seconds, isPatrolActive, setIsPatrolActive, capturedPhotos, onCamera, distanceKm, setDistanceKm, setTrailCoords, trailCoords = [], formData, violationCount, setViolationCount }) => {
+const LiveMapScreen = ({ onEnd, onExpand, onBack, seconds, isPatrolActive, setIsPatrolActive, capturedPhotos, onCamera, distanceKm, setDistanceKm, setTrailCoords, trailCoords = [], formData, setFormData, violationCount, setViolationCount }) => {
   const navigate = useNavigate();
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -1299,34 +1772,41 @@ const LiveMapScreen = ({ onEnd, onExpand, onBack, seconds, isPatrolActive, setIs
   const checkpointMarkersRef = useRef([]);
 
   // Build the checkpoint list from formData:
-  // 1. Use formData.checkpoints if it has real data (more than just the selected area)
+  // 1. If formData.checkpoints has data, preserve exact done flags!
   // 2. Otherwise compute dynamically from formData.locationData
   // 3. Always prepend the selected area itself as checkpoint #1
   const buildCheckpoints = () => {
+    const saved = formData?.checkpoints || [];
+    const savedSelected = saved.find(s => s.id === 'cp-selected' || s.name === formData?.location);
+
     const selectedEntry = {
       id: 'cp-selected',
       name: formData?.location || 'Selected Area',
-      zone: 'Selected Patrol Area',
+      zone: formData?.assignedZone || 'Selected Patrol Area',
       riskCount: 0,
       lng: formData?.location_lng,
       lat: formData?.location_lat,
+      done: Boolean(savedSelected?.done),
     };
 
+    if (formData?.patrolMode === 'single') {
+      return [selectedEntry];
+    }
+
     let nearby = [];
-    const saved = formData?.checkpoints || [];
     // Use saved checkpoints if they contain real nearby buildings (not just the selected area)
-    const savedNearby = saved.filter(cp => cp.id !== 'cp-selected');
+    const savedNearby = saved.filter(cp => cp.id !== 'cp-selected' && cp.name !== formData?.location);
     if (savedNearby.length > 0) {
-      nearby = savedNearby;
+      nearby = savedNearby.map(cp => ({ ...cp, done: Boolean(cp.done) }));
     } else if (formData?.locationData?.length && formData?.location_lng != null) {
       // Recompute from locationData stored in formData
       nearby = computeCheckpointsFromData(
         { name: formData.location, lng: formData.location_lng, lat: formData.location_lat },
         formData.locationData
-      );
+      ).map(cp => ({ ...cp, done: false }));
     }
 
-    return [selectedEntry, ...nearby].map(cp => ({ ...cp, done: false }));
+    return [selectedEntry, ...nearby];
   };
 
   const [checkpoints, setCheckpoints] = useState(() => buildCheckpoints());
@@ -1336,7 +1816,16 @@ const LiveMapScreen = ({ onEnd, onExpand, onBack, seconds, isPatrolActive, setIs
   const activeCheckpoint = checkpoints.find(c => !c.done) || checkpoints[checkpoints.length - 1];
 
   const markCheckpointDone = (id) => {
-    setCheckpoints(prev => prev.map(cp => cp.id === id ? { ...cp, done: true } : cp));
+    const updated = checkpoints.map(cp => cp.id === id ? { ...cp, done: !cp.done } : cp);
+    setCheckpoints(updated);
+    if (setFormData) {
+      setFormData(f => ({ ...f, checkpoints: updated }));
+    }
+    try {
+      const stored = JSON.parse(sessionStorage.getItem('swafo_live_patrol_state') || '{}');
+      stored.formData = { ...(stored.formData || {}), checkpoints: updated };
+      sessionStorage.setItem('swafo_live_patrol_state', JSON.stringify(stored));
+    } catch (e) {}
   };
 
   // Sync POV toggle
@@ -1447,11 +1936,21 @@ const LiveMapScreen = ({ onEnd, onExpand, onBack, seconds, isPatrolActive, setIs
         // Violations Source for Heatmap
         m.addSource('violations-source', {
           type: 'geojson',
-          data: API_ENDPOINTS.MAP_VIOLATIONS_GEOJSON || 'https://api.swafo.com/v1/maps/violations.geojson',
+          data: { type: 'FeatureCollection', features: [] },
           cluster: true,
           clusterMaxZoom: 14,
           clusterRadius: 50,
         });
+
+        // Safely fetch real violations heatmap
+        fetch(API_ENDPOINTS.VIOLATIONS_HEATMAP)
+          .then(res => res.ok ? res.json() : null)
+          .then(vData => {
+            if (vData?.geojson && m.getSource('violations-source')) {
+              m.getSource('violations-source').setData(vData.geojson);
+            }
+          })
+          .catch(() => {});
 
         m.addLayer({
           id: 'risk-heatmap', type: 'heatmap', source: 'violations-source',
@@ -1876,25 +2375,27 @@ const LiveMapScreen = ({ onEnd, onExpand, onBack, seconds, isPatrolActive, setIs
               {checkpoints.map((cp, idx) => {
                 const rc = cp.riskCount || 0;
                 const riskDot = rc >= 21 ? '#CC0000' : rc >= 11 ? '#ff4444' : rc >= 7 ? '#ff8800' : rc >= 4 ? '#ffbb33' : null;
+                const bldgImg = getBuildingImage(cp.name);
                 return (
-                  <div key={cp.id} className={`flex items-center gap-3 px-4 py-3.5 transition-all ${
+                  <div key={cp.id} className={`flex items-center gap-3 px-4 py-3 transition-all ${
                     idx < checkpoints.length - 1 ? 'border-b border-gray-50' : ''
                   } ${cp.done ? 'bg-gray-50/60' : 'bg-white'}`}>
                     {/* Number / check circle */}
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all ${
                       cp.done
                         ? 'bg-[#1A5C3A] text-white'
                         : idx === 0 ? 'bg-[#1A5C3A]/10 border-2 border-[#1A5C3A]/30 text-[#1A5C3A]'
                         : 'bg-gray-100 border-2 border-gray-200 text-gray-500'
                     }`}>
                       {cp.done
-                        ? <span className="material-symbols-outlined text-[16px]">check</span>
-                        : <span className="text-[11px] font-black">{idx + 1}</span>
+                        ? <span className="material-symbols-outlined text-[15px]">check</span>
+                        : <span className="text-[10px] font-black">{idx + 1}</span>
                       }
                     </div>
+
                     {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <p className={`font-black text-[13px] tracking-tight leading-none mb-0.5 ${
+                      <p className={`font-black text-[13px] tracking-tight leading-none mb-0.5 truncate ${
                         cp.done ? 'line-through text-gray-300' : 'text-[#111]'
                       }`}>{cp.name}</p>
                       <div className="flex items-center gap-1.5">
@@ -1903,17 +2404,23 @@ const LiveMapScreen = ({ onEnd, onExpand, onBack, seconds, isPatrolActive, setIs
                       </div>
                     </div>
                     {/* Action */}
-                    {cp.done ? (
-                      <span className="text-[9px] font-black text-[#1A5C3A] uppercase tracking-wider shrink-0">Done</span>
-                    ) : (
-                      <button
-                        onClick={() => markCheckpointDone(cp.id)}
-                        className="shrink-0 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full flex items-center gap-1 active:scale-90 transition-transform hover:bg-[#E8F5E9] hover:border-[#C8E6C9] group"
-                      >
-                        <span className="material-symbols-outlined text-gray-400 text-[14px] group-hover:text-[#1A5C3A]">check_circle</span>
-                        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest group-hover:text-[#1A5C3A]">Mark Done</span>
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => markCheckpointDone(cp.id)}
+                      className={`shrink-0 px-3 py-1.5 rounded-full flex items-center gap-1.5 active:scale-90 transition-all cursor-pointer ${
+                        cp.done
+                          ? 'bg-emerald-50 border border-emerald-300 text-[#1A5C3A] font-black'
+                          : 'bg-gray-100 border border-gray-200 text-gray-500 hover:bg-[#E8F5E9] hover:border-[#C8E6C9] hover:text-[#1A5C3A]'
+                      }`}
+                      title={cp.done ? "Completed - click to unmark" : "Mark as completed"}
+                    >
+                      <span className={`material-symbols-outlined text-[15px] ${cp.done ? 'text-[#1A5C3A]' : 'text-gray-400'}`}>
+                        {cp.done ? 'check_circle' : 'radio_button_unchecked'}
+                      </span>
+                      <span className="text-[9px] font-black uppercase tracking-wider">
+                        {cp.done ? 'Done' : 'Mark Done'}
+                      </span>
+                    </button>
                   </div>
                 );
               })}
@@ -2027,7 +2534,12 @@ const PatrolHistoryArchive = ({ onBack, sessionData: propData }) => {
   const durationStr = durationMins >= 60
     ? `${Math.floor(durationMins / 60)}h ${durationMins % 60}m`
     : `${durationMins}m`;
-  const photos = sessionData?.capturedPhotos || [];
+  const rawPhotos = sessionData?.capturedPhotos || [];
+  const photos = rawPhotos.filter(p => {
+    const url = p?.url || p;
+    if (!url || typeof url !== 'string') return Boolean(url);
+    return !url.includes('/images/buildings/') && !url.includes('/media/buildings/');
+  });
   const areaName = sessionData?.location || 'Campus Patrol';
   const isNight = sessionData?.shift_type === 'Evening';
   const navigate = useNavigate();
@@ -2211,75 +2723,68 @@ const PatrolSessionDetails = ({ onBack, sessionData }) => {
   const areaName   = sessionData?.location   || 'Campus Patrol';
   const shiftLabel = sessionData?.shift_type ? `${sessionData.shift_type} Patrol` : 'Patrol Session';
   const isNight    = sessionData?.shift_type === 'Evening';
-  const photos     = sessionData?.capturedPhotos || [];
+  const rawPhotos  = sessionData?.capturedPhotos || [];
+  const photos     = rawPhotos.filter(p => {
+    const url = p?.url || p;
+    if (!url || typeof url !== 'string') return Boolean(url);
+    return !url.includes('/images/buildings/') && !url.includes('/media/buildings/');
+  });
   const exportRef = useRef(null);
   const [isExporting, setIsExporting] = useState(false);
 
   const handleSaveImage = async () => {
     if (!exportRef.current) return;
     setIsExporting(true);
-    
-    const tryCapture = async (scaleValue) => {
-      try {
-        const canvas = await html2canvas(exportRef.current, {
-          useCORS: true,
-          allowTaint: false, // Security: Safari block
-          backgroundColor: isNight ? '#111111' : '#F5F5F5',
-          scale: scaleValue,
-          logging: false,
-          onclone: (clonedDoc) => {
-            // Safari Fix: Aggressively remove all filters and backdrop-filters as they cause crashes during capture
-            const all = clonedDoc.getElementsByTagName("*");
-            for (let i = 0; i < all.length; i++) {
-              const el = all[i];
-              if (el instanceof HTMLElement) {
-                el.style.backdropFilter = 'none';
-                el.style.webkitBackdropFilter = 'none';
-                el.style.filter = 'none';
-              }
-            }
-            
-            // Ensure ignored elements are truly gone
-            const ignored = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
-            ignored.forEach(el => el.style.display = 'none');
-          }
-        });
-        return canvas;
-      } catch (err) {
-        if (scaleValue > 1) return tryCapture(1); // Retry at lower res
-        throw err;
-      }
-    };
 
     try {
-      const canvas = await tryCapture(2);
-      const filename = `Patrol_Summary_${new Date().getTime()}.png`;
-      
-      // Native Share API
-      if (navigator.share && navigator.canShare) {
-        try {
-          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-          const file = new File([blob], filename, { type: 'image/png' });
-          
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: 'Patrol Summary',
-              text: 'SWAFO Patrol Session Details'
-            });
-            setIsExporting(false);
-            return;
-          }
-        } catch (shareErr) {
-          if (shareErr.name === 'AbortError') {
-            setIsExporting(false);
-            return;
-          }
+      await new Promise(r => setTimeout(r, 100));
+
+      const filter = (node) => {
+        if (node && node.hasAttribute && node.hasAttribute('data-html2canvas-ignore')) {
+          return false;
+        }
+        return true;
+      };
+
+      const dataUrl = await toPng(exportRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: '#0D1A14',
+        filter,
+        skipFonts: true,
+        height: exportRef.current.scrollHeight,
+        style: {
+          height: `${exportRef.current.scrollHeight}px`,
+          maxHeight: 'none',
+          overflow: 'visible',
+        }
+      });
+
+      const filename = `Patrol_Archive_${Date.now()}.png`;
+
+      // Native Share API on mobile
+      try {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], filename, { type: 'image/png' });
+
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Patrol Summary',
+            text: 'SWAFO Patrol Session Details'
+          });
+          setIsExporting(false);
+          return;
+        }
+      } catch (shareErr) {
+        if (shareErr.name === 'AbortError') {
+          setIsExporting(false);
+          return;
         }
       }
 
       // Download Fallback
-      const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.href = dataUrl;
       link.download = filename;
@@ -2289,7 +2794,24 @@ const PatrolSessionDetails = ({ onBack, sessionData }) => {
 
     } catch (err) {
       console.error("Export failed:", err);
-      alert("Save failed. Try a screenshot or check your connection.");
+      try {
+        const fallbackDataUrl = await toPng(exportRef.current, {
+          cacheBust: true,
+          pixelRatio: 1,
+          backgroundColor: '#0D1A14',
+          filter: (node) => !node?.hasAttribute?.('data-html2canvas-ignore'),
+          skipFonts: true,
+        });
+        const link = document.createElement('a');
+        link.href = fallbackDataUrl;
+        link.download = `Patrol_Archive_${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (fallbackErr) {
+        console.error("Fallback export failed:", fallbackErr);
+        alert("Failed to export image. Please try taking a screenshot.");
+      }
     } finally {
       setIsExporting(false);
     }
@@ -2396,7 +2918,7 @@ const PatrolSessionDetails = ({ onBack, sessionData }) => {
               {[
                 { label: 'Time Started', value: startTime, icon: 'login' },
                 { label: 'Time Ended', value: endTime, icon: 'logout' },
-                { label: 'Officer', value: sessionData?.officer_name || 'Officer Timothy', icon: 'badge' },
+                { label: 'Officer', value: sessionData?.officer_name || sessionData?.officer_details?.full_name || 'SWAFO Officer', icon: 'badge' },
                 { label: 'Shift', value: sessionData?.shift_type || '--', icon: 'schedule' },
                 { label: 'Distance', value: `${distanceKm} km`, icon: 'straighten' },
                 { label: 'Area', value: areaName, icon: 'location_on' },
@@ -2475,8 +2997,9 @@ const PatrolSessionDetails = ({ onBack, sessionData }) => {
                   : isLast ? 'Session End'
                   : cp.note || 'Checkpoint';
                 const iconName = isFirst ? 'start' : isLast ? 'flag' : 'location_on';
+                const bldgImg = cp.image || getBuildingImage(cp.label || cp.name);
                 return (
-                  <div key={i} className="flex items-start gap-3 relative pb-5 last:pb-0">
+                  <div key={i} className="flex items-center gap-3 relative pb-5 last:pb-0">
                     {/* Icon square */}
                     <div className={`w-9 h-9 rounded-[14px] flex items-center justify-center shrink-0 z-10 shadow-sm
                       ${isFirst ? 'bg-[#1A5C3A]' : isLast ? 'bg-[#39E58C]' : 'bg-[#E8F5E9]'}`}>
@@ -2485,17 +3008,18 @@ const PatrolSessionDetails = ({ onBack, sessionData }) => {
                         {iconName}
                       </span>
                     </div>
+
                     {/* Text */}
-                    <div className="flex-1 flex justify-between items-start pt-1">
-                      <div>
-                        <p className="font-black text-[14px] text-[#000] tracking-tight leading-none mb-0.5">
-                          {cp.label}
+                    <div className="flex-1 flex justify-between items-center min-w-0">
+                      <div className="min-w-0">
+                        <p className="font-black text-[14px] text-[#000] tracking-tight leading-none mb-0.5 truncate">
+                          {cp.label || cp.name}
                         </p>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
                           {subtitle}
                         </p>
                       </div>
-                      <p className="text-[11px] font-bold text-gray-400 tabular-nums shrink-0 ml-3 pt-0.5">
+                      <p className="text-[11px] font-bold text-gray-400 tabular-nums shrink-0 ml-3">
                         {cp.time}
                       </p>
                     </div>
@@ -2607,15 +3131,19 @@ const InAppCamera = ({ onCapture, onClose, locationName, trailCoords }) => {
           videoRef.current.srcObject = stream;
         }
       } catch (err) {
-        console.warn("Rear camera failed, trying any available camera...", err);
+        console.warn("Rear camera unavailable, trying any device camera...");
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
           }
         } catch (errFallback) {
-          console.error("Camera error:", errFallback);
-          setError("Could not access camera. Please check permissions.");
+          console.warn("Camera access denied or unavailable:", errFallback?.name || errFallback?.message);
+          setError(
+            errFallback?.name === 'NotAllowedError' || errFallback?.name === 'PermissionDeniedError'
+              ? 'Camera permission was denied in your browser settings. You can allow camera access or upload an image directly below.'
+              : 'Could not access device camera. Please check your camera permissions or upload an image.'
+          );
         }
       }
     };
@@ -2625,7 +3153,7 @@ const InAppCamera = ({ onCapture, onClose, locationName, trailCoords }) => {
     };
   }, []);
 
-
+  const fallbackInputRef = useRef(null);
 
   const handleCapture = () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -2644,16 +3172,70 @@ const InAppCamera = ({ onCapture, onClose, locationName, trailCoords }) => {
     onCapture(dataUrl);
   };
 
+  const handleFallbackFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = canvasRef.current || document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        applyWatermark(ctx, canvas.width, canvas.height, locationName, trailCoords);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        onCapture(dataUrl);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="fixed inset-0 z-[10000] bg-black flex flex-col font-manrope animate-fade-in">
-      <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
+      <input 
+        type="file" 
+        ref={fallbackInputRef} 
+        accept="image/*" 
+        className="hidden" 
+        onChange={handleFallbackFile} 
+      />
+      <canvas ref={canvasRef} className="hidden" />
+
+      <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden p-6">
         {error ? (
-          <p className="text-red-400 font-bold px-6 text-center">{error}</p>
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-[32px] p-6 max-w-sm w-full text-center flex flex-col items-center gap-4 text-white shadow-2xl animate-scale-up">
+            <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
+              <span className="material-symbols-outlined text-[32px]">videocam_off</span>
+            </div>
+            <div>
+              <h3 className="font-black text-[20px] text-white tracking-tight mb-1">Camera Access Needed</h3>
+              <p className="text-[12px] font-medium text-white/70 leading-relaxed">
+                {error}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2.5 w-full mt-2">
+              <button 
+                type="button"
+                onClick={() => fallbackInputRef.current?.click()} 
+                className="w-full h-12 bg-[#39E58C] text-[#003624] font-black text-[13px] rounded-2xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">upload_file</span>
+                <span>Upload Photo from Device</span>
+              </button>
+              <button 
+                type="button"
+                onClick={onClose} 
+                className="w-full h-11 bg-white/10 text-white/80 font-bold text-[13px] rounded-2xl hover:bg-white/20 active:scale-95 transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         ) : (
-          <>
-            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-            <canvas ref={canvasRef} className="hidden" />
-          </>
+          <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
         )}
         
         {/* Top bar */}
@@ -2663,15 +3245,17 @@ const InAppCamera = ({ onCapture, onClose, locationName, trailCoords }) => {
           </button>
         </div>
 
-        {/* Bottom controls */}
-        <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black/80 to-transparent flex items-center justify-center pb-8 z-10">
-          <button 
-            onClick={handleCapture}
-            className="w-20 h-20 rounded-full border-[4px] border-white/80 p-1 active:scale-90 transition-transform shadow-[0_0_20px_rgba(0,0,0,0.5)]"
-          >
-            <div className="w-full h-full bg-white rounded-full"></div>
-          </button>
-        </div>
+        {/* Bottom controls — only shown when camera stream is active */}
+        {!error && (
+          <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black/80 to-transparent flex items-center justify-center pb-8 z-10">
+            <button 
+              onClick={handleCapture}
+              className="w-20 h-20 rounded-full border-[4px] border-white/80 p-1 active:scale-90 transition-transform shadow-[0_0_20px_rgba(0,0,0,0.5)] cursor-pointer"
+            >
+              <div className="w-full h-full bg-white rounded-full"></div>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2708,9 +3292,19 @@ export default function MobilePatrolFlow({ initialScreen = 'selectArea' }) {
   // Sync state to session storage to survive navigation to Record Violation
   useEffect(() => {
     if (isPatrolActive) {
-      sessionStorage.setItem('swafo_live_patrol_state', JSON.stringify({
+      const stateObj = {
         seconds, isPatrolActive, distanceKm, trailCoords, activeSession, capturedPhotos, violationCount, formData
-      }));
+      };
+      sessionStorage.setItem('swafo_live_patrol_state', JSON.stringify(stateObj));
+      try {
+        const storedSession = JSON.parse(localStorage.getItem('swafo_active_session') || '{}');
+        localStorage.setItem('swafo_active_session', JSON.stringify({
+          ...storedSession,
+          checkpoints: formData.checkpoints || [],
+          location: formData.location,
+          assignedZone: formData.assignedZone
+        }));
+      } catch (e) {}
     }
   }, [seconds, isPatrolActive, distanceKm, trailCoords, activeSession, capturedPhotos, violationCount, formData]);
 
@@ -2742,22 +3336,60 @@ export default function MobilePatrolFlow({ initialScreen = 'selectArea' }) {
     setCapturedPhotos([]);
     setViolationCount(0);
     
+    const loggedUser = (() => {
+      try {
+        return JSON.parse(localStorage.getItem('swafo_mock_user') || '{}');
+      } catch (e) {
+        return {};
+      }
+    })();
+    const officerId = loggedUser.id || 63;
+    const officerName = loggedUser.name || 'SWAFO Officer';
+
     const startTimeIso = new Date().toISOString();
     try {
       const resp = await fetch(API_ENDPOINTS.PATROLS_CREATE, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ officer: 1, location: formData.location || 'Campus Patrol', status: "IN_PROGRESS", shift_type: formData.shift_type, notes: formData.notes, actual_start: startTimeIso })
+        body: JSON.stringify({ 
+          officer: officerId, 
+          location: formData.location || 'Campus Patrol', 
+          status: "IN_PROGRESS", 
+          shift_type: formData.shift_type, 
+          notes: formData.notes, 
+          actual_start: startTimeIso 
+        })
       });
       if (resp.ok) {
         const d = await resp.json();
-        setActiveSession({ ...d, actual_start: startTimeIso, capturedPhotos: [] });
+        setActiveSession({ 
+          ...d, 
+          officer: officerId,
+          officer_name: officerName,
+          officer_details: { id: officerId, full_name: officerName, email: loggedUser.email },
+          actual_start: startTimeIso, 
+          capturedPhotos: [] 
+        });
       } else {
         // API error — still start locally (demo mode)
-        setActiveSession({ id: 'demo-' + Date.now(), actual_start: startTimeIso, capturedPhotos: [] });
+        setActiveSession({ 
+          id: 'demo-' + Date.now(), 
+          officer: officerId,
+          officer_name: officerName,
+          officer_details: { id: officerId, full_name: officerName, email: loggedUser.email },
+          actual_start: startTimeIso, 
+          capturedPhotos: [] 
+        });
       }
     } catch (e) {
       // Network error — still start locally (demo mode)
-      setActiveSession({ id: 'demo-' + Date.now(), actual_start: startTimeIso, capturedPhotos: [] });
+      setActiveSession({ 
+        id: 'demo-' + Date.now(), 
+        officer: officerId,
+        officer_name: officerName,
+        officer_details: { id: officerId, full_name: officerName, email: loggedUser.email },
+        actual_start: startTimeIso, 
+        capturedPhotos: [] 
+      });
     }
     setIsPatrolActive(true); // Always activate regardless of API result
   };
@@ -2769,13 +3401,24 @@ export default function MobilePatrolFlow({ initialScreen = 'selectArea' }) {
       // Snapshot completed checkpoints
       const completedCheckpoints = liveCheckpoints
         .filter(cp => cp.done)
-        .map(cp => ({
-          name:     cp.name || cp.location_name || cp.label || 'Checkpoint',
-          time:     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status:   'completed',
-          note:     cp.note || '',
-          building: cp.name || cp.location_name || '',
-        }));
+        .map(cp => {
+          const bldgImg = getBuildingImage(cp.name || cp.location_name);
+          return {
+            name:     cp.name || cp.location_name || cp.label || 'Checkpoint',
+            time:     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status:   'completed',
+            note:     cp.note || '',
+            building: cp.name || cp.location_name || '',
+            image:    bldgImg || null,
+          };
+        });
+
+      // Keep only actual officer-captured photos, do NOT inject static building catalog images
+      const allPhotos = (capturedPhotos || []).filter(p => {
+        const url = p?.url || p;
+        if (!url || typeof url !== 'string') return Boolean(url);
+        return !url.includes('/images/buildings/') && !url.includes('/media/buildings/');
+      });
 
       // Build the final completed patrol record
       const finalData = {
@@ -2783,14 +3426,14 @@ export default function MobilePatrolFlow({ initialScreen = 'selectArea' }) {
         actual_end:        endTimeIso,
         end_time:          endTimeIso,
         status:            'COMPLETED',
-        capturedPhotos:    capturedPhotos,
+        capturedPhotos:    allPhotos,
         trail_coordinates: trailCoords,
         distance_km:       distanceKm,
         location:          formData.location || activeSession?.location || 'Campus Patrol',
         shift_type:        formData.shift_type || activeSession?.shift_type,
         checkpoints_data:  completedCheckpoints,
         violations_count:  violationCount,
-        photos_count:      capturedPhotos.length,
+        photos_count:      allPhotos.length,
         duration_display:  Math.max(0, Math.floor((new Date(endTimeIso) - new Date(activeSession?.actual_start)) / 60000)) + 'm',
       };
 
@@ -2894,7 +3537,7 @@ export default function MobilePatrolFlow({ initialScreen = 'selectArea' }) {
       )}
 
       {(location.pathname.endsWith('select') || initialScreen === 'selectArea') && <SelectAreaScreen onConfirm={() => navigate('/officer/patrols/live')} onBack={() => navigate('/officer/patrols')} formData={formData} setFormData={setFormData} />}
-      {location.pathname.endsWith('live') && <LiveMapScreen onEnd={handleEndPatrol} onExpand={() => navigate('/officer/patrols/expanded-map')} onBack={() => navigate('/officer/patrols/select')} seconds={seconds} isPatrolActive={isPatrolActive} setIsPatrolActive={handleStartPatrol} capturedPhotos={capturedPhotos} onCamera={() => setShowPhotoMenu(true)} distanceKm={distanceKm} setDistanceKm={setDistanceKm} setTrailCoords={setTrailCoords} trailCoords={trailCoords} formData={formData} violationCount={violationCount} setViolationCount={setViolationCount} />}
+      {location.pathname.endsWith('live') && <LiveMapScreen onEnd={handleEndPatrol} onExpand={() => navigate('/officer/patrols/expanded-map')} onBack={() => navigate('/officer/patrols/select')} seconds={seconds} isPatrolActive={isPatrolActive} setIsPatrolActive={handleStartPatrol} capturedPhotos={capturedPhotos} onCamera={() => setShowPhotoMenu(true)} distanceKm={distanceKm} setDistanceKm={setDistanceKm} setTrailCoords={setTrailCoords} trailCoords={trailCoords} formData={formData} setFormData={setFormData} violationCount={violationCount} setViolationCount={setViolationCount} />}
       {location.pathname.endsWith('summary') && <DynamicSummaryScreen onSave={handleSaveToHistory} onBack={() => navigate('/officer/patrols/live')} sessionData={activeSession} isSaving={isSaving} trailCoords={trailCoords} distanceKm={distanceKm} capturedPhotos={capturedPhotos} />}
       {location.pathname.endsWith('expanded-map') && <FullMapScreen onBack={() => navigate('/officer/patrols/live')} trailCoords={trailCoords} />}
       {location.pathname.includes('patrol-history/') && (() => {

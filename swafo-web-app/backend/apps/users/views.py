@@ -11,20 +11,29 @@ class MockLoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        email = request.data.get('email')
-        if not email:
-            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        identifier = (request.data.get('email') or request.data.get('username') or '').strip()
+        password = request.data.get('password')
+        if not identifier:
+            return Response({"error": "Email or ID is required"}, status=status.HTTP_400_BAD_REQUEST)
         
-        try:
-            user = User.objects.get(email=email)
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'user': UserSerializer(user).data
-            })
-        except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        user = (
+            User.objects.filter(email__iexact=identifier).first() or
+            User.objects.filter(username__iexact=identifier).first() or
+            User.objects.filter(full_name__iexact=identifier).first()
+        )
+        
+        if not user:
+            return Response({"error": "User account not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if password and not user.check_password(password):
+            return Response({"error": "Invalid password"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': UserSerializer(user).data
+        })
 
 class StudentSearchView(APIView):
     permission_classes = [permissions.AllowAny]

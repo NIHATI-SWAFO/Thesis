@@ -23,6 +23,7 @@ import ReportsAnalytics from './features/analytics/ReportsAnalytics';
 import PatrolHistory from './features/patrols/PatrolHistory';
 import AdminLayout from './layouts/AdminLayout';
 import AdminDashboard from './features/dashboard/AdminDashboard';
+import DirectorPatrolAssignments from './features/patrols/DirectorPatrolAssignments';
 import MapTrial from './features/maps/MapTrial';
 import LiveNavigation from './features/maps/LiveNavigation';
 
@@ -89,6 +90,7 @@ function App() {
           <Route path="students" element={<StudentRecords role="admin" />} />
           <Route path="students/:id" element={<StudentProfileDetail role="admin" />} />
           <Route path="patrols" element={<PatrolHistory role="admin" />} />
+          <Route path="patrol-assignments" element={<DirectorPatrolAssignments />} />
           <Route path="analytics" element={<ReportsAnalytics role="admin" />} />
           <Route path="handbook" element={<StudentHandbook role="admin" />} />
           <Route path="freedom-wall" element={<DirectorFreedomWall />} />
@@ -110,3 +112,4 @@ function App() {
 }
 
 export default App;
+

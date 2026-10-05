@@ -10,9 +10,32 @@ import signinBg from '../../assets/signin_image.png';
 
 export default function SignIn() {
   const { instance, accounts } = useMsal();
+  const { loginAsOfficer } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('officer');
   const [showPassword, setShowPassword] = useState(false);
+  const [officerEmail, setOfficerEmail] = useState('');
+  const [officerPassword, setOfficerPassword] = useState('');
+  const [officerError, setOfficerError] = useState('');
+  const [officerLoggingIn, setOfficerLoggingIn] = useState(false);
+
+  const handleOfficerSubmit = async (e) => {
+    e.preventDefault();
+    setOfficerError('');
+    if (!officerEmail.trim()) {
+      setOfficerError('Please enter your officer email or ID.');
+      return;
+    }
+    setOfficerLoggingIn(true);
+    try {
+      await loginAsOfficer('', officerEmail.trim(), officerPassword);
+      navigate('/officer/dashboard');
+    } catch (err) {
+      setOfficerError(err.message || 'Invalid credentials. Default password is SwafoOfficer2026.');
+    } finally {
+      setOfficerLoggingIn(false);
+    }
+  };
 
   // If user is already authenticated (came back from Microsoft redirect), go to dashboard
   useEffect(() => {
@@ -147,10 +170,13 @@ export default function SignIn() {
                   <DirectorQuickLogin />
                 </form>
               ) : activeTab === 'officer' ? (
-                <form className="flex flex-col space-y-4 animate-in fade-in duration-300" onSubmit={(e) => {
-                  e.preventDefault();
-                  navigate('/officer/dashboard');
-                }}>
+                <form className="flex flex-col space-y-4 animate-in fade-in duration-300" onSubmit={handleOfficerSubmit}>
+                  {officerError && (
+                    <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl text-center">
+                      {officerError}
+                    </div>
+                  )}
+
                   {/* ID Input */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 ml-1">
@@ -162,23 +188,30 @@ export default function SignIn() {
                       </div>
                       <input
                         type="text"
+                        value={officerEmail}
+                        onChange={(e) => setOfficerEmail(e.target.value)}
                         className="block w-full rounded-xl border-0 bg-[#f4f5f7] py-3.5 pl-[3.25rem] pr-4 text-gray-900 ring-1 ring-inset ring-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#113a26] hover:bg-[#eef0f2] focus:hover:bg-white transition-all text-[15px] font-medium"
-                        placeholder="EG: dnr0291@dlsud.edu.ph"
+                        placeholder="EG: officer1@dlsud.edu.ph"
                       />
                     </div>
                   </div>
 
                   {/* Password Input */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 ml-1">
-                      Password
-                    </label>
+                    <div className="flex justify-between items-center ml-1">
+                      <label className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500">
+                        Password
+                      </label>
+                      <span className="text-[10px] font-semibold text-gray-400">Default: SwafoOfficer2026</span>
+                    </div>
                     <div className="relative group">
                       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
                         <Lock className="h-[20px] w-[20px] text-gray-400 group-focus-within:text-[#113a26] transition-colors" />
                       </div>
                       <input
                         type={showPassword ? 'text' : 'password'}
+                        value={officerPassword}
+                        onChange={(e) => setOfficerPassword(e.target.value)}
                         className="block w-full rounded-xl border-0 bg-[#f4f5f7] py-3.5 pl-[3.25rem] pr-12 text-gray-900 ring-1 ring-inset ring-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#113a26] hover:bg-[#eef0f2] focus:hover:bg-white transition-all text-[15px] font-medium placeholder:font-sans placeholder:font-normal placeholder:text-gray-400"
                         placeholder="••••••••"
                       />
@@ -199,16 +232,26 @@ export default function SignIn() {
                   {/* Submit Button */}
                   <button
                     type="submit"
-                    className="group relative flex w-full items-center justify-center rounded-xl bg-[#0f3422] px-4 py-3.5 text-[15px] font-bold text-white shadow-lg shadow-[#0f3422]/20 hover:bg-[#15462e] hover:shadow-xl hover:shadow-[#0f3422]/30 active:scale-[0.99] transition-all duration-200 outline-none focus:ring-4 focus:ring-[#0f3422]/20"
+                    disabled={officerLoggingIn}
+                    className="group relative flex w-full items-center justify-center rounded-xl bg-[#0f3422] px-4 py-3.5 text-[15px] font-bold text-white shadow-lg shadow-[#0f3422]/20 hover:bg-[#15462e] hover:shadow-xl hover:shadow-[#0f3422]/30 active:scale-[0.99] transition-all duration-200 outline-none focus:ring-4 focus:ring-[#0f3422]/20 disabled:opacity-60"
                   >
-                    <span>Sign In</span>
-                    <ArrowRight className="absolute right-6 h-5 w-5 text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                    {officerLoggingIn ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Authenticating...
+                      </span>
+                    ) : (
+                      <>
+                        <span>Sign In</span>
+                        <ArrowRight className="absolute right-6 h-5 w-5 text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                      </>
+                    )}
                   </button>
 
                   <div className="relative pt-2">
                     <div className="absolute inset-0 flex items-center h-px bg-gray-100" />
                     <span className="relative z-10 bg-white px-4 text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                      QUICK ACCESS (DEMO)
+                      QUICK ACCESS (SELECT OFFICER)
                     </span>
                   </div>
 
@@ -333,17 +376,29 @@ function OfficerQuickLogin() {
   const { loginAsOfficer } = useAuth();
   const navigate = useNavigate();
 
-  const officers = [
-    { name: "Officer Timothy De Guzman", email: "officer1@dlsud.edu.ph" },
-    { name: "Officer Maria Santos", email: "officer2@dlsud.edu.ph" },
-    { name: "Officer Ricardo Reyes", email: "officer3@dlsud.edu.ph" },
-    { name: "Officer Elena Garcia", email: "officer4@dlsud.edu.ph" },
-    { name: "Officer Julian Cruz", email: "officer5@dlsud.edu.ph" },
-    { name: "Officer Sofia Villanueva", email: "officer6@dlsud.edu.ph" },
-    { name: "Officer Mateo Ramos", email: "officer7@dlsud.edu.ph" },
-    { name: "Officer Isabella Luna", email: "officer8@dlsud.edu.ph" },
-    { name: "Officer Gabriel Castro", email: "officer9@dlsud.edu.ph" },
-    { name: "Officer Beatrice Mendoza", email: "officer10@dlsud.edu.ph" }
+  const patrolOfficers = [
+    { name: "Erica Aclag", email: "erica.aclag@dlsud.edu.ph", roleBadge: "Patrol Officer" },
+    { name: "Rex Ceballos", email: "rex.ceballos@dlsud.edu.ph", roleBadge: "Patrol Officer" },
+    { name: "Juan Miguel Diamante", email: "juanmiguel.diamante@dlsud.edu.ph", roleBadge: "Patrol Officer" },
+    { name: "Ervin Doroteo", email: "ervin.doroteo@dlsud.edu.ph", roleBadge: "Patrol Officer" },
+    { name: "Michael Nicart", email: "michael.nicart@dlsud.edu.ph", roleBadge: "Patrol Officer" },
+    { name: "Mhycel Omaña", email: "mhycel.omana@dlsud.edu.ph", roleBadge: "Patrol Officer" },
+    { name: "Loren Peñano", email: "loren.penano@dlsud.edu.ph", roleBadge: "Patrol Officer" },
+    { name: "Rainger Dela Cruz", email: "rainger.delacruz@dlsud.edu.ph", roleBadge: "Patrol Officer" }
+  ];
+
+  const staffOfficers = [
+    { name: "Officer Timothy", email: "officer@dlsud.edu.ph", roleBadge: "Staff Officer" },
+    { name: "Officer Timothy De Guzman", email: "officer1@dlsud.edu.ph", roleBadge: "Staff Officer" },
+    { name: "Officer Maria Santos", email: "officer2@dlsud.edu.ph", roleBadge: "Staff Officer" },
+    { name: "Officer Ricardo Reyes", email: "officer3@dlsud.edu.ph", roleBadge: "Staff Officer" },
+    { name: "Officer Elena Garcia", email: "officer4@dlsud.edu.ph", roleBadge: "Staff Officer" },
+    { name: "Officer Julian Cruz", email: "officer5@dlsud.edu.ph", roleBadge: "Staff Officer" },
+    { name: "Officer Sofia Villanueva", email: "officer6@dlsud.edu.ph", roleBadge: "Staff Officer" },
+    { name: "Officer Mateo Ramos", email: "officer7@dlsud.edu.ph", roleBadge: "Staff Officer" },
+    { name: "Officer Isabella Luna", email: "officer8@dlsud.edu.ph", roleBadge: "Staff Officer" },
+    { name: "Officer Gabriel Castro", email: "officer9@dlsud.edu.ph", roleBadge: "Staff Officer" },
+    { name: "Officer Beatrice Mendoza", email: "officer10@dlsud.edu.ph", roleBadge: "Staff Officer" }
   ];
 
   return (
@@ -358,18 +413,50 @@ function OfficerQuickLogin() {
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-2xl max-h-[240px] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-          {officers.map((off, i) => (
+        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-2xl max-h-[300px] overflow-y-auto animate-in fade-in zoom-in-95 duration-200 divide-y divide-gray-50">
+          <div className="px-4 py-2 bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-400">
+            Designated Patrol Officers (Active Roster)
+          </div>
+          {patrolOfficers.map((off, i) => (
             <button
-              key={i}
+              key={'patrol-' + i}
+              type="button"
               onClick={async () => {
                 await loginAsOfficer(off.name, off.email);
                 navigate('/officer/dashboard');
               }}
-              className="w-full text-left px-5 py-4 border-b border-gray-50 hover:bg-emerald-50 transition-colors"
+              className="w-full text-left px-5 py-3 hover:bg-emerald-50 transition-colors flex items-center justify-between group"
             >
-              <p className="text-[14px] font-pjs font-bold text-gray-900 leading-none mb-1">{off.name}</p>
-              <p className="text-[11px] font-manrope font-semibold text-gray-400">{off.email}</p>
+              <div>
+                <p className="text-[13px] font-pjs font-bold text-gray-900 leading-none mb-1 group-hover:text-[#003624]">{off.name}</p>
+                <p className="text-[10px] font-manrope font-semibold text-gray-400">{off.email}</p>
+              </div>
+              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                Patrol
+              </span>
+            </button>
+          ))}
+
+          <div className="px-4 py-2 bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-400">
+            Station & Security Staff Officers
+          </div>
+          {staffOfficers.map((off, i) => (
+            <button
+              key={'staff-' + i}
+              type="button"
+              onClick={async () => {
+                await loginAsOfficer(off.name, off.email);
+                navigate('/officer/dashboard');
+              }}
+              className="w-full text-left px-5 py-3 hover:bg-emerald-50 transition-colors flex items-center justify-between group"
+            >
+              <div>
+                <p className="text-[13px] font-pjs font-bold text-gray-900 leading-none mb-1 group-hover:text-[#003624]">{off.name}</p>
+                <p className="text-[10px] font-manrope font-semibold text-gray-400">{off.email}</p>
+              </div>
+              <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                Staff
+              </span>
             </button>
           ))}
         </div>

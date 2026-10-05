@@ -19,6 +19,15 @@ class User(AbstractUser):
     # Use email as username
     username = models.CharField(max_length=150, unique=True, blank=True, null=True)
 
+    def save(self, *args, **kwargs):
+        if ',' in (self.full_name or ''):
+            parts = [p.strip() for p in self.full_name.split(',', 1)]
+            if len(parts) == 2:
+                self.full_name = f"{parts[1]} {parts[0]}".strip()
+        elif not self.full_name and (self.first_name or self.last_name):
+            self.full_name = f"{self.first_name} {self.last_name}".strip()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.email
 
