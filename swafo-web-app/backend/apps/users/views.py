@@ -114,3 +114,25 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.AllowAny]
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
+from .models import Notification
+from .serializers import NotificationSerializer
+
+class NotificationListView(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        user = self.request.user
+        email = self.request.query_params.get('email')
+        if email:
+            return Notification.objects.filter(user__email__iexact=email).order_by('-created_at')
+        if user and user.is_authenticated:
+            return Notification.objects.filter(user=user).order_by('-created_at')
+        return Notification.objects.all().order_by('-created_at')
+
+class NotificationUpdateView(generics.UpdateAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.AllowAny]
+    queryset = Notification.objects.all()
+
