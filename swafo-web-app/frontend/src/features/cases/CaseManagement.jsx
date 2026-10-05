@@ -600,6 +600,7 @@ export default function CaseManagement({ role }) {
           </div>
 
           {/* Pending Appeals Section */}
+          {(user?.role === 'DIRECTOR' || user?.role === 'ADMIN') && (
           <div className="bg-white rounded-[2.5rem] p-10 shadow-[0_4px_40px_rgba(0,0,0,0.02)] border border-slate-50 flex flex-col gap-8">
             <div className="flex justify-between items-center">
               <h3 className="text-[18px] font-pjs font-bold text-[#111827]">Pending Appeals</h3>
@@ -636,6 +637,7 @@ export default function CaseManagement({ role }) {
               </button>
             </div>
           </div>
+          )}
         </div>
       </div>
       {selectedCase && ReactDOM.createPortal(
