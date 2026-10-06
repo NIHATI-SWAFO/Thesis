@@ -36,27 +36,27 @@ export default function StudentProfile() {
   const yearLevel = profile?.year_level || "-";
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-5 animate-fade-in-up">
+    <div className="max-w-[1400px] mx-auto space-y-5 max-md:space-y-4 animate-fade-in-up max-md:pb-32">
       
       {/* ══════════════════════════ PROFILE HEADER ══════════════════════════ */}
-      <section className="flex flex-col md:flex-row items-center md:items-end gap-6 px-4 relative">
+      <section className="flex flex-col md:flex-row items-center md:items-end gap-6 max-md:gap-3 px-4 relative">
         {/* Profile Image Container */}
         <div className="relative shrink-0">
-          <div className="w-[110px] h-[110px] rounded-3xl bg-[#003624] flex items-center justify-center ring-4 ring-white shadow-xl relative overflow-hidden text-white">
-            <span className="material-symbols-outlined text-[70px] opacity-90">account_circle</span>
+          <div className="w-[110px] h-[110px] max-md:w-20 max-md:h-20 rounded-3xl bg-[#003624] flex items-center justify-center ring-4 ring-white shadow-xl relative overflow-hidden text-white">
+            <span className="material-symbols-outlined text-[70px] max-md:text-[48px] opacity-90">account_circle</span>
           </div>
           {/* Verified Badge */}
-          <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-portal-primary rounded-full border-[3px] border-white flex items-center justify-center shadow-lg text-white">
-            <span className="material-symbols-outlined text-[16px] fill-1">verified</span>
+          <div className="absolute -bottom-1 -right-1 max-md:-bottom-0.5 max-md:-right-0.5 w-8 h-8 max-md:w-6 max-md:h-6 bg-portal-primary rounded-full border-[3px] max-md:border-2 border-white flex items-center justify-center shadow-lg text-white">
+            <span className="material-symbols-outlined text-[16px] max-md:text-[12px] fill-1">verified</span>
           </div>
         </div>
 
         {/* Info Content */}
         <div className="flex-grow pb-2 text-center md:text-left">
-          <h1 className="text-[28px] md:text-[2.25rem] font-pjs font-bold text-[#1a1a1a] leading-tight mb-2 tracking-tight">
+          <h1 className="text-[28px] md:text-[2.25rem] max-md:text-[22px] font-pjs font-bold text-[#1a1a1a] leading-tight mb-2 max-md:mb-1 tracking-tight">
             {fullName}
           </h1>
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-portal-text-muted font-manrope font-semibold text-sm md:text-lg">
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-portal-text-muted font-manrope font-semibold text-sm md:text-lg max-md:text-xs">
             <span className="flex items-center gap-1.5">
               <span className="material-symbols-outlined text-portal-primary/60 text-[16px] md:text-[20px]">school</span>
               Year {yearLevel}
@@ -69,15 +69,15 @@ export default function StudentProfile() {
         </div>
 
         {/* Action Button */}
-        <div className="shrink-0 pb-4">
-          <button className="bg-[#006b5d] text-white px-6 py-2.5 rounded-xl font-pjs font-bold text-[13px] flex items-center gap-2 hover:bg-[#004d33] transition-all transform active:scale-95 shadow-md shadow-emerald-900/10">
+        <div className="shrink-0 pb-4 max-md:pb-0 max-md:w-full max-md:mt-2">
+          <button className="bg-[#006b5d] text-white px-6 py-2.5 rounded-xl font-pjs font-bold text-[13px] flex items-center justify-center max-md:w-full gap-2 hover:bg-[#004d33] transition-all transform active:scale-95 shadow-md shadow-emerald-900/10">
             <span className="material-symbols-outlined text-[18px]">upload_file</span>
             Export Profile
           </button>
         </div>
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 max-md:gap-3">
         
         {/* ══════════════════════════ ACADEMIC STATUS ══════════════════════════ */}
         <div className="lg:col-span-5">
@@ -112,7 +112,7 @@ export default function StudentProfile() {
         <div className="lg:col-span-7">
           <SectionCard bgColor="bg-[#e9eded]">
             <div className="flex flex-col justify-center h-full">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 max-md:grid-cols-2 max-md:gap-4 gap-x-8 gap-y-8">
                 <DetailItem 
                   icon="alternate_email" 
                   label="School Email" 
@@ -182,7 +182,7 @@ export default function StudentProfile() {
 
 function SectionCard({ title, icon, subtitle, children, bgColor = "bg-white" }) {
   return (
-    <div className={`${bgColor} p-5 rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 h-full group transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] flex flex-col justify-between`}>
+    <div className={`${bgColor} p-5 max-md:p-4 rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 h-full group transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] flex flex-col justify-between`}>
       {title && (
         <div className="flex items-start gap-3 mb-5 shrink-0">
           <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-[#006b5d] border border-emerald-50">
@@ -216,13 +216,13 @@ function StatusRow({ label, status, type }) {
 
 function DetailItem({ icon, label, value, iconBg, iconColor }) {
   return (
-    <div className="flex items-start gap-4">
-      <div className={`w-11 h-11 rounded-xl ${iconBg} ${iconColor} flex items-center justify-center shrink-0`}>
-        <span className="material-symbols-outlined text-[20px]">{icon}</span>
+    <div className="flex items-start gap-4 max-md:gap-2">
+      <div className={`w-11 h-11 max-md:w-8 max-md:h-8 max-md:rounded-lg rounded-xl ${iconBg} ${iconColor} flex items-center justify-center shrink-0`}>
+        <span className="material-symbols-outlined text-[20px] max-md:text-[16px]">{icon}</span>
       </div>
-      <div className="space-y-0.5">
-        <p className="text-[11px] font-pjs font-bold text-portal-text-muted uppercase tracking-widest">{label}</p>
-        <p className="font-manrope font-bold text-[#003624] leading-tight text-[15px]">{value}</p>
+      <div className="space-y-0.5 max-md:space-y-0 overflow-hidden">
+        <p className="text-[11px] max-md:text-[9px] font-pjs font-bold text-portal-text-muted uppercase tracking-widest leading-tight">{label}</p>
+        <p className="font-manrope font-bold text-[#003624] leading-tight text-[15px] max-md:text-[12px] truncate" title={value}>{value}</p>
       </div>
     </div>
   );

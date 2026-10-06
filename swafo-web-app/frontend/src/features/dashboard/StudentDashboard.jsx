@@ -104,7 +104,7 @@ export default function StudentDashboard() {
       </section>
 
       {/* Stats row removed for brevity in display, but remains functional in code */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 px-1">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 px-1 max-md:flex max-md:overflow-x-auto max-md:snap-x max-md:gap-4 max-md:pb-2 max-md:[&::-webkit-scrollbar]:hidden max-md:[scrollbar-width:none]">
         <StatCard icon="history" label="Violation History" value={totalCount.toString().padStart(2, '0')} iconBg="bg-slate-100" iconColor="text-slate-600" delay="1" />
         <StatCard icon="pending" label="Pending Actions" value={pendingCount.toString().padStart(2, '0')} iconBg="bg-[#fee4e2]" iconColor="text-[#d92d20]" delay="2" />
         <StatCard icon="check_circle" label="Closed Records" value={closedCount.toString().padStart(2, '0')} iconBg="bg-[#d1fadf]" iconColor="text-[#006b5d]" delay="3" />
@@ -113,9 +113,9 @@ export default function StudentDashboard() {
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-           <Link to="/student/profile" className="block relative overflow-hidden bg-[#0A3D2E] p-8 rounded-[2rem] text-white min-h-[220px] flex flex-col justify-between shadow-xl group cursor-pointer transition-all border border-white/5">
+           <Link to="/student/profile" className="block relative overflow-hidden bg-[#0A3D2E] p-8 max-md:py-5 max-md:px-6 rounded-[2rem] text-white min-h-[220px] max-md:min-h-[160px] flex flex-col justify-between shadow-xl group cursor-pointer transition-all border border-white/5">
               <div className="relative z-10">
-                <h3 className="text-2xl font-pjs font-bold mb-2">Complete Academic Profile</h3>
+                <h3 className="text-2xl max-md:text-lg font-pjs font-bold mb-2">Complete Academic Profile</h3>
                 <p className="text-white/50 mb-5 text-[15px]">Manage your institutional credentials and semester enrollment details.</p>
                 <button className="bg-white text-[#0A3D2E] px-7 py-2.5 rounded-xl font-pjs font-bold text-[12px]">Manage Details</button>
               </div>
@@ -126,9 +126,9 @@ export default function StudentDashboard() {
            </div>
         </div>
         <div className="lg:col-span-1">
-           <Link to="/student/chatbot" className="bg-[#006b5d] p-8 rounded-[2rem] text-white shadow-xl h-full flex flex-col relative overflow-hidden">
+           <Link to="/student/chatbot" className="bg-[#006b5d] p-8 max-md:py-5 max-md:px-6 rounded-[2rem] text-white shadow-xl h-full flex flex-col relative overflow-hidden max-md:min-h-[160px]">
               <div className="w-12 h-12 rounded-xl bg-[#2bd99b] flex items-center justify-center mb-5"><span className="material-symbols-outlined">auto_awesome</span></div>
-              <h3 className="text-xl font-pjs font-bold mb-2">AI Curator</h3>
+              <h3 className="text-xl max-md:text-lg font-pjs font-bold mb-2">AI Curator</h3>
               <p className="text-white/60 text-[13px] mb-8">Ask anything about campus rules or guidelines.</p>
               <div className="mt-auto bg-white/10 rounded-2xl p-4 text-[12px] italic text-white/50 border border-white/10">"What are the curfew hours for dormitories?"</div>
            </Link>
@@ -194,7 +194,7 @@ export default function StudentDashboard() {
 
 function StatCard({ icon, label, value, iconBg, iconColor, delay }) {
   return (
-    <div className={`bg-white p-6 rounded-2xl flex items-center gap-5 border border-transparent shadow-sm group hover:-translate-y-1 transition-all`}>
+    <div className={`bg-white p-6 max-md:p-4 rounded-2xl flex items-center gap-5 max-md:gap-4 border border-transparent shadow-sm group hover:-translate-y-1 transition-all max-md:min-w-[80%] max-md:snap-center`}>
       <div className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center`}>
         <span className={`material-symbols-outlined ${iconColor}`}>{icon}</span>
       </div>

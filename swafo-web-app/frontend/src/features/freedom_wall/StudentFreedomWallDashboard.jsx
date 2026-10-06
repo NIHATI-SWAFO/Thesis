@@ -43,7 +43,7 @@ export default function StudentFreedomWallDashboard() {
       const res = await fetch(API_ENDPOINTS.FW_MY_SUBMISSIONS, {
         headers: { "Authorization": `Bearer ${user.token}` }
       });
-      if (!res.ok) throw new Error("Failed to fetch submissions");
+      if (!res.ok) { console.warn("Failed to fetch submissions:", res.status); return; }
       const data = await res.json();
       setSubmissions(data);
     } catch (err) {

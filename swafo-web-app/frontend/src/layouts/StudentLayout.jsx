@@ -215,7 +215,7 @@ export default function StudentLayout() {
         </main>
 
         {/* MOBILE BOTTOM NAV */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 h-[90px] bg-white border-t border-gray-100 flex items-center justify-around px-2 z-[5000] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] pb-6">
+        <div className="md:hidden max-md:fixed max-md:bottom-0 max-md:w-full max-md:h-auto max-md:pt-2 max-md:pb-[calc(1rem+env(safe-area-inset-bottom))] bg-white/80 max-md:backdrop-blur-md border-t border-gray-100 flex items-center justify-evenly px-2 z-[10000] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] pb-6">
           <NavButton 
             active={location.pathname.includes('dashboard')} 
             onClick={() => navigate('/student/dashboard')}
@@ -232,7 +232,7 @@ export default function StudentLayout() {
             active={location.pathname.includes('chatbot')} 
             onClick={() => navigate('/student/chatbot')}
             icon="chat_bubble"
-            label="AI CURATOR"
+            label="ChatBot"
             isCenter={true}
           />
           <NavButton 
@@ -264,12 +264,12 @@ function NavButton({ active, onClick, icon, label, isCenter = false }) {
           <div className="w-[72px] h-[72px] bg-[#1A5C3A] rounded-full border-[6px] border-white shadow-2xl flex items-center justify-center mb-1 active:scale-90 transition-transform">
             <span className="material-symbols-outlined text-white text-[32px] fill-1">{icon}</span>
           </div>
-          <span className="text-[10px] font-black uppercase tracking-tighter text-[#1A5C3A] whitespace-nowrap">{label}</span>
+          <span className="text-[10px] font-black tracking-tighter text-[#1A5C3A] whitespace-nowrap">{label}</span>
         </div>
       ) : (
         <div className="flex flex-col items-center gap-1 group active:scale-95 transition-all">
           <span className="material-symbols-outlined text-[28px] text-slate-400 group-hover:text-slate-600 transition-colors">{icon}</span>
-          <span className="text-[10px] font-black uppercase tracking-tighter text-slate-400 group-hover:text-slate-600 transition-colors">{label}</span>
+          <span className="text-[10px] font-black tracking-tighter text-slate-400 group-hover:text-slate-600 transition-colors">{label}</span>
         </div>
       )}
     </button>

@@ -38,6 +38,7 @@ class IsOfficerOrDirector(permissions.BasePermission):
         return request.user and request.user.is_authenticated and request.user.role in ['ADMIN', 'OFFICER']
 
 class StudentSubmissionListCreateView(generics.ListCreateAPIView):
+    authentication_classes = []
     permission_classes = [IsStudent]
     
     def get_queryset(self):

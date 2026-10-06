@@ -165,10 +165,10 @@ export default function StudentHandbook() {
   }, [searchQuery]);
 
   return (
-    <div className="max-w-[1100px] mx-auto space-y-6 animate-fade-in-up pb-12">
+    <div className="max-w-[1100px] mx-auto space-y-6 max-md:space-y-4 animate-fade-in-up pb-12 max-md:pb-32">
       
       {/* ═══════════════════════ MAIN GREEN HEADER ═══════════════════════ */}
-      <div className="relative overflow-hidden bg-[#0a6c4c] p-8 md:p-10 rounded-[2rem] shadow-[0_4px_20px_rgba(0,107,93,0.1)] flex flex-col md:flex-row md:items-center justify-between gap-8 group">
+      <div className="relative overflow-hidden bg-[#0a6c4c] p-8 md:p-10 max-md:py-5 max-md:px-5 rounded-[2rem] shadow-[0_4px_20px_rgba(0,107,93,0.1)] flex flex-col md:flex-row md:items-center justify-between gap-8 max-md:gap-4 group">
         
         {/* Minimal Right Edge Shine (Matching User Mockup) */}
         <div className="absolute top-0 right-0 w-[30%] h-full pointer-events-none bg-gradient-to-l from-[#20a07a] to-transparent opacity-80" />
@@ -179,10 +179,10 @@ export default function StudentHandbook() {
               Official Document
             </span>
           </div>
-          <h1 className="text-[2.2rem] md:text-[2.8rem] font-pjs font-bold text-white leading-tight tracking-tight mb-3">
+          <h1 className="text-[2.2rem] md:text-[2.8rem] max-md:text-[24px] font-pjs font-bold text-white leading-tight tracking-tight mb-3 max-md:mb-1">
             Student Handbook 2025–2026
           </h1>
-          <p className="text-white/80 font-manrope text-[14px] md:text-[15px] font-medium leading-relaxed max-w-xl">
+          <p className="text-white/80 font-manrope text-[14px] md:text-[15px] max-md:text-[13px] font-medium leading-relaxed max-w-xl">
             The comprehensive guide to all campus operations,
             <br className="hidden md:block"/> rights, and expectations.
           </p>
@@ -191,9 +191,9 @@ export default function StudentHandbook() {
         <a 
           href="/DLSU-D-Student-Handbook-SY2023-2027.pdf" 
           download
-          className="relative z-10 shrink-0 self-start md:self-center outline-none"
+          className="relative z-10 shrink-0 self-start md:self-center outline-none max-md:w-full max-md:mt-2"
         >
-          <button className="flex items-center justify-center gap-2 bg-white text-[#0a6c4c] px-6 py-3 md:px-8 md:py-3.5 rounded-full font-pjs font-bold text-[14px] shadow-sm hover:bg-emerald-50 active:scale-95 transition-all outline-none">
+          <button className="flex items-center justify-center max-md:w-full gap-2 bg-white text-[#0a6c4c] px-6 py-3 md:px-8 md:py-3.5 rounded-full font-pjs font-bold text-[14px] shadow-sm hover:bg-emerald-50 active:scale-95 transition-all outline-none">
             <span className="material-symbols-outlined text-[18px]">download</span>
             Download PDF
           </button>
@@ -201,7 +201,7 @@ export default function StudentHandbook() {
       </div>
 
       {/* ═══════════════════════ SEARCH BAR ═══════════════════════ */}
-      <div className="relative pt-4 pb-2">
+      <div className="relative pt-4 pb-2 max-md:my-1 max-md:pt-2 max-md:pb-1">
         <div className="absolute inset-y-0 left-0 top-4 bottom-2 pl-6 flex items-center pointer-events-none">
           <span className="material-symbols-outlined text-[#006b5d]/50 text-[22px]">search</span>
         </div>
@@ -240,7 +240,7 @@ export default function StudentHandbook() {
                 {/* Accordion Header */}
                 <button
                   onClick={() => toggleSection(section.id)}
-                  className="w-full px-6 py-5 flex items-center justify-between text-left focus:outline-none bg-transparent"
+                  className="w-full px-6 py-5 max-md:py-3 max-md:px-4 flex items-center justify-between text-left focus:outline-none bg-transparent"
                 >
                   <div className="flex items-center gap-4">
                     {/* Dynamic Icon */}
@@ -251,7 +251,7 @@ export default function StudentHandbook() {
                     }`}>
                       <span className="material-symbols-outlined text-[20px]">{section.icon}</span>
                     </div>
-                    <h3 className={`text-[15px] font-pjs font-bold transition-colors ${
+                    <h3 className={`text-[15px] max-md:text-[14px] font-pjs font-bold transition-colors ${
                       isOpen ? 'text-[#1a1a1a]' : 'text-[#1a1a1a]'
                     }`}>
                       {section.title}
@@ -272,15 +272,15 @@ export default function StudentHandbook() {
                   }`}
                 >
                   <div className="overflow-hidden">
-                    <div className="px-[4rem] pb-8 pt-2">
+                    <div className="px-[4rem] max-md:px-6 pb-8 max-md:pb-4 pt-2">
                       {/* Inner Green Line Container */}
-                      <div className="border-l-[2.5px] border-[#2bd99b]/60 pl-6 space-y-6">
+                      <div className="border-l-[2.5px] border-[#2bd99b]/60 pl-6 max-md:pl-4 space-y-6 max-md:space-y-4">
                         {section.subItems.map((item, index) => (
                           <div key={index} className="flex flex-col gap-1.5">
-                            <h4 className="text-[13px] font-pjs font-bold text-[#006b5d]">
+                            <h4 className="text-[13px] max-md:text-[12px] font-pjs font-bold text-[#006b5d]">
                               <HighlightMatch text={item.title} query={searchQuery} />
                             </h4>
-                            <p className="text-[13px] font-manrope font-medium text-portal-text-muted/80 leading-relaxed">
+                            <p className="text-[13px] max-md:text-[12px] font-manrope font-medium text-portal-text-muted/80 leading-relaxed max-md:leading-snug">
                               <HighlightMatch text={item.content} query={searchQuery} />
                             </p>
                           </div>

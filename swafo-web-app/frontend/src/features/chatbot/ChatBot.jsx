@@ -92,10 +92,10 @@ export default function ChatBot() {
       <div className="flex-1 flex flex-col h-[calc(100vh-144px)] relative">
         
         {/* Chat History / Content Area */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar pb-32 pr-2 lg:pr-4">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pb-32 max-md:pb-52 pr-2 lg:pr-4">
           
           {/* Welcome Header */}
-          <div className="flex flex-col items-center text-center mt-8 mb-12 flex-shrink-0">
+          <div className={`flex flex-col items-center text-center mt-8 mb-12 flex-shrink-0 transition-all ${messages.length === 0 ? 'max-md:mt-auto max-md:mb-auto max-md:h-[60vh] max-md:justify-center' : ''}`}>
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#e6fbf1] mb-6">
               <span className="material-symbols-outlined text-[15px] text-[#059669]">verified</span>
               <span className="text-[11px] font-pjs font-bold text-[#059669] tracking-widest uppercase">
@@ -108,6 +108,21 @@ export default function ChatBot() {
             <p className="text-[1.1rem] lg:text-[1.2rem] font-manrope text-[#606d67]">
               How can I assist with your inquiries today?
             </p>
+            
+            {/* Mobile Suggested Chips (Only shown when empty) */}
+            {messages.length === 0 && (
+              <div className="md:hidden w-full flex overflow-x-auto whitespace-nowrap snap-x gap-2 px-4 mt-8 no-scrollbar max-md:[&::-webkit-scrollbar]:hidden max-md:[scrollbar-width:none]">
+                {suggestedQuestions.map((q, i) => (
+                  <button 
+                    onClick={() => handleSuggestedClick(q)}
+                    key={i} 
+                    className="snap-center bg-[#0b4d3c] hover:bg-[#003624] text-white px-5 py-3 rounded-[1rem] text-[13px] font-manrope font-medium transition-colors shadow-sm shrink-0"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Messages Container */}
@@ -126,7 +141,7 @@ export default function ChatBot() {
                 ) : (
                   /* Bot Message */
                   <div className="flex justify-start animate-fade-in-up">
-                    <div className="bg-white rounded-[1.25rem] border border-black/5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden max-w-[95%] relative flex">
+                    <div className="bg-white rounded-[1.25rem] border border-black/5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden max-w-[95%] relative flex max-md:mx-4 max-md:max-w-[90%] max-md:shadow-sm">
                       
                       {/* Left Green Accent Border */}
                       <div className="w-2 bg-[#059669] shrink-0" />
@@ -202,7 +217,7 @@ export default function ChatBot() {
             {/* Thinking Indicator (while isTyping is true) */}
             {isTyping && (
               <div className="flex justify-start animate-fade-in-up mt-8">
-                <div className="bg-white rounded-[1.25rem] border border-black/5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden max-w-[95%] relative flex">
+                <div className="bg-white rounded-[1.25rem] border border-black/5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden max-w-[95%] relative flex max-md:mx-4 max-md:max-w-[90%] max-md:shadow-sm">
                   <div className="w-2 bg-[#059669] shrink-0" />
                   <div className="p-6 lg:p-8 flex-1">
                     <div className="flex items-center gap-3 mb-6">
@@ -231,7 +246,7 @@ export default function ChatBot() {
         </div>
 
         {/* ═══════════════════════ INPUT AREA (FIXED BOTTOM) ═══════════════════════ */}
-        <div className="absolute bottom-0 left-0 right-0 pt-8 pb-2 bg-gradient-to-t from-portal-bg via-portal-bg to-transparent">
+        <div className="absolute bottom-0 left-0 right-0 pt-8 pb-2 max-md:pb-[90px] bg-gradient-to-t from-portal-bg via-portal-bg to-transparent max-md:bg-portal-bg/95 max-md:backdrop-blur-md">
           <div className="max-w-3xl mx-auto">
             <form onSubmit={handleSend} className="bg-white rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.05)] border border-black/5 p-2 flex items-center gap-3 mb-4 relative z-10">
               <button type="button" className="w-12 h-12 flex items-center justify-center text-[#94a3b8] hover:text-[#0b4d3c] transition-colors rounded-full hover:bg-slate-50 shrink-0">
