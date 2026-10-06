@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useMsal } from "@azure/msal-react";
+import { API_BASE_URL } from '../api/config';
 
 const AuthContext = createContext();
 
@@ -48,7 +49,7 @@ export const AuthProvider = ({ children }) => {
 
     const loginAsMock = async (student) => {
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://thesis-production-1816.up.railway.app'}/api/users/mock-login/`, {
+            const res = await fetch(`${API_BASE_URL}/api/users/mock-login/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: student.user_details.email })
@@ -70,11 +71,10 @@ export const AuthProvider = ({ children }) => {
 
     const loginAsOfficer = async (officerName, email, password) => {
         try {
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
             const payload = { email: email };
             if (password) payload.password = password;
 
-            const res = await fetch(`${baseUrl}/api/users/mock-login/`, {
+            const res = await fetch(`${API_BASE_URL}/api/users/mock-login/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -102,8 +102,7 @@ export const AuthProvider = ({ children }) => {
 
     const loginAsAdmin = async (adminName, email) => {
         try {
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-            const res = await fetch(`${baseUrl}/api/users/mock-login/`, {
+            const res = await fetch(`${API_BASE_URL}/api/users/mock-login/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: email })
