@@ -175,120 +175,45 @@ export default function StudentHandbook({ role = 'student' }) {
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-6 sm:space-y-8 animate-fade-in-up pb-20 print:p-0 print:space-y-4">
+    <div className="max-w-[1100px] mx-auto space-y-6 max-md:space-y-4 animate-fade-in-up pb-12 max-md:pb-32">
 
-      {/* Print Specific Overrides */}
-      <style>{`
-        @media print {
-          nav, aside, header, .no-print, button, .bottom-nav-portal {
-            display: none !important;
-          }
-          body, main, #root {
-            background: white !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          .print-full-content {
-            display: block !important;
-          }
-          .shadow-sm, .shadow-md, .shadow-lg {
-            box-shadow: none !important;
-            border: 1px solid #e2e8f0 !important;
-          }
-        }
-      `}</style>
+      {/* ═══════════════════════ MAIN GREEN HEADER ═══════════════════════ */}
+      <div className="relative overflow-hidden bg-[#0a6c4c] p-8 md:p-10 max-md:py-5 max-md:px-5 rounded-[2rem] shadow-[0_4px_20px_rgba(0,107,93,0.1)] flex flex-col md:flex-row md:items-center justify-between gap-8 max-md:gap-4 group">
 
-      {/* ═══════════════════════ MAIN HERO BANNER ═══════════════════════ */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#003624] via-[#004d33] to-[#01261a] p-6 sm:p-10 rounded-2xl sm:rounded-3xl shadow-lg shadow-emerald-950/20 text-white no-print">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-white/5 rounded-full -mr-20 -mt-20 pointer-events-none" />
-        <div className="absolute left-1/3 bottom-0 w-64 h-64 bg-emerald-400/5 rounded-full blur-2xl pointer-events-none" />
+        {/* Minimal Right Edge Shine (Matching User Mockup) */}
+        <div className="absolute top-0 right-0 w-[30%] h-full pointer-events-none bg-gradient-to-l from-[#20a07a] to-transparent opacity-80" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 mb-3 sm:mb-4">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[10px] font-pjs font-bold uppercase tracking-wider text-emerald-200">
-                {role === 'admin' ? 'SWAFO Institutional Policy Codex' : 'Official DLSU-D Institutional Registry'}
-              </span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-pjs font-extrabold text-white leading-tight tracking-tight mb-2">
-              {role === 'admin' ? 'Campus Policy Codex & Sanction Master' : 'Student Handbook 2025–2026'}
-            </h1>
-            <p className="text-xs sm:text-sm text-emerald-100/80 font-manrope font-normal leading-relaxed">
-              Official university codex on student rights, campus safety, academic honesty, dress code regulations, and the progressive disciplinary sanction matrix.
-            </p>
+        <div className="relative z-10 max-w-2xl">
+          <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/20 mb-6 transition-all">
+            <span className="text-[10px] font-pjs font-bold text-white tracking-[0.15em] uppercase">
+              Official Document
+            </span>
           </div>
-
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
-            <button
-              onClick={handlePrintPdf}
-              className="flex-1 sm:flex-initial px-5 py-3 rounded-xl bg-white text-[#003624] hover:bg-emerald-50 font-pjs font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[18px]">print</span>
-              Print / Save PDF
-            </button>
-            {role === 'admin' ? (
-              <Link
-                to="/admin/cases"
-                className="flex-1 sm:flex-initial px-5 py-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-100 border border-emerald-400/30 font-pjs font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 no-underline cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[18px]">gavel</span>
-                Case Oversight
-              </Link>
-            ) : (
-              <Link
-                to="/student/chatbot"
-                className="flex-1 sm:flex-initial px-5 py-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-100 border border-emerald-400/30 font-pjs font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 no-underline cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-                Ask AI Curator
-              </Link>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════ STATS & QUICK METRICS ═══════════════════════ */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 no-print">
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#003624] flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[22px]">menu_book</span>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-pjs">Total Rules</p>
-            <p className="text-lg sm:text-xl font-extrabold text-slate-900 font-pjs">{totalRulesCount} Codified</p>
-          </div>
+          <h1 className="text-[2.2rem] md:text-[2.8rem] max-md:text-[24px] font-pjs font-bold text-white leading-tight tracking-tight mb-3 max-md:mb-1">
+            Student Handbook 2025–2026
+          </h1>
+          <p className="text-white/80 font-manrope text-[14px] md:text-[15px] max-md:text-[13px] font-medium leading-relaxed max-w-xl">
+            The comprehensive guide to all campus operations,
+            <br className="hidden md:block" /> rights, and expectations.
+          </p>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[22px]">info</span>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-pjs">Minor Policies</p>
-            <p className="text-lg sm:text-xl font-extrabold text-amber-700 font-pjs">{minorRulesCount} Sections</p>
-          </div>
-        </div>
+        <a
+          href="/DLSU-D-Student-Handbook-SY2023-2027.pdf"
+          download
+          className="relative z-10 shrink-0 self-start md:self-center outline-none max-md:w-full max-md:mt-2"
+        >
+          <button className="flex items-center justify-center max-md:w-full gap-2 bg-white text-[#0a6c4c] px-6 py-3 md:px-8 md:py-3.5 rounded-full font-pjs font-bold text-[14px] shadow-sm hover:bg-emerald-50 active:scale-95 transition-all outline-none">
+            <span className="material-symbols-outlined text-[18px]">download</span>
+            Download PDF
+          </button>
+        </a>
+      </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[22px]">warning</span>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-pjs">Major Offenses</p>
-            <p className="text-lg sm:text-xl font-extrabold text-rose-700 font-pjs">{majorRulesCount} Sections</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[22px]">verified</span>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-pjs">Academic Year</p>
-            <p className="text-lg sm:text-xl font-extrabold text-slate-900 font-pjs">2025–2026</p>
-          </div>
+      {/* ═══════════════════════ SEARCH BAR ═══════════════════════ */}
+      <div className="relative pt-4 pb-2 max-md:my-1 max-md:pt-2 max-md:pb-1">
+        <div className="absolute inset-y-0 left-0 top-4 bottom-2 pl-6 flex items-center pointer-events-none">
+          <span className="material-symbols-outlined text-[#006b5d]/50 text-[22px]">search</span>
         </div>
       </section>
 
@@ -346,8 +271,8 @@ export default function StudentHandbook({ role = 'student' }) {
           <button
             onClick={() => { setSeverityFilter('ALL'); setSelectedCategory('ALL'); }}
             className={`px-3 py-1 rounded-lg text-xs font-pjs font-bold tracking-wider transition-all cursor-pointer ${severityFilter === 'ALL' && selectedCategory === 'ALL'
-                ? 'bg-[#003624] text-white shadow-xs'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+              ? 'bg-[#003624] text-white shadow-xs'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
               }`}
           >
             All Policies ({totalRulesCount})
@@ -355,8 +280,8 @@ export default function StudentHandbook({ role = 'student' }) {
           <button
             onClick={() => { setSeverityFilter('MINOR'); setSelectedCategory('ALL'); }}
             className={`px-3 py-1 rounded-lg text-xs font-pjs font-bold tracking-wider transition-all cursor-pointer ${severityFilter === 'MINOR'
-                ? 'bg-amber-600 text-white shadow-xs'
-                : 'bg-amber-50 hover:bg-amber-100 text-amber-800'
+              ? 'bg-amber-600 text-white shadow-xs'
+              : 'bg-amber-50 hover:bg-amber-100 text-amber-800'
               }`}
           >
             Minor Offenses ({minorRulesCount})
@@ -364,8 +289,8 @@ export default function StudentHandbook({ role = 'student' }) {
           <button
             onClick={() => { setSeverityFilter('MAJOR'); setSelectedCategory('ALL'); }}
             className={`px-3 py-1 rounded-lg text-xs font-pjs font-bold tracking-wider transition-all cursor-pointer ${severityFilter === 'MAJOR'
-                ? 'bg-rose-700 text-white shadow-xs'
-                : 'bg-rose-50 hover:bg-rose-100 text-rose-800'
+              ? 'bg-rose-700 text-white shadow-xs'
+              : 'bg-rose-50 hover:bg-rose-100 text-rose-800'
               }`}
           >
             Major Violations ({majorRulesCount})
@@ -390,8 +315,8 @@ export default function StudentHandbook({ role = 'student' }) {
                   }
                 }}
                 className={`px-3 py-1.5 rounded-full text-xs font-pjs font-bold uppercase tracking-wider shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
-                    ? 'bg-[#003624] text-white shadow-xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                  ? 'bg-[#003624] text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                   }`}
               >
                 <span>{cat.title}</span>
@@ -441,42 +366,26 @@ export default function StudentHandbook({ role = 'student' }) {
               <div
                 key={section.id}
                 className={`bg-white rounded-2xl sm:rounded-3xl border transition-all duration-200 overflow-hidden ${isOpen
-                    ? 'border-emerald-200/80 shadow-md ring-1 ring-emerald-50'
-                    : 'border-slate-100 shadow-sm hover:border-slate-200'
+                  ? 'border-emerald-200/80 shadow-md ring-1 ring-emerald-50'
+                  : 'border-slate-100 shadow-sm hover:border-slate-200'
                   }`}
               >
                 {/* Section Accordion Header */}
                 <button
                   onClick={() => toggleSection(section.id)}
-                  className="w-full px-5 sm:px-7 py-4 sm:py-5 flex items-center justify-between text-left focus:outline-none cursor-pointer bg-white"
+                  className="w-full px-6 py-5 max-md:py-3 max-md:px-4 flex items-center justify-between text-left focus:outline-none bg-transparent"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isOpen
-                        ? (section.isMajor ? 'bg-rose-700 text-white shadow-xs' : 'bg-[#003624] text-white shadow-xs')
-                        : (section.isMajor ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-[#003624]')
+                      ? (section.isMajor ? 'bg-rose-700 text-white shadow-xs' : 'bg-[#003624] text-white shadow-xs')
+                      : (section.isMajor ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-[#003624]')
                       }`}>
                       <span className="material-symbols-outlined text-[20px]">{section.icon}</span>
                     </div>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm sm:text-base font-pjs font-bold text-slate-900 leading-snug truncate">
-                          {section.title}
-                        </h3>
-                        {section.isMajor ? (
-                          <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200/60">
-                            Major Severity
-                          </span>
-                        ) : (
-                          <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/60">
-                            Minor Policy
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-400 font-manrope">
-                        {section.subItems.length} official regulation{section.subItems.length > 1 ? 's' : ''}
-                      </p>
-                    </div>
+                    <h3 className={`text-[15px] max-md:text-[14px] font-pjs font-bold transition-colors ${isOpen ? 'text-[#1a1a1a]' : 'text-[#1a1a1a]'
+                      }`}>
+                      {section.title}
+                    </h3>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
@@ -490,106 +399,44 @@ export default function StudentHandbook({ role = 'student' }) {
                   </div>
                 </button>
 
-                {/* Accordion Content Area */}
-                {isOpen && (
-                  <div className="px-4 sm:px-8 pb-6 pt-2 border-t border-slate-100 bg-slate-50/40">
-                    <div className="divide-y divide-slate-100">
-                      {section.subItems.map((item) => (
-                        <div key={item.id || item.rule_code} className="py-4 first:pt-2 last:pb-0 space-y-2.5">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#003624]/5 border border-[#003624]/10 text-xs font-mono font-bold text-[#003624]">
-                                <span className="material-symbols-outlined text-[13px]">tag</span>
-                                Section {item.rule_code}
-                              </span>
-
-                              {section.isMajor ? (
-                                <span className="sm:hidden px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200/60">
-                                  Major
-                                </span>
-                              ) : (
-                                <span className="sm:hidden px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/60">
-                                  Minor
-                                </span>
-                              )}
-                            </div>
-
-                            <button
-                              onClick={() => handleCopyCitation(item)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-pjs font-bold text-slate-500 hover:text-[#003624] hover:bg-white rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200"
-                              title="Copy rule citation to clipboard"
-                            >
-                              <span className="material-symbols-outlined text-[14px]">
-                                {copiedItem === item.rule_code ? 'check' : 'content_copy'}
-                              </span>
-                              <span>{copiedItem === item.rule_code ? 'Copied!' : 'Copy Citation'}</span>
-                            </button>
+                {/* Accordion Content area */}
+                <div
+                  className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                    }`}
+                >
+                  <div className="overflow-hidden">
+                    <div className="px-[4rem] max-md:px-6 pb-8 max-md:pb-4 pt-2">
+                      {/* Inner Green Line Container */}
+                      <div className="border-l-[2.5px] border-[#2bd99b]/60 pl-6 max-md:pl-4 space-y-6 max-md:space-y-4">
+                        {section.subItems.map((item, index) => (
+                          <div key={index} className="flex flex-col gap-1.5">
+                            <h4 className="text-[13px] max-md:text-[12px] font-pjs font-bold text-[#006b5d]">
+                              <HighlightMatch text={item.title} query={searchQuery} />
+                            </h4>
+                            <p className="text-[13px] max-md:text-[12px] font-manrope font-medium text-portal-text-muted/80 leading-relaxed max-md:leading-snug">
+                              <HighlightMatch text={item.content} query={searchQuery} />
+                            </p>
                           </div>
-
-                          <p className="text-xs sm:text-sm font-manrope font-medium text-slate-800 leading-relaxed">
-                            {item.content}
-                          </p>
-
-                          {/* Sanction Matrix Ladder */}
-                          {(item.p1 || item.p2 || item.p3 || item.p4 || item.p5) && (
-                            <div className="pt-2">
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-pjs mb-1.5">
-                                Disciplinary Sanction Escalation Matrix:
-                              </p>
-                              <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-manrope">
-                                {item.p1 && (
-                                  <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 shadow-2xs">
-                                    <span className="text-[9.5px] font-extrabold uppercase text-slate-400">1st:</span>
-                                    <span className="font-semibold">{item.p1}</span>
-                                  </div>
-                                )}
-                                {item.p2 && (
-                                  <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 shadow-2xs">
-                                    <span className="text-[9.5px] font-extrabold uppercase text-slate-400">2nd:</span>
-                                    <span className="font-semibold">{item.p2}</span>
-                                  </div>
-                                )}
-                                {item.p3 && (
-                                  <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 shadow-2xs">
-                                    <span className="text-[9.5px] font-extrabold uppercase text-slate-400">3rd:</span>
-                                    <span className="font-semibold">{item.p3}</span>
-                                  </div>
-                                )}
-                                {item.p4 && (
-                                  <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50/80 border border-rose-200 text-rose-800 shadow-2xs">
-                                    <span className="text-[9.5px] font-extrabold uppercase text-rose-600">Escalation:</span>
-                                    <span className="font-bold">{item.p4}</span>
-                                  </div>
-                                )}
-                                {item.p5 && (
-                                  <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-100 border border-rose-300 text-rose-900 shadow-2xs">
-                                    <span className="text-[9.5px] font-extrabold uppercase text-rose-700">Final:</span>
-                                    <span className="font-extrabold">{item.p5}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
-              </div>
-            );
+                </div>
+                );
           })
         )}
-      </section>
+              </section>
 
-      {/* ═══════════════════════ FOOTER NOTICE ═══════════════════════ */}
-      <footer className="p-6 bg-slate-50 rounded-2xl border border-slate-200/80 text-center space-y-2 no-print">
-        <p className="text-xs font-pjs font-bold text-slate-700">
-          De La Salle University - Dasmariñas • Student Welfare and Formation Office (SWAFO)
-        </p>
-        <p className="text-[11px] text-slate-400 font-manrope max-w-xl mx-auto">
-          All provisions contained herein are officially sanctioned by the University Discipline Board. For policy inquiries or clarifications, reach out directly through the Student Grievance & Appeal portal or consultation channels.
-        </p>
-      </footer>
+      {/* ═══════════════════════ FOOTER NOTICE ═══════════════════════ */ }
+            <footer className="p-6 bg-slate-50 rounded-2xl border border-slate-200/80 text-center space-y-2 no-print">
+              <p className="text-xs font-pjs font-bold text-slate-700">
+                De La Salle University - Dasmariñas • Student Welfare and Formation Office (SWAFO)
+              </p>
+              <p className="text-[11px] text-slate-400 font-manrope max-w-xl mx-auto">
+                All provisions contained herein are officially sanctioned by the University Discipline Board. For policy inquiries or clarifications, reach out directly through the Student Grievance & Appeal portal or consultation channels.
+              </p>
+            </footer>
 
     </div>
   );

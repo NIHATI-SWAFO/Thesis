@@ -12,34 +12,47 @@ const getStatusBadge = (status) => {
     case 'PENDING':
     case 'REVIEWING':
       return (
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-black font-pjs uppercase tracking-[0.1em] bg-amber-100 text-amber-700 ring-1 ring-amber-200 shadow-sm">
+        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-orange-50 text-orange-700">
           {statusText}
         </span>
       );
     case 'AWAITING_INFO':
       return (
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-black font-pjs uppercase tracking-[0.1em] bg-blue-100 text-blue-700 ring-1 ring-blue-200 shadow-sm">
+        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700">
           REPLY
         </span>
       );
     case 'APPROVED':
       return (
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-black font-pjs uppercase tracking-[0.1em] bg-emerald-100/60 text-[#006b5d] ring-1 ring-emerald-200 shadow-sm">
+        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700">
           {statusText}
         </span>
       );
     case 'REJECTED':
       return (
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-black font-pjs uppercase tracking-[0.1em] bg-red-100/60 text-red-700 ring-1 ring-red-200 shadow-sm">
+        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700">
           {statusText}
         </span>
       );
     default:
       return (
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-black font-pjs uppercase tracking-[0.1em] bg-slate-100 text-slate-700 ring-1 ring-slate-200 shadow-sm">
+        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-gray-50 text-gray-700">
           {statusText}
         </span>
       );
+  }
+};
+
+const getLeftAccent = (status, isRead) => {
+  if (isRead) return "border-l-4 border-transparent bg-white";
+  const statusText = status.toUpperCase();
+  switch (statusText) {
+    case 'PENDING':
+    case 'REVIEWING': return "border-l-4 border-orange-400 bg-blue-50/30";
+    case 'APPROVED': return "border-l-4 border-green-500 bg-blue-50/30";
+    case 'AWAITING_INFO': return "border-l-4 border-blue-500 bg-blue-50/30";
+    case 'REJECTED': return "border-l-4 border-red-500 bg-blue-50/30";
+    default: return "border-l-4 border-gray-400 bg-blue-50/30";
   }
 };
 
@@ -81,6 +94,32 @@ export default function SentAppealsWidget() {
       });
     }
   }, [user, searchParams]);
+
+
+  const handleAppealClick = async (appeal) => {
+    setSelectedAppeal(appeal);
+    
+    // If already read, do nothing
+    if (appeal.student_read_status) return;
+
+    // Optimistic UI update
+    setAppeals(prev => prev.map(a => 
+      a.id === appeal.id ? { ...a, student_read_status: true } : a
+    ));
+
+    try {
+      await fetch(API_ENDPOINTS.VIOLATIONS_APPEALS_UPDATE(appeal.id), {
+        method: "PATCH",
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ student_read_status: true })
+      });
+    } catch (err) {
+      console.warn("Failed to mark appeal as read", err);
+    }
+  };
 
   const displayedAppeals = activeTab === 'replies' 
     ? appeals.filter(a => a.status === 'AWAITING_INFO') 
@@ -137,32 +176,34 @@ export default function SentAppealsWidget() {
           displayedAppeals.map((appeal) => (
             <div 
               key={appeal.id} 
-              onClick={() => setSelectedAppeal(appeal)}
+              onClick={() => handleAppealClick(appeal)}
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  setSelectedAppeal(appeal);
+                  handleAppealClick(appeal);
                 }
               }}
-              className="group p-4 bg-white border border-slate-100 rounded-2xl hover:border-emerald-200 hover:shadow-md transition-all cursor-pointer outline-none focus:ring-2 focus:ring-emerald-500 hover:ring-2 hover:ring-emerald-500/30"
+              className={`group p-4 border border-gray-100 rounded-r-xl rounded-l-md shadow-sm transition-all cursor-pointer outline-none hover:shadow-md ${getLeftAccent(appeal.status, appeal.student_read_status)}`}
             >
               <div className="flex items-start justify-between mb-2">
-                <p className="text-[11px] font-bold text-slate-400 group-hover:text-slate-500 transition-colors">
+                <p className="text-gray-400 text-xs transition-colors">
                   {new Date(appeal.created_at).toLocaleDateString()}
                 </p>
                 {getStatusBadge(appeal.status)}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-[#009b69]">gavel</span>
-                <p className="text-[14px] font-bold text-slate-700 group-hover:text-[#003624] transition-colors">
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`material-symbols-outlined text-[16px] transition-colors ${!appeal.student_read_status ? 'text-[#009b69]' : 'text-slate-400 group-hover:text-[#009b69]'}`}>gavel</span>
+                <p className={`text-[14px] font-bold transition-colors flex items-center ${!appeal.student_read_status ? 'text-[#003624]' : 'text-slate-500 group-hover:text-[#003624]'}`}>
                   Ref: {appeal.violation_code}
                 </p>
               </div>
-              {appeal.status === 'AWAITING_INFO' && (
-                <p className="mt-2 text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md inline-block">
-                  Requires your attention
-                </p>
+              {!appeal.student_read_status && appeal.status === 'AWAITING_INFO' && (
+                <div className="mt-3">
+                  <p className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md inline-block">
+                    Requires your attention
+                  </p>
+                </div>
               )}
             </div>
           ))
