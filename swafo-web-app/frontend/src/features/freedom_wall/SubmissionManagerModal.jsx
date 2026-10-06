@@ -24,6 +24,7 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
   const [showReferral, setShowReferral] = useState(false);
   const [referTo, setReferTo] = useState('');
   const [referReason, setReferReason] = useState('');
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     fetchDetail();
@@ -112,22 +113,60 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
 
   const handleSendReferral = async () => {
     if (!referTo || !referReason) return;
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(referTo)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
+    setIsRedirecting(true);
+    
     try {
+      // API call to update status and track referral
       const res = await fetch(API_ENDPOINTS.FW_MANAGE_REFER(submissionId), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user.token}`
         },
-        body: JSON.stringify({ referred_to: referTo, reason: referReason })
+        body: JSON.stringify({ 
+          referred_to: referTo, 
+          reason: referReason 
+        })
       });
+      
       if (res.ok) {
-        setShowReferral(false);
         fetchDetail();
         onUpdated();
+        
+        // Construct mailto link
+        const emailSubject = `SWAFO Case Referral: ${sub?.reference_number}`;
+        const emailBody = `Dear Department,\n\nI am referring the following SWAFO case to your office for further action.\n\nCase Details:\nReference: ${sub?.reference_number}\nTitle: ${sub?.title}\nDescription: ${sub?.description}\n\nOfficer's Reason for Referral:\n${referReason}\n\nPlease let us know if you require further information.\n\nRegards,\nSWAFO Office`;
+
+        const encodedSubject = encodeURIComponent(emailSubject);
+        const encodedBody = encodeURIComponent(emailBody);
+        
+        const mailtoLink = `mailto:${referTo}?subject=${encodedSubject}&body=${encodedBody}`;
+        
+        // Trigger OS default email client (Outlook)
+        window.location.href = mailtoLink;
+        
+        // Timeout-buffered cleanup
+        setTimeout(() => {
+          setIsRedirecting(false);
+          setShowReferral(false);
+          onClose(); // Close the modal for a seamless reset
+        }, 1200);
+      } else {
+        alert('Failed to send referral update.');
+        setIsRedirecting(false);
       }
     } catch (err) {
       console.error(err);
+      alert('An error occurred while tracking the referral.');
+      setIsRedirecting(false);
     }
   };
 
@@ -216,17 +255,19 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
               <div className="mb-8 p-6 bg-blue-50 border border-blue-100 rounded-2xl animate-in fade-in zoom-in-95">
                 <h4 className="text-sm font-bold text-blue-900 mb-4 flex items-center gap-2"><Share2 size={16} /> External Referral</h4>
                 <div className="space-y-4">
-                  <select value={referTo} onChange={e=>setReferTo(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border-none ring-1 ring-blue-200 text-sm outline-none">
-                    <option value="">Select Destination...</option>
-                    <option value="Guidance Office">Guidance Office</option>
-                    <option value="Campus Security">Campus Security</option>
-                    <option value="College Dean">College Dean</option>
-                    <option value="Facilities Management">Facilities Management</option>
-                  </select>
+                  <input 
+                    type="email" 
+                    value={referTo} 
+                    onChange={e=>setReferTo(e.target.value)} 
+                    placeholder="Enter department email (e.g., guidance@dlsud.edu.ph)" 
+                    className="w-full px-4 py-2.5 rounded-xl border-none ring-1 ring-blue-200 text-sm outline-none"
+                  />
                   <textarea value={referReason} onChange={e=>setReferReason(e.target.value)} placeholder="Reason for referral..." className="w-full px-4 py-2.5 rounded-xl border-none ring-1 ring-blue-200 text-sm outline-none resize-none h-20"></textarea>
                   <div className="flex justify-end gap-2">
-                    <button onClick={() => setShowReferral(false)} className="px-4 py-2 text-xs font-bold text-blue-600">Cancel</button>
-                    <button onClick={handleSendReferral} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-blue-700">Submit Referral</button>
+                    <button onClick={() => setShowReferral(false)} disabled={isRedirecting} className="px-4 py-2 text-xs font-bold text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed">Cancel</button>
+                    <button onClick={handleSendReferral} disabled={isRedirecting} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                      {isRedirecting ? <><Loader2 size={12} className="animate-spin" /> Opening Client...</> : 'Submit Referral via Email'}
+                    </button>
                   </div>
                 </div>
               </div>
