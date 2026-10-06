@@ -24,6 +24,58 @@ class MockLoginView(APIView):
             User.objects.filter(full_name__iexact=identifier).first()
         )
         
+        # Auto-provision known officers and directors if missing from deployed DB
+        if not user:
+            roster = {
+                "erica.aclag@dlsud.edu.ph": "Erica Aclag",
+                "rex.ceballos@dlsud.edu.ph": "Rex Ceballos",
+                "juanmiguel.diamante@dlsud.edu.ph": "Juan Miguel Diamante",
+                "ervin.doroteo@dlsud.edu.ph": "Ervin Doroteo",
+                "michael.nicart@dlsud.edu.ph": "Michael Nicart",
+                "mhycel.omana@dlsud.edu.ph": "Mhycel Omaña",
+                "loren.penano@dlsud.edu.ph": "Loren Peñano",
+                "rainger.delacruz@dlsud.edu.ph": "Rainger Dela Cruz",
+                "officer@dlsud.edu.ph": "Officer Timothy",
+                "officer1@dlsud.edu.ph": "Officer Timothy De Guzman",
+                "officer2@dlsud.edu.ph": "Officer Maria Santos",
+                "officer3@dlsud.edu.ph": "Officer Ricardo Reyes",
+                "officer4@dlsud.edu.ph": "Officer Elena Garcia",
+                "officer5@dlsud.edu.ph": "Officer Julian Cruz",
+                "officer6@dlsud.edu.ph": "Officer Sofia Villanueva",
+                "officer7@dlsud.edu.ph": "Officer Mateo Ramos",
+                "officer8@dlsud.edu.ph": "Officer Isabella Luna",
+                "officer9@dlsud.edu.ph": "Officer Gabriel Castro",
+                "officer10@dlsud.edu.ph": "Officer Beatrice Mendoza",
+                "admin@dlsud.edu.ph": "Director Ruel Elias",
+            }
+            target_email = identifier.lower()
+            name = roster.get(target_email)
+            if not name:
+                for em, nm in roster.items():
+                    if nm.lower() == identifier.lower():
+                        target_email = em
+                        name = nm
+                        break
+            
+            if name or target_email.endswith('@dlsud.edu.ph') or 'officer' in target_email or 'admin' in target_email:
+                officer_name = name or identifier.split('@')[0].replace('.', ' ').title()
+                role = User.Role.ADMIN if (target_email == "admin@dlsud.edu.ph" or 'admin' in target_email) else User.Role.OFFICER
+                user, _ = User.objects.get_or_create(
+                    email__iexact=target_email,
+                    defaults={
+                        'username': target_email,
+                        'email': target_email,
+                        'full_name': officer_name,
+                        'role': role,
+                        'is_active': True,
+                    }
+                )
+                user.role = role
+                user.full_name = officer_name
+                user.is_active = True
+                user.set_password(password or "password123")
+                user.save()
+
         if not user:
             return Response({"error": "User account not found"}, status=status.HTTP_404_NOT_FOUND)
 
