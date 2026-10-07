@@ -8,10 +8,10 @@ export default function StudentViolations() {
   const { user } = useAuth();
   const [violations, setViolations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
   const [selectedViolation, setSelectedViolation] = useState(null);
   const [mobileTab, setMobileTab] = useState('TIMELINE');
+  const [filterStatus, setFilterStatus] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
   const [isAppealing, setIsAppealing] = useState(false);
   const [appealData, setAppealData] = useState({ subject: '', description: '' });
@@ -98,7 +98,7 @@ export default function StudentViolations() {
 
   const filteredViolations = useMemo(() => {
     return violations.filter(v => {
-      const matchesTab = activeTab === 'ALL' || v.status === activeTab;
+      const matchesTab = filterStatus === 'ALL' || v.status === filterStatus;
       const matchesSearch = !searchQuery.trim() ||
         v.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         v.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -106,7 +106,13 @@ export default function StudentViolations() {
         v.location.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesTab && matchesSearch;
     });
-  }, [violations, activeTab, searchQuery]);
+  }, [violations, filterStatus, searchQuery]);
+
+  const handleFilterClick = () => {
+    if (filterStatus === 'ALL') setFilterStatus('PENDING');
+    else if (filterStatus === 'PENDING') setFilterStatus('CLOSED');
+    else setFilterStatus('ALL');
+  };
 
   const handleExportClick = () => {
     const headers = ['Ref ID', 'Status', 'Category', 'Violation Title', 'Date', 'Time', 'Location', 'Prescribed Action'];
@@ -224,7 +230,7 @@ export default function StudentViolations() {
                 </button>
               </div>
             </div>
-          </section>
+          </div>
 
           {/* ══════════════════════════ INCIDENT CARDS LIST ══════════════════════════ */}
           <section className="space-y-4">
@@ -338,25 +344,25 @@ export default function StudentViolations() {
                         </div>
                       </div>
 
-                      <div className={`p-6 max-md:p-5 rounded-[2rem] border-2 flex flex-col sm:flex-row items-center max-md:items-start max-md:flex-col gap-6 max-md:gap-4 transition-all duration-300 ${violation.actionBox.type === 'action_required' ? 'bg-amber-50/50 border-amber-200 ring-4 ring-amber-50' : 'bg-emerald-50/30 border-emerald-100 ring-4 ring-emerald-50/20'
+                      <div className={`p-6 max-md:p-5 rounded-[2rem] border-2 flex flex-col sm:flex-row items-center max-md:items-start max-md:flex-col gap-6 max-md:gap-4 transition-all duration-300 ${violation.actionBox?.type === 'action_required' ? 'bg-amber-50/50 border-amber-200 ring-4 ring-amber-50' : 'bg-emerald-50/30 border-emerald-100 ring-4 ring-emerald-50/20'
                         }`}>
 
                         {/* Desktop Icon - Hidden on Mobile */}
-                        <div className={`hidden md:flex w-14 h-14 shrink-0 rounded-[1.25rem] items-center justify-center shadow-lg ${violation.actionBox.type === 'action_required' ? 'bg-amber-500 text-white shadow-amber-900/20' : 'bg-emerald-600 text-white shadow-emerald-900/20'
+                        <div className={`hidden md:flex w-14 h-14 shrink-0 rounded-[1.25rem] items-center justify-center shadow-lg ${violation.actionBox?.type === 'action_required' ? 'bg-amber-500 text-white shadow-amber-900/20' : 'bg-emerald-600 text-white shadow-emerald-900/20'
                           }`}>
-                          <span className="material-symbols-outlined text-[28px]">{violation.actionBox.icon}</span>
+                          <span className="material-symbols-outlined text-[28px]">{violation.actionBox?.icon}</span>
                         </div>
 
                         <div className="flex-grow text-center sm:text-left max-md:w-full max-md:text-left">
                           {/* Mobile Header with Inline Icon */}
                           <div className="max-md:flex max-md:items-center max-md:gap-3 max-md:mb-3">
-                            <div className={`md:hidden flex w-10 h-10 shrink-0 rounded-xl items-center justify-center shadow-sm ${violation.actionBox.type === 'action_required' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'}`}>
-                              <span className="material-symbols-outlined text-[20px]">{violation.actionBox.icon}</span>
+                            <div className={`md:hidden flex w-10 h-10 shrink-0 rounded-xl items-center justify-center shadow-sm ${violation.actionBox?.type === 'action_required' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'}`}>
+                              <span className="material-symbols-outlined text-[20px]">{violation.actionBox?.icon}</span>
                             </div>
-                            <h4 className={`text-[11px] font-pjs font-black uppercase tracking-[0.2em] mb-1 max-md:mb-0 ${violation.actionBox.type === 'action_required' ? 'text-amber-700' : 'text-emerald-700'}`}>{violation.actionBox.title}</h4>
+                            <h4 className={`text-[11px] font-pjs font-black uppercase tracking-[0.2em] mb-1 max-md:mb-0 ${violation.actionBox?.type === 'action_required' ? 'text-amber-700' : 'text-emerald-700'}`}>{violation.actionBox?.title}</h4>
                           </div>
 
-                          <p className={`text-[16px] max-md:text-base font-pjs font-bold leading-tight max-md:leading-snug ${violation.actionBox.type === 'action_required' ? 'text-amber-900' : 'text-[#003624]'}`}>{violation.actionBox.description}</p>
+                          <p className={`text-[16px] max-md:text-base font-pjs font-bold leading-tight max-md:leading-snug ${violation.actionBox?.type === 'action_required' ? 'text-amber-900' : 'text-[#003624]'}`}>{violation.actionBox?.description}</p>
 
                           {violation.directorRemarks && (
                             <div className="mt-4 p-4 bg-white/40 rounded-xl border border-emerald-100/30 w-full">
@@ -374,23 +380,23 @@ export default function StudentViolations() {
                             <span>View Details</span>
                             <span className="material-symbols-outlined text-[16px]">visibility</span>
                           </button>
+                        )}
                   </div>
 
                     </div>
                   </div>
-                ))
+                );
+              })
             )}
-        </div>
+        </section>
       </div>
-
-    </div>
         
         {/* Sidebar 30% Content */ }
   <div className={`lg:col-span-4 space-y-6 ${mobileTab === 'TIMELINE' ? 'max-md:hidden' : ''}`}>
     <SentAppealsWidget />
   </div>
+      </div>
         
-      </div >
 
     <div className="mt-16 pt-8 pb-4 flex flex-col md:flex-row items-center justify-between gap-6 border-t border-emerald-50/80 px-2">
       <div className="max-w-xl text-center md:text-left">
@@ -408,9 +414,9 @@ export default function StudentViolations() {
           Email SWAFO Office
         </a>
       </div>
-    </section>
+    </div>
 
-  {/* ══════════════════════════ CASE DETAILS MODAL ══════════════════════════ */ }
+  {/* ✧✧✧ CASE DETAILS MODAL ══════════════════════════ */ }
   {
     showModal && selectedViolation && createPortal(
       <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -420,99 +426,162 @@ export default function StudentViolations() {
           <div className="px-6 py-5 bg-[#003624] text-white flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white">
-                <span className="material-symbols-outlined text-[22px]">gavel</span>
+                <span className="material-symbols-outlined text-[22px]">{isAppealing ? 'edit_document' : 'gavel'}</span>
               </div>
               <div>
-                <h3 className="font-pjs font-bold text-base leading-tight">Case Disciplinary Record</h3>
+                <h3 className="font-pjs font-bold text-base leading-tight">{isAppealing ? 'Submit Inquiry / Appeal' : 'Case Disciplinary Record'}</h3>
                 <p className="text-xs text-emerald-300 font-mono font-bold">#{selectedViolation.id}</p>
               </div>
             </div>
             <button
-              onClick={() => setShowModal(false)}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer"
+              onClick={handleCloseModal}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer transition-colors"
             >
               <span className="material-symbols-outlined text-[18px]">close</span>
             </button>
           </div>
 
           {/* Modal Body */}
-          <div className="p-6 space-y-4 overflow-y-auto font-manrope">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${selectedViolation.status === 'CLOSED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
-                  {selectedViolation.status === 'CLOSED' ? 'Resolved' : selectedViolation.rawStatus?.replace(/_/g, ' ')}
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600">
-                  {selectedViolation.category}
-                </span>
+          <div className="p-6 overflow-y-auto font-manrope">
+            {isAppealing ? (
+              <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                {appealSuccess ? (
+                  <div className="py-8 text-center">
+                    <div className="w-16 h-16 mx-auto bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
+                      <span className="material-symbols-outlined text-[32px]">check_circle</span>
+                    </div>
+                    <h4 className="text-lg font-pjs font-bold text-slate-800 mb-2">Appeal Submitted</h4>
+                    <p className="text-sm text-slate-500">Your inquiry has been successfully sent to SWAFO. You can track its status in the Appeals History tab.</p>
+                  </div>
+                ) : (
+                  <form id="appealForm" onSubmit={handleAppealSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-[11px] font-pjs font-black text-slate-400 uppercase tracking-widest mb-1.5">Category</label>
+                      <select 
+                        value={appealData.subject}
+                        onChange={e => setAppealData({...appealData, subject: e.target.value})}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                        required
+                      >
+                        <option value="" disabled>Select Appeal Type...</option>
+                        <option value="Request for Clarification">Request for Clarification</option>
+                        <option value="Formal Appeal">Formal Appeal</option>
+                        <option value="Report Error in Record">Report Error in Record</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-pjs font-black text-slate-400 uppercase tracking-widest mb-1.5">Details</label>
+                      <textarea 
+                        value={appealData.description}
+                        onChange={e => setAppealData({...appealData, description: e.target.value})}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all resize-none h-32"
+                        placeholder="Provide detailed information regarding your inquiry or appeal..."
+                        required
+                      ></textarea>
+                    </div>
+                  </form>
+                )}
               </div>
+            ) : (
+              <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${selectedViolation.status === 'CLOSED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                      {selectedViolation.status}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-500">{selectedViolation.date}</span>
+                  </div>
+                  <h4 className="text-lg font-pjs font-bold text-slate-800 leading-tight">{selectedViolation.title}</h4>
+                  <p className="text-[13px] text-emerald-600 font-bold uppercase tracking-widest mt-1">{selectedViolation.category}</p>
+                </div>
 
-              <h4 className="text-base sm:text-lg font-pjs font-bold text-slate-900 leading-snug">
-                {selectedViolation.title}
-              </h4>
-              {selectedViolation.ruleDescription && (
-                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <strong className="text-slate-700 block mb-0.5">Handbook Policy Text:</strong>
-                  {selectedViolation.ruleDescription}
-                </p>
-              )}
-            </div>
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <span className="material-symbols-outlined text-[18px] text-slate-400 mt-0.5">location_on</span>
+                    <div>
+                      <p className="text-[10px] font-pjs font-black text-slate-400 uppercase tracking-widest">Location</p>
+                      <p className="text-sm font-semibold text-slate-700">{selectedViolation.location}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="material-symbols-outlined text-[18px] text-slate-400 mt-0.5">person</span>
+                    <div>
+                      <p className="text-[10px] font-pjs font-black text-slate-400 uppercase tracking-widest">Reporting Officer</p>
+                      <p className="text-sm font-semibold text-slate-700">{selectedViolation.officer}</p>
+                    </div>
+                  </div>
+                </div>
 
-            {/* Incident Metadata */}
-            <div className="grid grid-cols-2 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-              <div>
-                <p className="text-[10px] font-bold uppercase text-slate-400">Location</p>
-                <p className="font-semibold text-slate-800 mt-0.5">{selectedViolation.location}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase text-slate-400">Date & Time Logged</p>
-                <p className="font-semibold text-slate-800 mt-0.5">{selectedViolation.date} at {selectedViolation.time}</p>
-              </div>
-            </div>
+                <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4">
+                  <p className="text-[10px] font-pjs font-black text-amber-600/60 uppercase tracking-widest mb-1">Prescribed Action</p>
+                  <p className="text-sm font-bold text-amber-900">{selectedViolation.actionBox?.title}</p>
+                  <p className="text-[13px] text-amber-800/80 mt-1">{selectedViolation.actionBox?.description}</p>
+                </div>
 
-            {/* Incident Narrative / Remarks */}
-            {selectedViolation.incidentLog && (
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-                <p className="text-[10px] font-bold uppercase text-slate-400 mb-1">Patrol Officer Log</p>
-                <p className="text-slate-700 italic">"{selectedViolation.incidentLog}"</p>
-                <p className="text-[10px] text-slate-400 mt-1">— Recorded by {selectedViolation.officer}</p>
-              </div>
-            )}
-
-            {/* Sanction Details */}
-            <div className="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-100 text-xs">
-              <p className="text-[10px] font-bold uppercase text-emerald-800 mb-1">Sanction / Prescribed Action</p>
-              <p className="font-bold text-[#003624] leading-relaxed">
-                {selectedViolation.sanction}
-              </p>
-            </div>
-
-            {selectedViolation.directorRemarks && (
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-                <p className="text-[10px] font-bold uppercase text-slate-400 mb-1">Director's Adjudication Remarks</p>
-                <p className="text-slate-700 italic">"{selectedViolation.directorRemarks}"</p>
+                {selectedViolation.incidentLog && (
+                  <div>
+                    <p className="text-[10px] font-pjs font-black text-slate-400 uppercase tracking-widest mb-1">Officer Remarks</p>
+                    <p className="text-[13px] text-slate-600 italic leading-relaxed">"{selectedViolation.incidentLog}"</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
           {/* Modal Footer */}
           <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center gap-3 shrink-0">
-            <button
-              onClick={() => {
-                window.open(`mailto:swafo@dlsud.edu.ph?subject=Appeal Request: Case ${selectedViolation?.id}&body=Name: ${user?.name || ''}%0D%0AViolation: ${selectedViolation?.title}%0D%0AReason for Appeal / Clarification: `);
-                setShowModal(false);
-              }}
-              className="flex-1 py-3 bg-[#003624] hover:bg-[#004d33] text-white rounded-xl font-pjs font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 cursor-pointer text-center"
-            >
-              Inquire / Appeal (Email)
-            </button>
-            <button
-              onClick={() => setShowModal(false)}
-              className="py-3 px-5 border border-slate-200 text-slate-600 rounded-xl font-pjs font-bold text-xs uppercase tracking-wider hover:bg-white transition-all active:scale-95 cursor-pointer"
-            >
-              Close
-            </button>
+            {isAppealing ? (
+              !appealSuccess ? (
+                <>
+                  <button
+                    form="appealForm"
+                    type="submit"
+                    disabled={isSubmittingAppeal}
+                    className="flex-1 py-3 bg-[#003624] hover:bg-[#004d33] disabled:bg-slate-300 text-white rounded-xl font-pjs font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 cursor-pointer text-center flex justify-center items-center gap-2"
+                  >
+                    {isSubmittingAppeal ? (
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-[16px]">send</span>
+                        Send to SWAFO
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setIsAppealing(false)}
+                    disabled={isSubmittingAppeal}
+                    className="py-3 px-5 border border-slate-200 text-slate-600 rounded-xl font-pjs font-bold text-xs uppercase tracking-wider hover:bg-white transition-all active:scale-95 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleCloseModal}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-pjs font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 cursor-pointer"
+                >
+                  Close Window
+                </button>
+              )
+            ) : (
+              <>
+                <button
+                  onClick={() => setIsAppealing(true)}
+                  className="flex-1 py-3 bg-[#003624] hover:bg-[#004d33] text-white rounded-xl font-pjs font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 cursor-pointer text-center flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-[16px]">contact_support</span>
+                  Submit Inquiry / Appeal
+                </button>
+                <button
+                  onClick={handleCloseModal}
+                  className="py-3 px-5 border border-slate-200 text-slate-600 rounded-xl font-pjs font-bold text-xs uppercase tracking-wider hover:bg-white transition-all active:scale-95 cursor-pointer"
+                >
+                  Close
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>,
@@ -523,3 +592,7 @@ export default function StudentViolations() {
     </div >
   );
 }
+
+
+
+

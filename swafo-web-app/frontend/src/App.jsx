@@ -29,6 +29,7 @@ import LiveNavigation from './features/maps/LiveNavigation';
 import UserManagement from './features/users/UserManagement';
 
 
+import ErrorBoundary from './components/ErrorBoundary';
 import { AuthProvider } from './context/AuthContext';
 import SwafoDevTools from './components/dev/SwafoDevTools';
 
@@ -36,6 +37,7 @@ import OfficerFreedomWall from './features/freedom_wall/OfficerFreedomWall';
 
 function App() {
   return (
+    <ErrorBoundary>
     <BrowserRouter>
       <AuthProvider>
         <Routes>
@@ -112,8 +114,10 @@ function App() {
         <SwafoDevTools />
       </AuthProvider>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 
 export default App;
+
 

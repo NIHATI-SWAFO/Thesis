@@ -368,7 +368,7 @@ export default function StudentDashboard() {
             <div className="mt-auto bg-white/10 rounded-2xl p-4 text-[12px] italic text-white/50 border border-white/10">"What are the curfew hours for dormitories?"</div>
           </Link>
         </div>
-      </section>
+      </div>
 
       {/* ═══════════════════════ RECENT VIOLATIONS FEED ═══════════════════════ */}
       <section className="bg-white p-5 sm:p-7 rounded-2xl sm:rounded-3xl shadow-sm border border-emerald-100/50">
@@ -516,6 +516,22 @@ export default function StudentDashboard() {
 }
 
 /* ═══════════════════════ SUB-COMPONENTS ═══════════════════════ */
+
+function LinkCard({ icon, title, description, linkText, linkIcon }) {
+  return (
+    <div className="bg-white p-6 max-md:p-5 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all h-full flex flex-col group relative overflow-hidden">
+      <div className="w-12 h-12 max-md:w-10 max-md:h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700 mb-4 max-md:mb-3 group-hover:scale-110 transition-transform">
+        <span className="material-symbols-outlined max-md:text-[20px]">{icon}</span>
+      </div>
+      <h4 className="font-pjs font-bold text-lg max-md:text-base text-slate-800 mb-2">{title}</h4>
+      {description && <p className="text-[13px] text-slate-500 font-manrope leading-relaxed mb-4">{description}</p>}
+      <div className="mt-auto pt-4 border-t border-slate-100 flex items-center gap-2 text-[12px] font-pjs font-bold text-emerald-700 uppercase tracking-widest group-hover:gap-3 transition-all">
+        {linkText || 'View Portal'} 
+        <span className="material-symbols-outlined text-[16px]">{linkIcon || 'arrow_forward'}</span>
+      </div>
+    </div>
+  );
+}
 
 function StatCard({ icon, label, value, subtitle, iconBg, iconColor, highlight }) {
   return (

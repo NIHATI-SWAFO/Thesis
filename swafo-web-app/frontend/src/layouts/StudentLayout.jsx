@@ -339,7 +339,7 @@ export default function StudentLayout() {
   );
 }
 
-function NavButton({ active, onClick, icon, label }) {
+function NavButton({ active, onClick, icon, label, isCenter }) {
   return (
     <button
       type="button"
@@ -362,4 +362,5 @@ function NavButton({ active, onClick, icon, label }) {
     </button>
   );
 }
+
 

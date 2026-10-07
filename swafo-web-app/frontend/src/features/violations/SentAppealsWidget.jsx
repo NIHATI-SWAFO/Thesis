@@ -65,8 +65,12 @@ export default function SentAppealsWidget() {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    if (user?.token) {
-      fetch(API_ENDPOINTS.VIOLATIONS_APPEALS, {
+    // Fail-safe: ensure we have both token and user ID before fetching
+    if (user?.token && user?.id) {
+      // Append student_id parameter as an extra frontend safeguard
+      const url = `${API_ENDPOINTS.VIOLATIONS_APPEALS}?student_id=${user.id}`;
+      
+      fetch(url, {
         headers: {
           'Authorization': `Bearer ${user.token}`
         }
@@ -166,9 +170,9 @@ export default function SentAppealsWidget() {
             <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : displayedAppeals.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 text-center px-4">
-            <span className="material-symbols-outlined text-[32px] text-slate-300 mb-2">inbox</span>
-            <p className="text-[13px] font-medium text-slate-500">
+          <div className="flex flex-col items-center justify-center min-h-[250px] space-y-3 text-center px-4">
+            <span className="material-symbols-outlined w-8 h-8 text-gray-300 flex items-center justify-center text-[32px]">folder</span>
+            <p className="text-sm font-medium text-gray-400">
               {activeTab === 'replies' ? 'No active replies from the admin.' : 'No appeals submitted yet.'}
             </p>
           </div>

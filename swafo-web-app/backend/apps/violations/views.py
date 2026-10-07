@@ -394,7 +394,7 @@ class IsStudentOrDirector(permissions.BasePermission):
         return True
 
 class AppealListView(generics.ListAPIView):
-    authentication_classes = []
+
     serializer_class = AppealSerializer
     permission_classes = [IsStudentOrDirector]
 
@@ -412,7 +412,7 @@ class AppealListView(generics.ListAPIView):
         return qs.order_by('-created_at')
 
 class AppealCreateView(generics.CreateAPIView):
-    authentication_classes = []
+
     serializer_class = AppealSerializer
     permission_classes = [IsStudentOrDirector]
 
@@ -447,4 +447,5 @@ class AppealUpdateView(generics.UpdateAPIView):
             notification_type=notification_type,
             reference_id=appeal.id
         )
+
 
