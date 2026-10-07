@@ -54,6 +54,7 @@ export const API_ENDPOINTS = {
   // Analytics
   OFFICER_DASHBOARD: `${API_BASE_URL}/api/analytics/officer-dashboard/`,
   ADMIN_DASHBOARD: `${API_BASE_URL}/api/analytics/admin-dashboard/`,
+  COLLEGE_REPORT: (college) => `${API_BASE_URL}/api/analytics/college-report/?college=${encodeURIComponent(college)}`,
   NOTIFICATIONS: (email = '', role = '') => {
     const params = new URLSearchParams();
     if (email) params.append('email', email);

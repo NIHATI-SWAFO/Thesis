@@ -164,7 +164,7 @@ export default function ReportsAnalytics() {
           <div className="col-span-2 sm:col-span-1 flex gap-2 w-full sm:w-auto">
             {collegeFilter && (
               <a
-                href={API_ENDPOINTS.COLLEGE_REPORT(collegeFilter)}
+                href={API_ENDPOINTS.COLLEGE_REPORT ? API_ENDPOINTS.COLLEGE_REPORT(collegeFilter) : '#'}
                 download
                 className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2.5 sm:py-3 bg-rose-600 text-white rounded-xl md:rounded-2xl text-[11px] sm:text-[13px] font-black shadow-lg shadow-rose-600/20 hover:scale-[1.02] active:scale-95 transition-all"
               >
