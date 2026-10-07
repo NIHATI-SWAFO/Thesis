@@ -92,6 +92,8 @@ export default function SentAppealsWidget() {
         console.error(err);
         setLoading(false);
       });
+    } else {
+      setLoading(false);
     }
   }, [user, searchParams]);
 

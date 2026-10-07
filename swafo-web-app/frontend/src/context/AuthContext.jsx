@@ -22,12 +22,50 @@ export const AuthProvider = ({ children }) => {
         // If we have a real MSAL account, it takes absolute precedence over any mock data
         if (accounts.length > 0) {
             const msalUser = accounts[0];
-            setCurrentUser({
-                name: msalUser.name,
-                email: msalUser.username,
-                role: 'STUDENT', // Default to STUDENT for MSAL, will be refined by backend fetches
-                isMock: false
-            });
+            const msalEmail = msalUser.username || msalUser.idTokenClaims?.preferred_username || '';
+            const msalName = msalUser.name || msalUser.idTokenClaims?.name || '';
+
+            setCurrentUser(prev => ({
+                id: prev?.id,
+                name: msalName || prev?.name,
+                email: msalEmail || prev?.email,
+                role: 'STUDENT',
+                isMock: false,
+                token: prev?.token || null
+            }));
+
+            // Sync with backend to ensure student account and StudentProfile are created/persisted in database
+            if (msalEmail) {
+                fetch(`${API_BASE_URL}/api/users/profile-by-email/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: msalEmail,
+                        name: msalName
+                    })
+                })
+                .then(res => {
+                    if (!res.ok) return null;
+                    return res.json();
+                })
+                .then(data => {
+                    if (data && data.profile) {
+                        setCurrentUser({
+                            id: data.user?.id || data.profile.user_details?.id,
+                            student_profile_id: data.profile.id,
+                            name: data.profile.user_details?.full_name || msalName,
+                            email: msalEmail,
+                            student_number: data.profile.student_number,
+                            course: data.profile.course,
+                            role: data.user?.role || 'STUDENT',
+                            token: data.access || null,
+                            isMock: false
+                        });
+                    }
+                })
+                .catch(err => console.warn("MSAL profile sync warning:", err));
+            }
+
             // Clear mock storage to prevent confusion
             if (localStorage.getItem('swafo_mock_user')) {
                 localStorage.removeItem('swafo_mock_user');

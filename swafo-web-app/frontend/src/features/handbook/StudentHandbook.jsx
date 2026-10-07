@@ -31,6 +31,7 @@ export default function StudentHandbook({ role = 'student' }) {
           acc[category].subItems.push({
             id: rule.id,
             rule_code: rule.rule_code,
+            title: rule.title || `Section ${rule.rule_code}`,
             content: rule.description,
             p1: rule.penalty_1st,
             p2: rule.penalty_2nd,
@@ -52,8 +53,8 @@ export default function StudentHandbook({ role = 'student' }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const getIconForCategory = (cat) => {
-    const lower = cat.toLowerCase();
+  function getIconForCategory(cat) {
+    const lower = (cat || '').toLowerCase();
     if (lower.includes('cloth') || lower.includes('dress') || lower.includes('uniform')) return 'checkroom';
     if (lower.includes('dishonest') || lower.includes('cheat') || lower.includes('plagiar')) return 'school';
     if (lower.includes('violent') || lower.includes('brawl') || lower.includes('assault')) return 'warning';
@@ -61,7 +62,7 @@ export default function StudentHandbook({ role = 'student' }) {
     if (lower.includes('behavior') || lower.includes('loiter')) return 'record_voice_over';
     if (lower.includes('safety') || lower.includes('security')) return 'security';
     return 'policy';
-  };
+  }
 
   const toggleSection = (id) => {
     const newExpanded = new Set(expandedSections);
@@ -209,13 +210,6 @@ export default function StudentHandbook({ role = 'student' }) {
           </button>
         </a>
       </div>
-
-      {/* ═══════════════════════ SEARCH BAR ═══════════════════════ */}
-      <div className="relative pt-4 pb-2 max-md:my-1 max-md:pt-2 max-md:pb-1">
-        <div className="absolute inset-y-0 left-0 top-4 bottom-2 pl-6 flex items-center pointer-events-none">
-          <span className="material-symbols-outlined text-[#006b5d]/50 text-[22px]">search</span>
-        </div>
-      </section>
 
       {/* ═══════════════════════ SEARCH & CONTROLS ═══════════════════════ */}
       <section className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm space-y-4 no-print">
@@ -421,7 +415,7 @@ export default function StudentHandbook({ role = 'student' }) {
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
                 </div>
                 );
           })
@@ -439,5 +433,28 @@ export default function StudentHandbook({ role = 'student' }) {
             </footer>
 
     </div>
+  );
+}
+
+function HighlightMatch({ text, query }) {
+  if (!text) return null;
+  if (!query || !query.trim()) return <span>{text}</span>;
+
+  const escaped = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escaped})`, 'gi');
+  const parts = String(text).split(regex);
+
+  return (
+    <span>
+      {parts.map((part, index) =>
+        part.toLowerCase() === query.trim().toLowerCase() ? (
+          <mark key={index} className="bg-emerald-100 text-emerald-900 rounded px-1 py-0.5 font-bold">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </span>
   );
 }

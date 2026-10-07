@@ -18,6 +18,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     has_pending_violations = serializers.SerializerMethodField()
     risk_score = serializers.SerializerMethodField()
     risk_standing = serializers.SerializerMethodField()
+    needs_id_confirmation = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentProfile
@@ -25,7 +26,16 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             'id', 'student_number', 'user_details', 'course', 'year_level',
             'violation_count', 'is_repeat_offender', 'has_pending_violations',
             'clearance_status', 'risk_score', 'risk_standing', 'barcode_value',
+            'is_id_confirmed', 'needs_id_confirmation',
         ]
+
+    def get_needs_id_confirmation(self, obj):
+        if obj.is_id_confirmed:
+            return False
+        import re
+        if obj.user and obj.user.email and re.search(r'\b(20\d{7})\b|\b(\d{9})\b', obj.user.email):
+            return False
+        return True
 
     # ─── Basic Counts ──────────────────────────────────────────────
     def get_violation_count(self, obj):

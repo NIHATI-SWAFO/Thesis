@@ -1,0 +1,29 @@
+{
+  "compliance_status": "COMPLIANT",
+  "detection_mode": "CIVILIAN_MODE",
+  "year_level": 2,
+  "violations": [],
+  "violation_count": 0,
+  "detected_garments": {
+    "tops": [],
+    "bottoms": [],
+    "footwear": [
+      {
+        "class": "footwear_shoes",
+        "confidence": 0.528
+      },
+      {
+        "class": "footwear_shoes",
+        "confidence": 0.4332
+      }
+    ],
+    "prohibited": []
+  },
+  "detected_classes": [
+    "footwear_shoes",
+    "footwear_shoes"
+  ],
+  "timestamp": "2026-05-12T01:57:51.610485",
+  "image": "test.png",
+  "total_detections": 2
+}

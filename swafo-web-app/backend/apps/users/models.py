@@ -54,6 +54,7 @@ class StudentProfile(models.Model):
     
     # Future barcode mapping
     barcode_value = models.CharField(max_length=255, blank=True, null=True)
+    is_id_confirmed = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.student_number} - {self.user.full_name}"

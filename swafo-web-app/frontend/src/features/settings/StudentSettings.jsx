@@ -28,7 +28,7 @@ export default function StudentSettings() {
 
   useEffect(() => {
     if (user?.email) {
-      fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${user.email}`)
+      fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name || '')}`)
         .then(res => res.json())
         .then(data => {
           if (!data.error) setProfile(data);

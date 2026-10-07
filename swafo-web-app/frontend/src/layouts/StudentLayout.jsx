@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMsal } from "@azure/msal-react";
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from '../components/common/NotificationBell';
+import StudentNumberPromptModal from '../components/StudentNumberPromptModal';
+import ErrorBoundary from '../components/common/ErrorBoundary';
+import { API_ENDPOINTS } from '../api/config';
 
 const navItems = [
   { name: 'Dashboard', path: '/student/dashboard', icon: 'dashboard' },
@@ -23,6 +26,40 @@ export default function StudentLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [topSearch, setTopSearch] = useState('');
+  const [showIdPrompt, setShowIdPrompt] = useState(false);
+  const [studentProfile, setStudentProfile] = useState(null);
+
+  useEffect(() => {
+    if (user?.email) {
+      const dismissed = sessionStorage.getItem(`swafo_id_prompt_dismissed_${user.email}`);
+      fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name || '')}`)
+        .then(res => {
+          if (!res.ok) return null;
+          return res.json();
+        })
+        .then(data => {
+          if (data && !data.error) {
+            setStudentProfile(data);
+            if (data.needs_id_confirmation && !dismissed) {
+              setShowIdPrompt(true);
+            }
+          }
+        })
+        .catch(err => console.error("ID prompt profile check error:", err));
+    }
+  }, [user]);
+
+  const handleIdConfirmed = (updatedProfile) => {
+    setStudentProfile(updatedProfile);
+    setShowIdPrompt(false);
+  };
+
+  const handleDismissPrompt = () => {
+    if (user?.email) {
+      sessionStorage.setItem(`swafo_id_prompt_dismissed_${user.email}`, 'true');
+    }
+    setShowIdPrompt(false);
+  };
 
   const handleLogout = () => {
     logout();
@@ -297,7 +334,9 @@ export default function StudentLayout() {
 
         {/* Scrollable Page Content */}
         <main className="flex-1 overflow-y-auto px-4 py-5 lg:px-8 lg:py-8 custom-scrollbar pb-24 lg:pb-8">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
 
         {/* MOBILE BOTTOM NAV */}
@@ -335,11 +374,20 @@ export default function StudentLayout() {
           />
         </div>
       </div>
+
+      {/* ══════════════════════════════ FIRST-TIME STUDENT NUMBER PROMPT ══════════════════════════════ */}
+      <StudentNumberPromptModal
+        isOpen={showIdPrompt}
+        onClose={handleDismissPrompt}
+        user={user}
+        profile={studentProfile}
+        onSuccess={handleIdConfirmed}
+      />
     </div>
   );
 }
 
-function NavButton({ active, onClick, icon, label }) {
+function NavButton({ active, onClick, icon, label, isCenter = false }) {
   return (
     <button
       type="button"

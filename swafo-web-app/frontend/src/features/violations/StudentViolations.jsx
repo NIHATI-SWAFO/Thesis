@@ -60,34 +60,63 @@ export default function StudentViolations() {
     }
   };
 
+  const handleFilterClick = () => {
+    setActiveTab(prev => {
+      if (prev === 'ALL') return 'PENDING';
+      if (prev === 'PENDING') return 'CLOSED';
+      return 'ALL';
+    });
+  };
+
+  const filterStatus = activeTab;
+
   useEffect(() => {
     if (user?.email) {
       fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?email=${user.email}`)
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) return [];
+          return res.json();
+        })
         .then(data => {
           const results = Array.isArray(data) ? data : (data.results || []);
-          const transformed = results.map(v => ({
-            id: `VR-${new Date(v.timestamp).getFullYear()}-${v.id.toString().padStart(3, '0')}`,
-            rawId: v.id,
-            status: ['CLOSED', 'DISMISSED'].includes(v.status) ? "CLOSED" : "PENDING",
-            rawStatus: v.status,
-            title: v.rule_details?.title || v.rule_details?.description || v.rule_details?.rule_code || "Policy Violation",
-            category: v.rule_details?.category || "General Regulation",
-            ruleDescription: v.rule_details?.description || "Refer to Campus Student Handbook for complete policy regulation details.",
-            incidentLog: v.description || "Violation recorded during standard campus patrol inspection.",
-            officer: v.officer_name || "Institutional Campus Patrol",
-            date: new Date(v.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            time: new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            timestamp: v.timestamp,
-            location: v.location || "Campus Premises",
-            directorRemarks: v.director_remarks,
-            sanction: v.director_sanction || v.prescribed_sanction || v.corrective_action || "Under Institutional Board Review",
-            isMajor: (v.rule_details?.category || '').toUpperCase().includes('MAJOR') || (v.rule_details?.title || '').toUpperCase().includes('MAJOR')
-          }));
+          const transformed = results.map(v => {
+            const isClosed = ['CLOSED', 'DISMISSED'].includes(v.status);
+            return {
+              id: `VR-${new Date(v.timestamp).getFullYear()}-${v.id.toString().padStart(3, '0')}`,
+              rawId: v.id,
+              status: isClosed ? "CLOSED" : "PENDING",
+              rawStatus: v.status,
+              title: v.rule_details?.title || v.rule_details?.description || v.rule_details?.rule_code || "Policy Violation",
+              category: v.rule_details?.category || "General Regulation",
+              ruleDescription: v.rule_details?.description || "Refer to Campus Student Handbook for complete policy regulation details.",
+              incidentLog: v.description || "Violation recorded during standard campus patrol inspection.",
+              officer: v.officer_name || "Institutional Campus Patrol",
+              date: new Date(v.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+              time: new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              timestamp: v.timestamp,
+              location: v.location || "Campus Premises",
+              directorRemarks: v.director_remarks,
+              sanction: v.director_sanction || v.prescribed_sanction || v.corrective_action || "Under Institutional Board Review",
+              isMajor: (v.rule_details?.category || '').toUpperCase().includes('MAJOR') || (v.rule_details?.title || '').toUpperCase().includes('MAJOR'),
+              actionBox: isClosed ? {
+                type: 'resolved',
+                icon: 'verified',
+                title: 'Incident Resolved',
+                description: 'This case has been completed and formally closed in institutional records.'
+              } : {
+                type: 'action_required',
+                icon: 'warning',
+                title: 'Resolution Required',
+                description: v.prescribed_sanction || v.director_sanction || 'Under review by SWAFO Disciplinary Board.'
+              }
+            };
+          });
           setViolations(transformed);
         })
         .catch(err => console.error("Error fetching violations:", err))
         .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
   }, [user]);
 
@@ -224,10 +253,9 @@ export default function StudentViolations() {
                 </button>
               </div>
             </div>
-          </section>
 
-          {/* ══════════════════════════ INCIDENT CARDS LIST ══════════════════════════ */}
-          <section className="space-y-4">
+            {/* ══════════════════════════ INCIDENT CARDS LIST ══════════════════════════ */}
+            <div className="space-y-4">
             {filteredViolations.length === 0 ? (
               <div className="py-14 sm:py-20 text-center bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-6">
                 <div className="w-14 h-14 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center mx-auto mb-3">
@@ -374,11 +402,13 @@ export default function StudentViolations() {
                             <span>View Details</span>
                             <span className="material-symbols-outlined text-[16px]">visibility</span>
                           </button>
-                  </div>
+                        )}
+                      </div>
 
                     </div>
                   </div>
-                ))
+                );
+              })
             )}
         </div>
       </div>
@@ -408,7 +438,7 @@ export default function StudentViolations() {
           Email SWAFO Office
         </a>
       </div>
-    </section>
+    </div>
 
   {/* ══════════════════════════ CASE DETAILS MODAL ══════════════════════════ */ }
   {
