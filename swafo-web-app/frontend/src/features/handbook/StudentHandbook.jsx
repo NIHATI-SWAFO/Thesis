@@ -1,22 +1,58 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { API_ENDPOINTS } from '../../api/config';
 
-export default function StudentHandbook({ role = 'student' }) {
+const getSynonyms = (query) => {
+  const synonyms = {
+    "fake id": ["someone else's id", "forged id", "tampered id"],
+    "uniform": ["dress code", "clothing", "attire", "shirt", "blouse", "pants", "shoes"],
+    "fighting": ["brawl", "physical assault", "hitting", "punching", "violence"],
+    "cheating": ["plagiarism", "copying", "academic dishonesty", "leakage"],
+    "drinking": ["liquor", "alcohol", "intoxicated", "drunk"],
+    "smoking": ["vape", "e-cigarette", "tobacco"],
+    "cutting": ["skipping classes", "truancy", "absent without"],
+    "late": ["tardiness", "not on time"]
+  };
+  
+  let related = [];
+  for (const [key, values] of Object.entries(synonyms)) {
+    if (key.includes(query) || query.includes(key)) {
+      related = [...related, ...values];
+    }
+  }
+  return related;
+};
+
+const HighlightMatch = ({ text, query }) => {
+  if (!query || !query.trim() || !text) return <>{text}</>;
+  
+  const escapedQuery = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${escapedQuery})`, 'gi'));
+  
+  return (
+    <>
+      {parts.map((part, i) => 
+        part.toLowerCase() === query.trim().toLowerCase() ? 
+          <mark key={i} className="bg-[#2bd99b]/40 text-[#006b5d] px-1 rounded">{part}</mark> : 
+          <span key={i}>{part}</span>
+      )}
+    </>
+  );
+};
+
+export default function StudentHandbook() {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('ALL');
-  const [severityFilter, setSeverityFilter] = useState('ALL'); // 'ALL' | 'MINOR' | 'MAJOR'
   const [expandedSections, setExpandedSections] = useState(new Set());
-  const [copiedItem, setCopiedItem] = useState(null);
 
   useEffect(() => {
     fetch(API_ENDPOINTS.HANDBOOK_RULES)
       .then(res => res.json())
       .then(data => {
+        // Transform the flat list into grouped sections for the UI
+        // Handle both direct array and paginated results
         const results = Array.isArray(data) ? data : (data.results || []);
-
+        
         const grouped = results.reduce((acc, rule) => {
           const category = rule.category || "General Policies";
           if (!acc[category]) {
@@ -24,43 +60,33 @@ export default function StudentHandbook({ role = 'student' }) {
               id: `cat-${category.replace(/\s+/g, '-').toLowerCase()}`,
               title: category,
               icon: getIconForCategory(category),
-              isMajor: category.toLowerCase().includes('major'),
               subItems: []
             };
           }
           acc[category].subItems.push({
-            id: rule.id,
-            rule_code: rule.rule_code,
-            content: rule.description,
-            p1: rule.penalty_1st,
-            p2: rule.penalty_2nd,
-            p3: rule.penalty_3rd,
-            p4: rule.penalty_4th,
-            p5: rule.penalty_5th,
+            title: rule.rule_code,
+            content: rule.description
           });
           return acc;
         }, {});
-
+        
         const sectionList = Object.values(grouped);
         setSections(sectionList);
-        if (sectionList.length > 0) {
-          // Default expand all sections for immediate visibility
-          setExpandedSections(new Set(sectionList.map(s => s.id)));
-        }
+        if (sectionList.length > 0) setExpandedSections(new Set([sectionList[0].id]));
       })
       .catch(err => console.error("Handbook fetch error:", err))
       .finally(() => setLoading(false));
   }, []);
 
   const getIconForCategory = (cat) => {
-    const lower = cat.toLowerCase();
-    if (lower.includes('cloth') || lower.includes('dress') || lower.includes('uniform')) return 'checkroom';
-    if (lower.includes('dishonest') || lower.includes('cheat') || lower.includes('plagiar')) return 'school';
-    if (lower.includes('violent') || lower.includes('brawl') || lower.includes('assault')) return 'warning';
-    if (lower.includes('misconduct') || lower.includes('conduct')) return 'gavel';
-    if (lower.includes('behavior') || lower.includes('loiter')) return 'record_voice_over';
-    if (lower.includes('safety') || lower.includes('security')) return 'security';
-    return 'policy';
+    const map = {
+      'Dress Code': 'checkroom',
+      'Campus Safety': 'security',
+      'Academic Integrity': 'menu_book',
+      'Conduct': 'gavel',
+      'Uniform': 'checkroom'
+    };
+    return map[cat] || 'policy';
   };
 
   const toggleSection = (id) => {
@@ -73,113 +99,77 @@ export default function StudentHandbook({ role = 'student' }) {
     setExpandedSections(newExpanded);
   };
 
-  const expandAll = () => {
-    setExpandedSections(new Set(sections.map(s => s.id)));
-  };
+  const filteredSections = useMemo(() => {
+    if (!searchQuery.trim()) return sections;
+    
+    const lowerQuery = searchQuery.toLowerCase().trim();
+    const relatedTerms = getSynonyms(lowerQuery);
+    
+    let resultSections = [];
 
-  const collapseAll = () => {
-    setExpandedSections(new Set());
-  };
+    sections.forEach(sec => {
+      const exactCodeMatches = [];
+      const matchingSubItems = [];
 
-  // Auto-expand sections when user types a search query
-  useEffect(() => {
-    if (searchQuery.trim().length > 0) {
-      setExpandedSections(new Set(sections.map(s => s.id)));
+      sec.subItems.forEach(sub => {
+        const titleLower = sub.title.toLowerCase();
+        const contentLower = sub.content.toLowerCase();
+        
+        // Exact Clause Number Match
+        if (titleLower === lowerQuery) {
+          exactCodeMatches.push(sub);
+        } 
+        // Granular Keyword or Semantic Match
+        else if (
+          titleLower.includes(lowerQuery) || 
+          contentLower.includes(lowerQuery) ||
+          relatedTerms.some(term => titleLower.includes(term) || contentLower.includes(term))
+        ) {
+          matchingSubItems.push(sub);
+        }
+      });
+
+      const combined = [...exactCodeMatches, ...matchingSubItems];
+      if (combined.length > 0) {
+        resultSections.push({
+          ...sec,
+          subItems: combined,
+          hasExactMatch: exactCodeMatches.length > 0
+        });
+      }
+    });
+
+    const hasAnyExactMatch = resultSections.some(s => s.hasExactMatch);
+    if (hasAnyExactMatch) {
+       // Priority Ranking: return only the exact matches
+       return resultSections
+         .filter(s => s.hasExactMatch)
+         .map(s => ({
+           ...s,
+           subItems: s.subItems.filter(sub => sub.title.toLowerCase() === lowerQuery)
+         }));
     }
+
+    return resultSections;
   }, [searchQuery, sections]);
 
-  // Overall metric counts
-  const totalRulesCount = useMemo(() => {
-    return sections.reduce((acc, s) => acc + s.subItems.length, 0);
-  }, [sections]);
-
-  const minorRulesCount = useMemo(() => {
-    return sections.filter(s => !s.isMajor).reduce((acc, s) => acc + s.subItems.length, 0);
-  }, [sections]);
-
-  const majorRulesCount = useMemo(() => {
-    return sections.filter(s => s.isMajor).reduce((acc, s) => acc + s.subItems.length, 0);
-  }, [sections]);
-
-  // Categories list with counts
-  const categoriesWithCounts = useMemo(() => {
-    return sections.map(s => ({
-      title: s.title,
-      count: s.subItems.length,
-      isMajor: s.isMajor
-    }));
-  }, [sections]);
-
-  // Filtered Sections
-  const filteredSections = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    return sections
-      .filter(sec => {
-        // Severity Filter
-        if (severityFilter === 'MINOR' && sec.isMajor) return false;
-        if (severityFilter === 'MAJOR' && !sec.isMajor) return false;
-
-        // Category Filter
-        if (selectedCategory !== 'ALL' && sec.title !== selectedCategory) {
-          return false;
-        }
-        return true;
-      })
-      .map(sec => {
-        if (!query) return sec;
-
-        const titleMatch = sec.title.toLowerCase().includes(query);
-        const matchingItems = sec.subItems.filter(item =>
-          item.rule_code.toLowerCase().includes(query) ||
-          item.content.toLowerCase().includes(query) ||
-          (item.p1 && item.p1.toLowerCase().includes(query)) ||
-          (item.p2 && item.p2.toLowerCase().includes(query)) ||
-          (item.p3 && item.p3.toLowerCase().includes(query)) ||
-          (item.p4 && item.p4.toLowerCase().includes(query))
-        );
-
-        if (titleMatch) return sec;
-        if (matchingItems.length > 0) {
-          return { ...sec, subItems: matchingItems };
-        }
-        return null;
-      })
-      .filter(Boolean);
-  }, [searchQuery, selectedCategory, severityFilter, sections]);
-
-  const handleCopyCitation = (item) => {
-    const textToCopy = `Section ${item.rule_code}: ${item.content}`;
-    navigator.clipboard.writeText(textToCopy).then(() => {
-      setCopiedItem(item.rule_code);
-      setTimeout(() => setCopiedItem(null), 2000);
-    });
-  };
-
-  const handlePrintPdf = () => {
-    // Expand all before triggering print
-    expandAll();
-    setTimeout(() => {
-      window.print();
-    }, 150);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 text-center">
-        <div className="w-12 h-12 border-4 border-emerald-100 border-t-[#003624] rounded-full animate-spin mb-4" />
-        <p className="font-pjs font-bold text-sm text-[#003624]">Loading Campus Handbook...</p>
-        <p className="text-xs text-slate-400 mt-1">Retrieving official policy provisions from institutional registry</p>
-      </div>
-    );
-  }
+  // Auto-expand sections when searching
+  useEffect(() => {
+    if (searchQuery.trim() && filteredSections.length > 0) {
+      setExpandedSections(prev => {
+        const next = new Set(prev);
+        filteredSections.forEach(s => next.add(s.id));
+        return next;
+      });
+    }
+  }, [searchQuery]);
 
   return (
     <div className="max-w-[1100px] mx-auto space-y-6 max-md:space-y-4 animate-fade-in-up pb-12 max-md:pb-32">
-
+      
       {/* ═══════════════════════ MAIN GREEN HEADER ═══════════════════════ */}
       <div className="relative overflow-hidden bg-[#0a6c4c] p-8 md:p-10 max-md:py-5 max-md:px-5 rounded-[2rem] shadow-[0_4px_20px_rgba(0,107,93,0.1)] flex flex-col md:flex-row md:items-center justify-between gap-8 max-md:gap-4 group">
-
+        
         {/* Minimal Right Edge Shine (Matching User Mockup) */}
         <div className="absolute top-0 right-0 w-[30%] h-full pointer-events-none bg-gradient-to-l from-[#20a07a] to-transparent opacity-80" />
 
@@ -194,12 +184,12 @@ export default function StudentHandbook({ role = 'student' }) {
           </h1>
           <p className="text-white/80 font-manrope text-[14px] md:text-[15px] max-md:text-[13px] font-medium leading-relaxed max-w-xl">
             The comprehensive guide to all campus operations,
-            <br className="hidden md:block" /> rights, and expectations.
+            <br className="hidden md:block"/> rights, and expectations.
           </p>
         </div>
 
-        <a
-          href="/DLSU-D-Student-Handbook-SY2023-2027.pdf"
+        <a 
+          href="/DLSU-D-Student-Handbook-SY2023-2027.pdf" 
           download
           className="relative z-10 shrink-0 self-start md:self-center outline-none max-md:w-full max-md:mt-2"
         >
@@ -215,194 +205,71 @@ export default function StudentHandbook({ role = 'student' }) {
         <div className="absolute inset-y-0 left-0 top-4 bottom-2 pl-6 flex items-center pointer-events-none">
           <span className="material-symbols-outlined text-[#006b5d]/50 text-[22px]">search</span>
         </div>
-      </section>
+        <input
+          type="text"
+          placeholder="Search policies, rules, or guidelines..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full bg-white border border-black/5 placeholder:text-portal-text-muted/40 text-[#1a1a1a] text-[14px] font-manrope font-medium rounded-2xl py-4 flex pl-14 pr-6 focus:outline-none focus:ring-2 focus:ring-[#006b5d]/20 transition-all shadow-sm"
+        />
+      </div>
 
-      {/* ═══════════════════════ SEARCH & CONTROLS ═══════════════════════ */}
-      <section className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm space-y-4 no-print">
-
-        {/* Top Control Bar: Search + Expand/Collapse */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="relative w-full sm:flex-1">
-            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
-              search
-            </span>
-            <input
-              type="text"
-              placeholder="Search by rule code (e.g. 27.1.2.1), dress code, misconduct, suspension..."
-              value={searchQuery || ""}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 font-manrope transition-all"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
-                title="Clear search"
-              >
-                <span className="material-symbols-outlined text-[18px]">close</span>
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-            <button
-              onClick={expandAll}
-              className="px-3 py-1.5 rounded-lg text-xs font-pjs font-bold text-slate-600 hover:text-[#003624] hover:bg-slate-100 transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-[16px]">unfold_more</span>
-              Expand All
-            </button>
-            <span className="text-slate-300">•</span>
-            <button
-              onClick={collapseAll}
-              className="px-3 py-1.5 rounded-lg text-xs font-pjs font-bold text-slate-600 hover:text-[#003624] hover:bg-slate-100 transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-[16px]">unfold_less</span>
-              Collapse All
-            </button>
-          </div>
-        </div>
-
-        {/* Severity Filter Tabs */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
-          <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 font-pjs mr-1 hidden sm:inline-block">
-            Scope:
-          </span>
-          <button
-            onClick={() => { setSeverityFilter('ALL'); setSelectedCategory('ALL'); }}
-            className={`px-3 py-1 rounded-lg text-xs font-pjs font-bold tracking-wider transition-all cursor-pointer ${severityFilter === 'ALL' && selectedCategory === 'ALL'
-              ? 'bg-[#003624] text-white shadow-xs'
-              : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-              }`}
-          >
-            All Policies ({totalRulesCount})
-          </button>
-          <button
-            onClick={() => { setSeverityFilter('MINOR'); setSelectedCategory('ALL'); }}
-            className={`px-3 py-1 rounded-lg text-xs font-pjs font-bold tracking-wider transition-all cursor-pointer ${severityFilter === 'MINOR'
-              ? 'bg-amber-600 text-white shadow-xs'
-              : 'bg-amber-50 hover:bg-amber-100 text-amber-800'
-              }`}
-          >
-            Minor Offenses ({minorRulesCount})
-          </button>
-          <button
-            onClick={() => { setSeverityFilter('MAJOR'); setSelectedCategory('ALL'); }}
-            className={`px-3 py-1 rounded-lg text-xs font-pjs font-bold tracking-wider transition-all cursor-pointer ${severityFilter === 'MAJOR'
-              ? 'bg-rose-700 text-white shadow-xs'
-              : 'bg-rose-50 hover:bg-rose-100 text-rose-800'
-              }`}
-          >
-            Major Violations ({majorRulesCount})
-          </button>
-        </div>
-
-        {/* Category Pills Slider */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 scrollbar-none">
-          <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 font-pjs mr-1 shrink-0 hidden sm:inline-block">
-            Categories:
-          </span>
-          {categoriesWithCounts.map((cat) => {
-            const isSelected = selectedCategory === cat.title;
-            return (
-              <button
-                key={cat.title}
-                onClick={() => {
-                  setSelectedCategory(isSelected ? 'ALL' : cat.title);
-                  // Sync severity filter
-                  if (!isSelected) {
-                    setSeverityFilter(cat.isMajor ? 'MAJOR' : 'MINOR');
-                  }
-                }}
-                className={`px-3 py-1.5 rounded-full text-xs font-pjs font-bold uppercase tracking-wider shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
-                  ? 'bg-[#003624] text-white shadow-xs'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                  }`}
-              >
-                <span>{cat.title}</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
-                  }`}>
-                  {cat.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ═══════════════════════ ACCORDION POLICY LIST ═══════════════════════ */}
-      <section className="space-y-4">
+      {/* ═══════════════════════ ACCORDION LIST ═══════════════════════ */}
+      <div className="space-y-4">
         {filteredSections.length === 0 ? (
-          <div className="py-14 sm:py-20 text-center bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-6">
-            <div className="w-14 h-14 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-3">
-              <span className="material-symbols-outlined text-[32px]">menu_book</span>
+          <div className="py-16 text-center bg-white rounded-[1.5rem] border border-black/5 shadow-sm">
+            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-3xl">search_off</span>
             </div>
-            <h3 className="font-pjs font-bold text-base text-slate-800 mb-1">No Matching Handbook Policies</h3>
-            <p className="text-xs text-slate-400 font-manrope max-w-sm mx-auto">
-              We couldn't find any policy matching "{searchQuery}". Try using different terms or ask the AI Policy Curator.
-            </p>
-            <div className="mt-4 flex items-center justify-center gap-3">
-              <button
-                onClick={() => { setSearchQuery(''); setSelectedCategory('ALL'); setSeverityFilter('ALL'); }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
-              >
-                Reset Filters
-              </button>
-              {role !== 'admin' && (
-                <Link
-                  to="/student/chatbot"
-                  className="px-4 py-2 bg-[#003624] text-white rounded-xl text-xs font-bold transition-all no-underline cursor-pointer"
-                >
-                  Ask AI Assistant
-                </Link>
-              )}
-            </div>
+            <h3 className="text-lg font-pjs font-bold text-[#1a1a1a] mb-1">No results found</h3>
+            <p className="text-[14px] font-manrope text-portal-text-muted">We couldn't match "{searchQuery}" to any handbook policy.</p>
           </div>
         ) : (
           filteredSections.map((section) => {
             const isOpen = expandedSections.has(section.id);
 
             return (
-              <div
-                key={section.id}
-                className={`bg-white rounded-2xl sm:rounded-3xl border transition-all duration-200 overflow-hidden ${isOpen
-                  ? 'border-emerald-200/80 shadow-md ring-1 ring-emerald-50'
-                  : 'border-slate-100 shadow-sm hover:border-slate-200'
-                  }`}
+              <div 
+                key={section.id} 
+                className={`transition-all duration-300 rounded-[1.25rem] overflow-hidden ${
+                  isOpen 
+                    ? 'bg-white shadow-[0_10px_40px_rgba(0,107,93,0.08)] border-x border-b border-black/5 border-t-4 border-[#2bd99b]' 
+                    : 'bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-transparent hover:border-black/5'
+                }`}
               >
-                {/* Section Accordion Header */}
+                {/* Accordion Header */}
                 <button
                   onClick={() => toggleSection(section.id)}
                   className="w-full px-6 py-5 max-md:py-3 max-md:px-4 flex items-center justify-between text-left focus:outline-none bg-transparent"
                 >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isOpen
-                      ? (section.isMajor ? 'bg-rose-700 text-white shadow-xs' : 'bg-[#003624] text-white shadow-xs')
-                      : (section.isMajor ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-[#003624]')
-                      }`}>
+                  <div className="flex items-center gap-4">
+                    {/* Dynamic Icon */}
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                      isOpen 
+                        ? 'bg-[#2bd99b] text-white shadow-sm' 
+                        : 'bg-slate-100 text-slate-500'
+                    }`}>
                       <span className="material-symbols-outlined text-[20px]">{section.icon}</span>
                     </div>
-                    <h3 className={`text-[15px] max-md:text-[14px] font-pjs font-bold transition-colors ${isOpen ? 'text-[#1a1a1a]' : 'text-[#1a1a1a]'
-                      }`}>
+                    <h3 className={`text-[15px] max-md:text-[14px] font-pjs font-bold transition-colors ${
+                      isOpen ? 'text-[#1a1a1a]' : 'text-[#1a1a1a]'
+                    }`}>
                       {section.title}
                     </h3>
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs font-mono font-bold text-slate-400 hidden sm:inline-block">
-                      {isOpen ? 'Hide' : 'View'}
-                    </span>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform duration-200 ${isOpen ? 'bg-slate-100 rotate-180 text-emerald-800' : 'text-slate-400'
-                      }`}>
-                      <span className="material-symbols-outlined text-[20px]">expand_more</span>
-                    </div>
-                  </div>
+                  
+                  <span className={`material-symbols-outlined transition-transform duration-300 ${
+                    isOpen ? 'text-[#006b5d] rotate-180' : 'text-slate-400'
+                  }`}>
+                    expand_more
+                  </span>
                 </button>
-
+                
                 {/* Accordion Content area */}
-                <div
-                  className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                    }`}
+                <div 
+                  className={`grid transition-all duration-300 ease-in-out ${
+                    isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                  }`}
                 >
                   <div className="overflow-hidden">
                     <div className="px-[4rem] max-md:px-6 pb-8 max-md:pb-4 pt-2">
@@ -421,22 +288,12 @@ export default function StudentHandbook({ role = 'student' }) {
                       </div>
                     </div>
                   </div>
-                )}
                 </div>
-                );
+              </div>
+            );
           })
         )}
-              </section>
-
-      {/* ═══════════════════════ FOOTER NOTICE ═══════════════════════ */ }
-            <footer className="p-6 bg-slate-50 rounded-2xl border border-slate-200/80 text-center space-y-2 no-print">
-              <p className="text-xs font-pjs font-bold text-slate-700">
-                De La Salle University - Dasmariñas • Student Welfare and Formation Office (SWAFO)
-              </p>
-              <p className="text-[11px] text-slate-400 font-manrope max-w-xl mx-auto">
-                All provisions contained herein are officially sanctioned by the University Discipline Board. For policy inquiries or clarifications, reach out directly through the Student Grievance & Appeal portal or consultation channels.
-              </p>
-            </footer>
+      </div>
 
     </div>
   );
