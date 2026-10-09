@@ -29,7 +29,7 @@ export default function StudentDashboard() {
       const profileResp = await fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name || '')}`);
       if (profileResp.ok) setProfile(await profileResp.json());
 
-      const violationsResp = await fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?email=${user.email}`);
+      const violationsResp = await fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?email=${encodeURIComponent(user.email)}`);
       if (violationsResp.ok) {
         const violationsData = await violationsResp.json();
         setViolations(Array.isArray(violationsData) ? violationsData : (violationsData.results || []));

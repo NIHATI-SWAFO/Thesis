@@ -39,12 +39,16 @@ export default function StudentViolations() {
         description: appealData.description,
       };
 
+      const headers = {
+        "Content-Type": "application/json"
+      };
+      if (user?.token) {
+        headers["Authorization"] = `Bearer ${user.token}`;
+      }
+
       const res = await fetch(API_ENDPOINTS.VIOLATIONS_APPEALS_SUBMIT, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${user.token}`,
-          "Content-Type": "application/json"
-        },
+        headers,
         body: JSON.stringify(payload)
       });
 
@@ -62,28 +66,39 @@ export default function StudentViolations() {
 
   useEffect(() => {
     if (user?.email) {
-      fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?email=${user.email}`)
+      fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?email=${encodeURIComponent(user.email)}`)
         .then(res => res.json())
         .then(data => {
           const results = Array.isArray(data) ? data : (data.results || []);
-          const transformed = results.map(v => ({
-            id: `VR-${new Date(v.timestamp).getFullYear()}-${v.id.toString().padStart(3, '0')}`,
-            rawId: v.id,
-            status: ['CLOSED', 'DISMISSED'].includes(v.status) ? "CLOSED" : "PENDING",
-            rawStatus: v.status,
-            title: v.rule_details?.title || v.rule_details?.description || v.rule_details?.rule_code || "Policy Violation",
-            category: v.rule_details?.category || "General Regulation",
-            ruleDescription: v.rule_details?.description || "Refer to Campus Student Handbook for complete policy regulation details.",
-            incidentLog: v.description || "Violation recorded during standard campus patrol inspection.",
-            officer: v.officer_name || "Institutional Campus Patrol",
-            date: new Date(v.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            time: new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            timestamp: v.timestamp,
-            location: v.location || "Campus Premises",
-            directorRemarks: v.director_remarks,
-            sanction: v.director_sanction || v.prescribed_sanction || v.corrective_action || "Under Institutional Board Review",
-            isMajor: (v.rule_details?.category || '').toUpperCase().includes('MAJOR') || (v.rule_details?.title || '').toUpperCase().includes('MAJOR')
-          }));
+          const transformed = results.map(v => {
+            const isClosed = ['CLOSED', 'DISMISSED'].includes(v.status);
+            const sanctionText = v.director_sanction || v.prescribed_sanction || v.corrective_action || (isClosed ? 'This incident record is officially resolved and closed.' : 'Under Institutional Board Review');
+            
+            return {
+              id: `VR-${new Date(v.timestamp).getFullYear()}-${v.id.toString().padStart(3, '0')}`,
+              rawId: v.id,
+              status: isClosed ? "CLOSED" : "PENDING",
+              rawStatus: v.status,
+              title: v.rule_details?.title || v.rule_details?.description || v.rule_details?.rule_code || "Policy Violation",
+              category: v.rule_details?.category || "General Regulation",
+              ruleDescription: v.rule_details?.description || "Refer to Campus Student Handbook for complete policy regulation details.",
+              incidentLog: v.description || "Violation recorded during standard campus patrol inspection.",
+              officer: v.officer_name || "Institutional Campus Patrol",
+              date: new Date(v.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+              time: new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              timestamp: v.timestamp,
+              location: v.location || "Campus Premises",
+              directorRemarks: v.director_remarks,
+              sanction: sanctionText,
+              actionBox: {
+                type: isClosed ? 'resolved' : 'action_required',
+                icon: isClosed ? 'verified' : 'priority_high',
+                title: isClosed ? 'Case Resolved' : (v.corrective_action ? 'Prescribed Action Required' : 'Disciplinary Review Pending'),
+                description: sanctionText
+              },
+              isMajor: (v.rule_details?.category || '').toUpperCase().includes('MAJOR') || (v.rule_details?.title || '').toUpperCase().includes('MAJOR')
+            };
+          });
           setViolations(transformed);
         })
         .catch(err => console.error("Error fetching violations:", err))
