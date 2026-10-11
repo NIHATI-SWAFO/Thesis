@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useAuth } from "../../context/AuthContext";
 import { API_ENDPOINTS } from "../../api/config";
 import AppealThreadModal from '../../components/common/AppealThreadModal';

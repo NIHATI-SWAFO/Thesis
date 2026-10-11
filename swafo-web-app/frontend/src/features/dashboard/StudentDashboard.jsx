@@ -1,13 +1,12 @@
 import { useAuth } from "../../context/AuthContext";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { API_ENDPOINTS } from "../../api/config";
 import BarcodeRegistrationModal from "../../components/BarcodeRegistrationModal";
 
 export default function StudentDashboard() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [violations, setViolations] = useState([]);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -402,7 +401,7 @@ export default function StudentDashboard() {
 
 /* ═══════════════════════ SUB-COMPONENTS ═══════════════════════ */
 
-function StatCard({ icon, label, value, subtitle, iconBg, iconColor, highlight }) {
+function StatCard({ icon, label, value, subtitle, iconBg, iconColor }) {
   return (
     <div className={`bg-white p-6 max-md:p-4 rounded-2xl flex items-center gap-5 max-md:gap-4 border border-transparent shadow-sm group hover:-translate-y-1 transition-all max-md:min-w-[80%] max-md:snap-center`}>
       <div className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center`}>

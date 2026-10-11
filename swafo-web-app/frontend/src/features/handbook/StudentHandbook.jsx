@@ -39,6 +39,17 @@ const HighlightMatch = ({ text, query }) => {
   );
 };
 
+const getIconForCategory = (cat) => {
+  const map = {
+    'Dress Code': 'checkroom',
+    'Campus Safety': 'security',
+    'Academic Integrity': 'menu_book',
+    'Conduct': 'gavel',
+    'Uniform': 'checkroom'
+  };
+  return map[cat] || 'policy';
+};
+
 export default function StudentHandbook() {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -77,17 +88,6 @@ export default function StudentHandbook() {
       .catch(err => console.error("Handbook fetch error:", err))
       .finally(() => setLoading(false));
   }, []);
-
-  const getIconForCategory = (cat) => {
-    const map = {
-      'Dress Code': 'checkroom',
-      'Campus Safety': 'security',
-      'Academic Integrity': 'menu_book',
-      'Conduct': 'gavel',
-      'Uniform': 'checkroom'
-    };
-    return map[cat] || 'policy';
-  };
 
   const toggleSection = (id) => {
     const newExpanded = new Set(expandedSections);
@@ -163,6 +163,16 @@ export default function StudentHandbook() {
       });
     }
   }, [searchQuery]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 text-center">
+        <div className="w-12 h-12 border-4 border-emerald-100 border-t-[#003624] rounded-full animate-spin mb-4" />
+        <p className="font-pjs font-bold text-sm text-[#003624]">Loading Handbook Policies...</p>
+        <p className="text-xs text-slate-400 mt-1">Retrieving official university guidelines</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[1100px] mx-auto space-y-6 max-md:space-y-4 animate-fade-in-up pb-12 max-md:pb-32">

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useMsal } from "@azure/msal-react";
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from '../components/common/NotificationBell';
 import StudentNumberPromptModal from '../components/StudentNumberPromptModal';
@@ -18,7 +17,6 @@ const navItems = [
 ];
 
 export default function StudentLayout() {
-  const { instance } = useMsal();
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
