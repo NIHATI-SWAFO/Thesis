@@ -1,5 +1,5 @@
 import { useAuth } from "../../context/AuthContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { API_ENDPOINTS } from "../../api/config";
@@ -10,22 +10,155 @@ export default function StudentProfile() {
   const [loading, setLoading] = useState(true);
   const [showIdModal, setShowIdModal] = useState(false);
   const [showDocNotice, setShowDocNotice] = useState(null);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [profilePicture, setProfilePicture] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoToast, setPhotoToast] = useState(null);
+  const fileInputRef = useRef(null);
 
   const email = user?.email;
 
   useEffect(() => {
     if (email) {
+      // Check cached avatar immediately for instant rendering
+      const cached = localStorage.getItem(`swafo_student_avatar_${email}`) || localStorage.getItem('swafo_student_avatar_current');
+      if (cached) setProfilePicture(cached);
+
       fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${email}`)
         .then(res => res.json())
         .then(data => {
           if (!data.error) {
             setProfile(data);
+            if (data.profile_picture) {
+              setProfilePicture(data.profile_picture);
+              localStorage.setItem(`swafo_student_avatar_${email}`, data.profile_picture);
+              localStorage.setItem('swafo_student_avatar_current', data.profile_picture);
+              if (data.student_number) {
+                localStorage.setItem(`swafo_student_avatar_${data.student_number}`, data.profile_picture);
+              }
+            }
           }
         })
         .catch(err => console.error("Profile fetch error:", err))
         .finally(() => setLoading(false));
     }
   }, [email]);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert("Please select a valid image file (PNG, JPG, or WebP).");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image file is too large. Please select an image under 10MB.");
+      return;
+    }
+
+    setUploadingPhoto(true);
+
+    try {
+      // Compress to crisp square portrait using HTML5 Canvas
+      const compressedDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxDimension = 512;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > maxDimension) {
+                height = Math.round((height * maxDimension) / width);
+                width = maxDimension;
+              }
+            } else {
+              if (height > maxDimension) {
+                width = Math.round((width * maxDimension) / height);
+                height = maxDimension;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+            resolve(dataUrl);
+          };
+          img.onerror = () => reject(new Error("Failed to load image"));
+          img.src = event.target.result;
+        };
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(file);
+      });
+
+      // 1. Immediately update local UI & cache
+      setProfilePicture(compressedDataUrl);
+      if (email) localStorage.setItem(`swafo_student_avatar_${email}`, compressedDataUrl);
+      if (profile?.student_number) localStorage.setItem(`swafo_student_avatar_${profile.student_number}`, compressedDataUrl);
+      localStorage.setItem('swafo_student_avatar_current', compressedDataUrl);
+
+      // 2. Dispatch custom event for real-time header/sidebar sync across the portal
+      window.dispatchEvent(new CustomEvent('swafo-avatar-updated', { detail: compressedDataUrl }));
+
+      // 3. Persist to Backend API
+      await fetch(API_ENDPOINTS.UPDATE_PROFILE_PICTURE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email || profile?.user_details?.email,
+          student_number: profile?.student_number,
+          profile_picture: compressedDataUrl
+        })
+      }).catch(err => console.warn("Backend sync notice:", err));
+
+      setPhotoToast("Profile picture updated successfully!");
+      setShowPhotoModal(false);
+      setTimeout(() => setPhotoToast(null), 3500);
+    } catch (err) {
+      console.error("Error processing photo:", err);
+      alert("Failed to process photo. Please try another image.");
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setUploadingPhoto(true);
+    try {
+      setProfilePicture(null);
+      if (email) localStorage.removeItem(`swafo_student_avatar_${email}`);
+      if (profile?.student_number) localStorage.removeItem(`swafo_student_avatar_${profile.student_number}`);
+      localStorage.removeItem('swafo_student_avatar_current');
+
+      window.dispatchEvent(new CustomEvent('swafo-avatar-updated', { detail: null }));
+
+      await fetch(API_ENDPOINTS.UPDATE_PROFILE_PICTURE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email || profile?.user_details?.email,
+          student_number: profile?.student_number,
+          profile_picture: null
+        })
+      }).catch(err => console.warn("Backend sync notice:", err));
+
+      setPhotoToast("Profile picture removed. Reverted to initials.");
+      setShowPhotoModal(false);
+      setTimeout(() => setPhotoToast(null), 3500);
+    } catch (err) {
+      console.error("Error removing photo:", err);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -55,13 +188,42 @@ export default function StudentProfile() {
       {/* ══════════════════════════ PROFILE HERO HEADER ══════════════════════════ */}
       <section className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-emerald-100/60 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative">
         <div className="flex flex-col sm:flex-row items-center sm:items-center gap-5 text-center sm:text-left w-full md:w-auto">
-          {/* Avatar with Initials */}
-          <div className="relative shrink-0">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl bg-[#003624] flex items-center justify-center ring-4 ring-emerald-50 shadow-lg text-white font-pjs font-extrabold text-2xl sm:text-3xl">
-              {initials}
+          {/* Avatar with Photo or Initials */}
+          <div className="relative shrink-0 group">
+            <div 
+              onClick={() => setShowPhotoModal(true)}
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl bg-[#003624] flex items-center justify-center ring-4 ring-emerald-50 shadow-lg text-white font-pjs font-extrabold text-2xl sm:text-3xl overflow-hidden cursor-pointer relative"
+              title="Click to update profile photo"
+            >
+              {profilePicture ? (
+                <img 
+                  src={profilePicture} 
+                  alt={fullName} 
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                />
+              ) : (
+                <span>{initials}</span>
+              )}
+
+              {/* Hover overlay indicator */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold">
+                <span className="material-symbols-outlined text-[20px] mb-0.5">photo_camera</span>
+                <span>Change</span>
+              </div>
             </div>
+
+            {/* Quick Camera Action Badge */}
+            <button
+              type="button"
+              onClick={() => setShowPhotoModal(true)}
+              className="absolute -bottom-1 -left-1 sm:-bottom-1.5 sm:-left-1.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white hover:bg-emerald-50 text-[#003624] border-2 border-emerald-100 flex items-center justify-center shadow-md active:scale-95 transition-all cursor-pointer z-10"
+              title="Add / Change Profile Picture"
+            >
+              <span className="material-symbols-outlined text-[15px] sm:text-[17px]">photo_camera</span>
+            </button>
+
             {/* Verified Academic Badge */}
-            <div className="absolute -bottom-1 -right-1 w-7 h-7 sm:w-8 sm:h-8 bg-emerald-600 rounded-full border-2 border-white flex items-center justify-center shadow text-white" title="Verified University Student">
+            <div className="absolute -bottom-1 -right-1 w-7 h-7 sm:w-8 sm:h-8 bg-emerald-600 rounded-full border-2 border-white flex items-center justify-center shadow text-white z-10" title="Verified University Student">
               <span className="material-symbols-outlined text-[15px] sm:text-[17px] fill-1">verified</span>
             </div>
           </div>
@@ -338,9 +500,15 @@ export default function StudentProfile() {
 
               {/* ID Body */}
               <div className="flex items-center gap-5 relative z-10">
-                <div className="w-24 h-28 rounded-2xl bg-white/10 border-2 border-white/20 flex flex-col items-center justify-center text-white shrink-0 shadow-inner">
-                  <span className="font-pjs font-black text-3xl">{initials}</span>
-                  <span className="text-[8px] uppercase tracking-wider text-emerald-300 font-bold mt-1">Photo ID</span>
+                <div className="w-24 h-28 rounded-2xl bg-white/10 border-2 border-white/20 flex flex-col items-center justify-center text-white shrink-0 shadow-inner overflow-hidden relative">
+                  {profilePicture ? (
+                    <img src={profilePicture} alt={fullName} className="w-full h-full object-cover" />
+                  ) : (
+                    <>
+                      <span className="font-pjs font-black text-3xl">{initials}</span>
+                      <span className="text-[8px] uppercase tracking-wider text-emerald-300 font-bold mt-1">Photo ID</span>
+                    </>
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <h4 className="font-pjs font-bold text-base text-white truncate leading-snug">{fullName}</h4>
@@ -373,6 +541,99 @@ export default function StudentProfile() {
         document.body
       )}
 
+      {/* ══════════════════════════ PROFILE PICTURE MODAL ══════════════════════════ */}
+      {showPhotoModal && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-[440px] rounded-3xl overflow-hidden shadow-2xl bg-white border border-slate-100 animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-5 bg-gradient-to-r from-[#003624] to-[#004d33] text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white border border-white/20">
+                  <span className="material-symbols-outlined text-[20px]">add_a_photo</span>
+                </div>
+                <div>
+                  <h3 className="font-pjs font-bold text-base leading-tight">Student Profile Picture</h3>
+                  <p className="text-[10px] text-emerald-200/80 font-manrope font-semibold">Official institutional photo ID</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowPhotoModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 flex flex-col items-center text-center">
+              {/* Photo Preview Frame */}
+              <div className="relative mb-5">
+                <div className="w-32 h-32 rounded-3xl bg-[#003624] ring-4 ring-emerald-100 shadow-xl overflow-hidden flex items-center justify-center text-white font-pjs font-extrabold text-4xl">
+                  {profilePicture ? (
+                    <img src={profilePicture} alt={fullName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{initials}</span>
+                  )}
+                </div>
+                {profilePicture && (
+                  <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-600 rounded-full border-2 border-white flex items-center justify-center text-white shadow" title="Active Photo">
+                    <span className="material-symbols-outlined text-[18px]">check</span>
+                  </div>
+                )}
+              </div>
+
+              <h4 className="font-pjs font-bold text-slate-900 text-base mb-1">{fullName}</h4>
+              <p className="text-xs text-slate-500 font-manrope mb-6 max-w-xs">
+                Upload a clear portrait or headshot photo. Accepted formats: JPG, PNG, or WebP.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="w-full space-y-2.5">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileSelect} 
+                  accept="image/png,image/jpeg,image/webp,image/jpg" 
+                  className="hidden" 
+                />
+
+                <button
+                  type="button"
+                  disabled={uploadingPhoto}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-3 px-4 rounded-xl bg-[#003624] hover:bg-[#004d33] active:scale-[0.99] text-white font-pjs font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/20 cursor-pointer disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[18px]">upload</span>
+                  <span>{uploadingPhoto ? "Processing..." : profilePicture ? "Choose Different Photo" : "Upload Photo"}</span>
+                </button>
+
+                {profilePicture && (
+                  <button
+                    type="button"
+                    disabled={uploadingPhoto}
+                    onClick={handleRemovePhoto}
+                    className="w-full py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-[0.99] text-rose-700 font-pjs font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                    <span>Remove Profile Photo</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowPhotoModal(false)}
+                  className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-[0.99] text-slate-600 font-pjs font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Document Notice Toast / Modal */}
       {showDocNotice && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -395,6 +656,14 @@ export default function StudentProfile() {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Toast Notification */}
+      {photoToast && (
+        <div className="fixed bottom-6 right-6 z-[999999] bg-[#003624] text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-500/30 animate-in slide-in-from-bottom-5 duration-300">
+          <span className="material-symbols-outlined text-emerald-400 text-[22px]">check_circle</span>
+          <span className="text-xs sm:text-sm font-pjs font-bold">{photoToast}</span>
+        </div>
       )}
 
     </div>

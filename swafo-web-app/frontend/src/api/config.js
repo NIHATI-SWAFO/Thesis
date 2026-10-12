@@ -18,6 +18,7 @@ export const API_ENDPOINTS = {
   USER_DETAIL: (id) => `${API_BASE_URL}/api/users/users/${id}/`,
   USERS_BY_ROLE: (role) => `${API_BASE_URL}/api/users/users/?role=${role}`,
   PROFILE_BY_EMAIL: `${API_BASE_URL}/api/users/profile-by-email/`,
+  UPDATE_PROFILE_PICTURE: `${API_BASE_URL}/api/users/profile/update-picture/`,
   COLLEGES_LIST: `${API_BASE_URL}/api/users/colleges/`,
 
   

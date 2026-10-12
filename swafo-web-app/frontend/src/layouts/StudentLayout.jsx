@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMsal } from "@azure/msal-react";
 import { useAuth } from '../context/AuthContext';
+import { API_ENDPOINTS } from '../api/config';
 import NotificationBell from '../components/common/NotificationBell';
 
 const navItems = [
@@ -23,6 +24,35 @@ export default function StudentLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [topSearch, setTopSearch] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState(() => {
+    return user?.avatar || (user?.email ? localStorage.getItem(`swafo_student_avatar_${user.email}`) : null) || localStorage.getItem('swafo_student_avatar_current') || null;
+  });
+
+  useEffect(() => {
+    if (user?.email) {
+      const cached = localStorage.getItem(`swafo_student_avatar_${user.email}`) || localStorage.getItem('swafo_student_avatar_current');
+      if (cached) setAvatarUrl(cached);
+
+      fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${user.email}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data?.profile_picture) {
+            setAvatarUrl(data.profile_picture);
+            localStorage.setItem(`swafo_student_avatar_${user.email}`, data.profile_picture);
+            localStorage.setItem('swafo_student_avatar_current', data.profile_picture);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const handleAvatarUpdate = (e) => {
+      setAvatarUrl(e.detail || null);
+    };
+    window.addEventListener('swafo-avatar-updated', handleAvatarUpdate);
+    return () => window.removeEventListener('swafo-avatar-updated', handleAvatarUpdate);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -78,15 +108,19 @@ export default function StudentLayout() {
 
         {/* Profile Card & Action */}
         <div className="px-5 mt-auto flex flex-col gap-2 pt-6 border-t border-emerald-50/60">
-          <div className="flex items-center gap-3 px-3 py-2 rounded-2xl bg-white border border-emerald-100/60 shadow-sm">
-            <div className="w-8 h-8 rounded-full bg-[#003624] text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
-              {initials}
+          <Link to="/student/profile" className="flex items-center gap-3 px-3 py-2 rounded-2xl bg-white border border-emerald-100/60 shadow-sm hover:border-emerald-300 transition-colors group">
+            <div className="w-8 h-8 rounded-full bg-[#003624] text-white flex items-center justify-center font-bold text-xs uppercase shrink-0 overflow-hidden">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
             </div>
             <div className="flex flex-col overflow-hidden min-w-0">
-              <span className="text-[12px] font-pjs font-bold text-[#003624] truncate leading-tight">{fullName}</span>
+              <span className="text-[12px] font-pjs font-bold text-[#003624] truncate leading-tight group-hover:text-emerald-700 transition-colors">{fullName}</span>
               <span className="text-[9px] font-bold text-emerald-700/80 uppercase tracking-wider">SWAFO Student</span>
             </div>
-          </div>
+          </Link>
           <button 
             onClick={() => setShowHelp(!showHelp)}
             className="flex items-center gap-4 px-6 py-2.5 rounded-full text-slate-500 hover:text-[#003624] hover:bg-emerald-50 transition-all w-full text-left cursor-pointer"
@@ -169,9 +203,9 @@ export default function StudentLayout() {
           {/* Student Info & Actions in Drawer Footer */}
           <div className="px-4 mt-auto pt-4 border-t border-white/10 flex flex-col gap-2 shrink-0">
             <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/5 border border-white/10">
-              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xs shrink-0">
-                {user?.avatar ? (
-                  <img src={user.avatar} className="w-full h-full object-cover rounded-full" alt={fullName} />
+              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xs shrink-0 overflow-hidden">
+                {avatarUrl || user?.avatar ? (
+                  <img src={avatarUrl || user.avatar} className="w-full h-full object-cover rounded-full" alt={fullName} />
                 ) : (
                   <span>{initials}</span>
                 )}
@@ -226,9 +260,9 @@ export default function StudentLayout() {
                   Student
                 </span>
               </div>
-              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 font-bold text-xs">
-                {user?.avatar ? (
-                  <img src={user.avatar} className="w-full h-full object-cover rounded-full" alt={fullName} />
+              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 font-bold text-xs overflow-hidden">
+                {avatarUrl || user?.avatar ? (
+                  <img src={avatarUrl || user.avatar} className="w-full h-full object-cover rounded-full" alt={fullName} />
                 ) : (
                   <span>{initials}</span>
                 )}
@@ -292,8 +326,13 @@ export default function StudentLayout() {
               <div 
                 onClick={() => navigate('/student/profile')}
                 className="w-10 h-10 rounded-xl bg-emerald-50 text-[#003624] flex items-center justify-center ring-1 ring-emerald-100/50 shadow-sm overflow-hidden group cursor-pointer hover:bg-[#003624] hover:text-white transition-all duration-300"
+                title="View Academic Profile"
               >
-                <span className="material-symbols-outlined text-[24px]">account_circle</span>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="material-symbols-outlined text-[24px]">account_circle</span>
+                )}
               </div>
             </div>
           </div>

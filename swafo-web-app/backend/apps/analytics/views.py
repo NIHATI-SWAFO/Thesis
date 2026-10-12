@@ -533,6 +533,8 @@ class NotificationsAPIView(APIView):
             
             notifications = []
             local_now = timezone.localtime(timezone.now())
+            # System notices use a stable timestamp (start of today) so they don't masquerade as brand-new every poll
+            day_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
 
             # ══════════════════════════════════════════════════════════════
             # 1. STUDENT NOTIFICATIONS: Strictly student-personal & policy
@@ -589,7 +591,7 @@ class NotificationsAPIView(APIView):
                         "title": "Disciplinary Clearance: Good Standing",
                         "message": "No active disciplinary sanctions or pending holds on your record.",
                         "category": "system",
-                        "timestamp": local_now.isoformat(),
+                        "timestamp": day_start.isoformat(),
                         "priority": "low",
                         "link": "/student/profile"
                     })
@@ -600,7 +602,7 @@ class NotificationsAPIView(APIView):
                     "title": "Campus Handbook 2025–2026",
                     "message": "University student rights, dress code regulations, and disciplinary sanction matrix are in effect.",
                     "category": "system",
-                    "timestamp": local_now.isoformat(),
+                    "timestamp": day_start.isoformat(),
                     "priority": "low",
                     "link": "/student/handbook"
                 })
@@ -632,7 +634,7 @@ class NotificationsAPIView(APIView):
                 from apps.patrols.models import PatrolSession
                 active_patrols = PatrolSession.objects.filter(end_time__isnull=True).order_by('-start_time')[:3]
                 for p in active_patrols:
-                    officer_name = p.officer.get_full_name() or p.officer.username
+                    officer_name = getattr(p.officer, "full_name", "") or p.officer.get_full_name() or p.officer.username
                     notifications.append({
                         "id": f"patrol-active-{p.id}",
                         "title": "Patrol Started",
@@ -646,7 +648,7 @@ class NotificationsAPIView(APIView):
                 # C. Recent Violations Logged
                 recent_vios = Violation.objects.select_related('student__user', 'rule').order_by('-timestamp')[:6]
                 for v in recent_vios:
-                    student_name = v.student.user.get_full_name() if v.student and v.student.user else (v.student.student_number if v.student else "Student")
+                    student_name = (v.student.user.full_name or v.student.user.get_full_name() or v.student.user.email) if v.student and v.student.user else (v.student.student_number if v.student else "Student")
                     category_name = v.rule.category if v.rule else "Campus Rule"
                     status_label = v.status.replace('_', ' ')
                     notifications.append({
@@ -665,7 +667,7 @@ class NotificationsAPIView(APIView):
                     "title": "Station Operational",
                     "message": "Field telemetry and mobile patrol logging active.",
                     "category": "system",
-                    "timestamp": local_now.isoformat(),
+                    "timestamp": day_start.isoformat(),
                     "priority": "low",
                     "link": "/officer/dashboard"
                 })
@@ -680,7 +682,7 @@ class NotificationsAPIView(APIView):
                 ).select_related('student__user', 'rule').order_by('-timestamp')[:5]
 
                 for v in pending_decisions:
-                    student_name = v.student.user.get_full_name() if v.student and v.student.user else (v.student.student_number if v.student else "Student")
+                    student_name = (v.student.user.full_name or v.student.user.get_full_name() or v.student.user.email) if v.student and v.student.user else (v.student.student_number if v.student else "Student")
                     rule_code = v.rule.rule_code if v.rule else ""
                     notifications.append({
                         "id": f"admin-await-{v.id}",
@@ -716,7 +718,7 @@ class NotificationsAPIView(APIView):
                 from apps.patrols.models import PatrolSession
                 active_patrols = PatrolSession.objects.filter(end_time__isnull=True).order_by('-start_time')[:3]
                 for p in active_patrols:
-                    officer_name = p.officer.get_full_name() or p.officer.username
+                    officer_name = getattr(p.officer, "full_name", "") or p.officer.get_full_name() or p.officer.username
                     notifications.append({
                         "id": f"admin-patrol-{p.id}",
                         "title": "Active Patrol On Duty",
@@ -733,17 +735,24 @@ class NotificationsAPIView(APIView):
                     "title": "Director Command Center",
                     "message": "Institutional policy enforcement and audit registry active.",
                     "category": "system",
-                    "timestamp": local_now.isoformat(),
+                    "timestamp": day_start.isoformat(),
                     "priority": "low",
                     "link": "/admin/dashboard"
                 })
 
-            # Sort chronologically, newest first
-            notifications = sorted(
-                notifications, 
-                key=lambda x: x.get('timestamp', ''), 
-                reverse=True
-            )[:15]
+            # Sort chronologically (parsed datetimes, so mixed UTC offsets order correctly), newest first
+            from django.utils.dateparse import parse_datetime
+            _epoch = timezone.make_aware(timezone.datetime(1970, 1, 1))
+
+            def _sort_key(item):
+                dt = parse_datetime(item.get('timestamp') or '')
+                if dt is None:
+                    return _epoch
+                if timezone.is_naive(dt):
+                    dt = timezone.make_aware(dt)
+                return dt
+
+            notifications = sorted(notifications, key=_sort_key, reverse=True)[:15]
 
             return Response({
                 "count": len(notifications),

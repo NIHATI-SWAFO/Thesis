@@ -1,9 +1,14 @@
 from django.urls import path
-from .views import StudentSearchView, ProfileByEmailView, StudentListView, StudentProfileDetailView, UserListView, UserDetailView, CollegeListView, MockLoginView, NotificationListView, NotificationUpdateView
+from .views import (
+    StudentSearchView, ProfileByEmailView, StudentListView, StudentProfileDetailView,
+    UserListView, UserDetailView, CollegeListView, MockLoginView,
+    NotificationListView, NotificationUpdateView, UpdateProfilePictureView
+)
 
 urlpatterns = [
     path('search/', StudentSearchView.as_view(), name='student-search'),
     path('profile-by-email/', ProfileByEmailView.as_view(), name='profile-by-email'),
+    path('profile/update-picture/', UpdateProfilePictureView.as_view(), name='update-profile-picture'),
     path('list/', StudentListView.as_view(), name='student-list'),
     path('list/<int:pk>/', StudentProfileDetailView.as_view(), name='student-profile-detail'),
     path('users/', UserListView.as_view(), name='user-list'),

@@ -127,8 +127,12 @@ export default function StudentProfileDetail({ role = 'officer' }) {
 
             <div className="flex flex-col items-center text-center mb-6 sm:mb-10 relative z-10">
               <div className="relative mb-3 sm:mb-5">
-                <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2.25rem] bg-gradient-to-br from-[#f1f8e9] to-white border-4 border-white shadow-lg flex items-center justify-center text-[28px] sm:text-[38px] font-pjs font-black text-[#004d33]">
-                  {student.initials}
+                <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[2.25rem] bg-gradient-to-br from-[#f1f8e9] to-white border-4 border-white shadow-lg flex items-center justify-center text-[28px] sm:text-[38px] font-pjs font-black text-[#004d33] overflow-hidden">
+                  {studentData?.profile_picture ? (
+                    <img src={studentData.profile_picture} alt={student.name} className="w-full h-full object-cover" />
+                  ) : (
+                    student.initials
+                  )}
                 </div>
               </div>
               <p className="text-[10px] font-pjs font-black text-slate-300 uppercase tracking-[0.25em] mb-1">STUDENT ID</p>

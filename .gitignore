@@ -21,3 +21,8 @@ db.sqlite3
 **/*.log
 .gemini/
 
+# Machine Learning Models & Weights
+*.pt
+*.pth
+*.onnx
+dresscode-detection/models/
