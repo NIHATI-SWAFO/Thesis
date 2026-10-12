@@ -3,7 +3,7 @@ from .views import (
     StudentSearchView, ProfileByEmailView, StudentListView, StudentProfileDetailView,
     UserListView, UserDetailView, CollegeListView, MockLoginView,
     UpdateBarcodeView, DecodeBarcodeImageView, UpdateStudentNumberView,
-    NotificationListView, NotificationUpdateView
+    NotificationListView, NotificationUpdateView, UpdateProfilePictureView
 )
 
 urlpatterns = [
@@ -12,6 +12,8 @@ urlpatterns = [
     path('update-student-number/', UpdateStudentNumberView.as_view(), name='update-student-number'),
     path('update-barcode/', UpdateBarcodeView.as_view(), name='update-barcode'),
     path('decode-barcode/', DecodeBarcodeImageView.as_view(), name='decode-barcode'),
+    path('profile/update-picture/', UpdateProfilePictureView.as_view(), name='update-profile-picture'),
+    path('profile/picture/', UpdateProfilePictureView.as_view(), name='profile-picture-alias'),
     path('list/', StudentListView.as_view(), name='student-list'),
     path('list/<int:pk>/', StudentProfileDetailView.as_view(), name='student-profile-detail'),
     path('users/', UserListView.as_view(), name='user-list'),

@@ -41,3 +41,8 @@ dresscode-detection/dataset/
 .gemini/
 FILES_TO_UPLOAD_TO_DRIVE/
 
+# Machine Learning Models & Weights
+*.pt
+*.pth
+*.onnx
+dresscode-detection/models/

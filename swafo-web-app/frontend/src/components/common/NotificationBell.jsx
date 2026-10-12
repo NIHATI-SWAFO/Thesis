@@ -123,76 +123,105 @@ export default function NotificationBell({ isDarkBg = false, role: explicitRole 
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState(() => getRoleFallbacks(currentRole));
   const [filter, setFilter] = useState('all'); // 'all' | 'unread' | 'category1' | 'category2'
-  const [readIds, setReadIds] = useState(() => {
+  const [, setTick] = useState(0); // forces relative times ("5m ago") to refresh while the bell stays mounted
+  const readKey = `swafo_read_notifications_${currentRole}_${(user?.email || 'anon').toLowerCase()}`;
+  const loadReadIds = (key) => {
     try {
-      const saved = localStorage.getItem(`swafo_read_notifications_${currentRole}`);
+      const saved = localStorage.getItem(key);
       return saved ? new Set(JSON.parse(saved)) : new Set();
     } catch {
       return new Set();
     }
-  });
+  };
+  const [readIds, setReadIds] = useState(() => loadReadIds(readKey));
 
   const dropdownRef = useRef(null);
+  const panelRef = useRef(null); // the dropdown panel lives in a portal, outside dropdownRef
 
-  // Helper for relative time formatting
+  // Helper for relative time formatting (always uses the current clock; never negative)
   const formatTimeAgo = (isoString) => {
     if (!isoString) return 'Just now';
-    try {
-      const diffMs = Date.now() - new Date(isoString).getTime();
-      const diffSec = Math.floor(diffMs / 1000);
-      if (diffSec < 60) return 'Just now';
-      const diffMin = Math.floor(diffSec / 60);
-      if (diffMin < 60) return `${diffMin}m ago`;
-      const diffHr = Math.floor(diffMin / 60);
-      if (diffHr < 24) return `${diffHr}h ago`;
-      const diffDays = Math.floor(diffHr / 24);
-      return `${diffDays}d ago`;
-    } catch {
-      return 'Recent';
-    }
+    const t = new Date(isoString).getTime();
+    if (Number.isNaN(t)) return 'Recent';
+    const diffSec = Math.max(0, Math.floor((Date.now() - t) / 1000));
+    if (diffSec < 60) return 'Just now';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDays = Math.floor(diffHr / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
 
   // Fetch real-time notifications scoped by role and user email
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (signal) => {
     try {
       const url = API_ENDPOINTS.NOTIFICATIONS(user?.email || '', currentRole);
-      const res = await fetch(url);
+      const res = await fetch(url, { signal, cache: 'no-store' });
       if (!res.ok) return;
       const data = await res.json();
-      if (data && Array.isArray(data.results) && data.results.length > 0) {
-        let items = data.results;
+      if (!data || !Array.isArray(data.results)) return;
+      let items = data.results;
 
-        // Strict Client-Side Filter: Guarantee students NEVER receive officer or admin internal tasks
-        if (currentRole === 'student') {
-          items = items.filter(n => 
-            n.category !== 'patrol' && 
-            !(n.link && (n.link.startsWith('/officer') || n.link.startsWith('/admin')))
-          );
-        } else if (currentRole === 'officer') {
-          items = items.filter(n => !(n.link && n.link.startsWith('/student')));
-        } else if (currentRole === 'admin') {
-          items = items.filter(n => !(n.link && n.link.startsWith('/student')));
-        }
-
-        setNotifications(items.length > 0 ? items : getRoleFallbacks(currentRole));
+      // Strict Client-Side Filter: Guarantee each role only sees its own links
+      if (currentRole === 'student') {
+        items = items.filter(n =>
+          n.category !== 'patrol' &&
+          !(n.link && (n.link.startsWith('/officer') || n.link.startsWith('/admin')))
+        );
+      } else if (currentRole === 'officer' || currentRole === 'admin') {
+        items = items.filter(n => !(n.link && n.link.startsWith('/student')));
       }
+
+      // Always trust the server list (even if empty); fallbacks are only for the offline case
+      setNotifications(items);
     } catch (err) {
-      console.warn("Real-time notifications polling silent fallback:", err);
+      if (err?.name !== 'AbortError') {
+        console.warn("Real-time notifications polling silent fallback:", err);
+      }
     }
   };
 
-  // Initial fetch and 20-second real-time poll
+  // Reset state when the signed-in user or role changes so nothing stale leaks across accounts
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 20000);
-    return () => clearInterval(interval);
-  }, [user, currentRole]);
+    setNotifications(getRoleFallbacks(currentRole));
+    setReadIds(loadReadIds(readKey));
+    setFilter('all');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readKey]);
+
+  // Initial fetch + 10s poll + refetch on tab focus / network reconnect
+  useEffect(() => {
+    const controller = new AbortController();
+    const run = () => fetchNotifications(controller.signal);
+    run();
+    const interval = setInterval(run, 10000);
+    const onVisible = () => { if (document.visibilityState === 'visible') run(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', run);
+    window.addEventListener('online', run);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', run);
+      window.removeEventListener('online', run);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email, currentRole]);
+
+  // Re-render every 30s so "Just now" / "5m ago" labels stay correct
+  useEffect(() => {
+    const t = setInterval(() => setTick(n => n + 1), 30000);
+    return () => clearInterval(t);
+  }, []);
 
   // Persist read IDs in local storage per role
   const persistReadIds = (newSet) => {
     setReadIds(newSet);
     try {
-      localStorage.setItem(`swafo_read_notifications_${currentRole}`, JSON.stringify(Array.from(newSet)));
+      localStorage.setItem(readKey, JSON.stringify(Array.from(newSet)));
     } catch (e) {
       console.error("Failed to save read notifications:", e);
     }
@@ -215,7 +244,9 @@ export default function NotificationBell({ isDarkBg = false, role: explicitRole 
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      const insideBell = dropdownRef.current && dropdownRef.current.contains(event.target);
+      const insidePanel = panelRef.current && panelRef.current.contains(event.target);
+      if (!insideBell && !insidePanel) {
         setIsOpen(false);
       }
     };
@@ -325,7 +356,7 @@ export default function NotificationBell({ isDarkBg = false, role: explicitRole 
         
         {/* Unread Indicator Pill */}
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-500 border-2 border-[#003624] text-[9px] font-black text-white shadow-md pointer-events-none">
+          <span className={`absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-500 border-2 ${isDarkBg ? 'border-[#003624]' : 'border-white'} text-[9px] font-black text-white shadow-md pointer-events-none`}>
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -342,6 +373,7 @@ export default function NotificationBell({ isDarkBg = false, role: explicitRole 
 
           {/* Connected Compact Dropdown Panel */}
           <div 
+            ref={panelRef}
             style={{
               top: `${panelPosition.top}px`,
               left: `${panelPosition.left}px`,
