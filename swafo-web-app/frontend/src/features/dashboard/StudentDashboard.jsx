@@ -13,10 +13,60 @@ export default function StudentDashboard() {
   const [selectedViolation, setSelectedViolation] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
+  const [isAppealing, setIsAppealing] = useState(false);
+  const [appealData, setAppealData] = useState({ subject: '', description: '' });
+  const [isSubmittingAppeal, setIsSubmittingAppeal] = useState(false);
+  const [appealSuccess, setAppealSuccess] = useState(false);
 
   const displayName = profile?.user_details?.full_name || profile?.user?.full_name || user?.name || user?.email?.split('@')[0] || 'Student';
   const rawFirstName = displayName.split(' ')[0] || 'Student';
   const firstName = rawFirstName.charAt(0).toUpperCase() + rawFirstName.slice(1).toLowerCase();
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setTimeout(() => {
+      setIsAppealing(false);
+      setAppealSuccess(false);
+      setAppealData({ subject: '', description: '' });
+    }, 300);
+  };
+
+  const handleAppealSubmit = async (e) => {
+    e.preventDefault();
+    if (!appealData.subject || !appealData.description || !selectedViolation) return;
+
+    setIsSubmittingAppeal(true);
+    try {
+      const payload = {
+        violation: selectedViolation.rawId || selectedViolation.id,
+        subject: appealData.subject,
+        description: appealData.description,
+      };
+
+      const headers = {
+        "Content-Type": "application/json"
+      };
+      if (user?.token) {
+        headers["Authorization"] = `Bearer ${user.token}`;
+      }
+
+      const res = await fetch(API_ENDPOINTS.VIOLATIONS_APPEALS_SUBMIT, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        setAppealSuccess(true);
+      } else {
+        console.warn("Failed to submit appeal");
+      }
+    } catch (err) {
+      console.error("Dashboard appeal submit error:", err);
+    } finally {
+      setIsSubmittingAppeal(false);
+    }
+  };
 
   const fetchData = async () => {
     if (!user?.email) {
@@ -46,6 +96,9 @@ export default function StudentDashboard() {
 
   const handleTakeAction = (v) => {
     setSelectedViolation(v);
+    setIsAppealing(false);
+    setAppealSuccess(false);
+    setAppealData({ subject: '', description: '' });
     setShowModal(true);
   };
 
@@ -302,15 +355,15 @@ export default function StudentDashboard() {
             <div className="px-6 py-5 bg-[#003624] text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white">
-                  <span className="material-symbols-outlined text-[20px]">gavel</span>
+                  <span className="material-symbols-outlined text-[20px]">{isAppealing ? 'edit_document' : 'gavel'}</span>
                 </div>
                 <div>
-                  <h3 className="font-pjs font-bold text-base leading-tight">Case Information</h3>
+                  <h3 className="font-pjs font-bold text-base leading-tight">{isAppealing ? 'Submit Inquiry / Appeal' : 'Case Information'}</h3>
                   <p className="text-[11px] text-emerald-300 font-manrope">Ref #{selectedViolation.id}</p>
                 </div>
               </div>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={handleCloseModal}
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
                 aria-label="Close"
               >
@@ -320,66 +373,145 @@ export default function StudentDashboard() {
 
             {/* Modal Content */}
             <div className="p-6 space-y-4 overflow-y-auto">
-              <div>
-                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2 ${['CLOSED', 'DISMISSED'].includes(selectedViolation.status) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
-                  Status: {selectedViolation.status?.replace(/_/g, ' ')}
-                </span>
-                <h4 className="text-lg font-pjs font-bold text-slate-900 leading-snug">
-                  {selectedViolation.rule_details?.title || selectedViolation.rule_details?.category || "Policy Violation"}
-                </h4>
-                {selectedViolation.rule_details?.description && (
-                  <p className="text-xs text-slate-500 font-manrope mt-1 leading-relaxed">
-                    {selectedViolation.rule_details.description}
-                  </p>
-                )}
-              </div>
-
-              {/* Metadata Box */}
-              <div className="grid grid-cols-2 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-                <div>
-                  <p className="text-[10px] font-bold uppercase text-slate-400">Location</p>
-                  <p className="font-semibold text-slate-700 mt-0.5 truncate">{selectedViolation.location || 'Campus Ground'}</p>
+              {isAppealing ? (
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                  {appealSuccess ? (
+                    <div className="py-8 text-center">
+                      <div className="w-16 h-16 mx-auto bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
+                        <span className="material-symbols-outlined text-[32px]">check_circle</span>
+                      </div>
+                      <h4 className="text-lg font-pjs font-bold text-slate-800 mb-2">Appeal Submitted</h4>
+                      <p className="text-sm text-slate-500 font-manrope">Your inquiry has been successfully sent to SWAFO. You can track its status in the Violation Records page.</p>
+                    </div>
+                  ) : (
+                    <form id="dashboardAppealForm" onSubmit={handleAppealSubmit} className="space-y-4">
+                      <div>
+                        <label className="block text-[11px] font-pjs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Category</label>
+                        <select
+                          value={appealData.subject}
+                          onChange={e => setAppealData({ ...appealData, subject: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                          required
+                        >
+                          <option value="" disabled>Select Appeal Type...</option>
+                          <option value="Request for Clarification">Request for Clarification</option>
+                          <option value="Formal Appeal">Formal Appeal</option>
+                          <option value="Report Error in Record">Report Error in Record</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-pjs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Details</label>
+                        <textarea
+                          value={appealData.description}
+                          onChange={e => setAppealData({ ...appealData, description: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all resize-none h-32 font-manrope"
+                          placeholder="Provide detailed information regarding your inquiry or appeal..."
+                          required
+                        ></textarea>
+                      </div>
+                    </form>
+                  )}
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase text-slate-400">Date Logged</p>
-                  <p className="font-semibold text-slate-700 mt-0.5">{new Date(selectedViolation.timestamp).toLocaleDateString()}</p>
-                </div>
-              </div>
+              ) : (
+                <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
+                  <div>
+                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2 ${['CLOSED', 'DISMISSED'].includes(selectedViolation.status) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                      Status: {selectedViolation.status?.replace(/_/g, ' ')}
+                    </span>
+                    <h4 className="text-lg font-pjs font-bold text-slate-900 leading-snug">
+                      {selectedViolation.rule_details?.title || selectedViolation.rule_details?.category || "Policy Violation"}
+                    </h4>
+                    {selectedViolation.rule_details?.description && (
+                      <p className="text-xs text-slate-500 font-manrope mt-1 leading-relaxed">
+                        {selectedViolation.rule_details.description}
+                      </p>
+                    )}
+                  </div>
 
-              {/* Sanction Box */}
-              <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100">
-                <p className="text-[10px] font-bold uppercase text-emerald-800 tracking-wider mb-1">Prescribed Action / Sanction</p>
-                <p className="text-xs font-semibold text-[#003624] leading-relaxed">
-                  {selectedViolation.prescribed_sanction || selectedViolation.director_sanction || "Case is under review by SWAFO Disciplinary Board."}
-                </p>
-              </div>
+                  {/* Metadata Box */}
+                  <div className="grid grid-cols-2 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Location</p>
+                      <p className="font-semibold text-slate-700 mt-0.5 truncate">{selectedViolation.location || 'Campus Ground'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Date Logged</p>
+                      <p className="font-semibold text-slate-700 mt-0.5">{new Date(selectedViolation.timestamp).toLocaleDateString()}</p>
+                    </div>
+                  </div>
 
-              {selectedViolation.director_remarks && (
-                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                  <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-1">Director's Notes</p>
-                  <p className="text-xs text-slate-600 italic">"{selectedViolation.director_remarks}"</p>
+                  {/* Sanction Box */}
+                  <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100">
+                    <p className="text-[10px] font-bold uppercase text-emerald-800 tracking-wider mb-1">Prescribed Action / Sanction</p>
+                    <p className="text-xs font-semibold text-[#003624] leading-relaxed">
+                      {selectedViolation.prescribed_sanction || selectedViolation.director_sanction || "Case is under review by SWAFO Disciplinary Board."}
+                    </p>
+                  </div>
+
+                  {selectedViolation.director_remarks && (
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                      <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-1">Director's Notes</p>
+                      <p className="text-xs text-slate-600 italic">"{selectedViolation.director_remarks}"</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Modal Actions */}
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center gap-3 shrink-0">
-              <button
-                onClick={() => {
-                  window.open(`mailto:swafo@dlsud.edu.ph?subject=Appeal Request: Case ${selectedViolation?.id}&body=Name: ${displayName}%0D%0AStudent Number: ${profile?.student_number}%0D%0AViolation: ${selectedViolation?.rule_details?.title || selectedViolation?.rule_details?.category}%0D%0AReason for Appeal: `);
-                  setShowModal(false);
-                }}
-                className="flex-1 py-3 bg-[#003624] hover:bg-[#004d33] text-white rounded-xl font-pjs font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 cursor-pointer text-center"
-              >
-                Inquire / Appeal (Email)
-              </button>
-              <button
-                onClick={() => setShowModal(false)}
-                className="py-3 px-5 border border-slate-200 text-slate-600 rounded-xl font-pjs font-bold text-xs uppercase tracking-wider hover:bg-white transition-all active:scale-95 cursor-pointer"
-              >
-                Close
-              </button>
+              {isAppealing ? (
+                !appealSuccess ? (
+                  <>
+                    <button
+                      form="dashboardAppealForm"
+                      type="submit"
+                      disabled={isSubmittingAppeal}
+                      className="flex-1 py-3 bg-[#003624] hover:bg-[#004d33] disabled:bg-slate-300 text-white rounded-xl font-pjs font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 cursor-pointer text-center flex justify-center items-center gap-2"
+                    >
+                      {isSubmittingAppeal ? (
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-[16px]">send</span>
+                          Send to SWAFO
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setIsAppealing(false)}
+                      disabled={isSubmittingAppeal}
+                      className="py-3 px-5 border border-slate-200 text-slate-600 rounded-xl font-pjs font-bold text-xs uppercase tracking-wider hover:bg-white transition-all active:scale-95 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleCloseModal}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-pjs font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    Close Window
+                  </button>
+                )
+              ) : (
+                <>
+                  <button
+                    onClick={() => setIsAppealing(true)}
+                    className="flex-1 py-3 bg-[#003624] hover:bg-[#004d33] text-white rounded-xl font-pjs font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 cursor-pointer text-center flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">contact_support</span>
+                    Submit Inquiry / Appeal
+                  </button>
+                  <button
+                    onClick={handleCloseModal}
+                    className="py-3 px-5 border border-slate-200 text-slate-600 rounded-xl font-pjs font-bold text-xs uppercase tracking-wider hover:bg-white transition-all active:scale-95 cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>,

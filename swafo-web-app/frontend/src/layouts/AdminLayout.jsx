@@ -196,24 +196,8 @@ export default function AdminLayout() {
               <span className="font-manrope text-[8.5px] uppercase tracking-[0.2em] text-emerald-400/80 font-black leading-none">Command Center</span>
             </div>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center">
             <NotificationBell isDarkBg={true} role="admin" />
-            <div 
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform"
-            >
-              <div className="flex flex-col text-right">
-                <span className="text-[12px] font-bold text-white leading-tight">
-                  {user?.name || 'Director Elias'}
-                </span>
-                <span className="text-[8.5px] text-emerald-400/80 font-black uppercase tracking-wider leading-none">
-                  SWAFO Director
-                </span>
-              </div>
-              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-                <span className="material-symbols-outlined text-[18px]">person</span>
-              </div>
-            </div>
           </div>
         </header>
 

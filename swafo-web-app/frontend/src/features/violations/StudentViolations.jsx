@@ -10,7 +10,7 @@ export default function StudentViolations() {
   const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
   const [selectedViolation, setSelectedViolation] = useState(null);
-  const [mobileTab, setMobileTab] = useState('TIMELINE');
+  const [activeMobileTab, setActiveMobileTab] = useState('timeline');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
   const [isAppealing, setIsAppealing] = useState(false);
@@ -180,10 +180,10 @@ export default function StudentViolations() {
       </div>
 
       {/* Main Content & Sidebar Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
 
         {/* Main 70% Content */}
-        <div className="lg:col-span-8 space-y-10">
+        <div className="md:col-span-8 lg:col-span-8 space-y-10">
 
           {/* Top Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-md:grid max-md:grid-cols-2 max-md:gap-2.5">
@@ -224,12 +224,32 @@ export default function StudentViolations() {
 
           {/* Mobile Tab Switcher */}
           <div className="md:hidden flex bg-slate-100 p-1 rounded-xl mt-6">
-            <button onClick={() => setMobileTab('TIMELINE')} className={`flex-1 py-2 text-xs font-bold font-pjs rounded-lg transition-all ${mobileTab === 'TIMELINE' ? 'bg-white shadow-sm text-[#003624]' : 'text-slate-500'}`}>Violations Timeline</button>
-            <button onClick={() => setMobileTab('APPEALS')} className={`flex-1 py-2 text-xs font-bold font-pjs rounded-lg transition-all ${mobileTab === 'APPEALS' ? 'bg-white shadow-sm text-[#003624]' : 'text-slate-500'}`}>Appeals History</button>
+            <button
+              type="button"
+              onClick={() => setActiveMobileTab('timeline')}
+              className={`flex-1 py-2 text-xs font-bold font-pjs rounded-lg transition-all ${
+                activeMobileTab === 'timeline'
+                  ? 'bg-white shadow-sm text-[#003624]'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Violations Timeline
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveMobileTab('appeals')}
+              className={`flex-1 py-2 text-xs font-bold font-pjs rounded-lg transition-all ${
+                activeMobileTab === 'appeals'
+                  ? 'bg-white shadow-sm text-[#003624]'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Appeals History
+            </button>
           </div>
 
-          {/* Timeline Section */}
-          <div className={`mt-12 max-md:mt-6 space-y-6 ${mobileTab === 'APPEALS' ? 'max-md:hidden' : ''}`}>
+          {/* Main "Timeline of Incidents" Wrapper */}
+          <div className={`mt-12 max-md:mt-6 space-y-6 md:block max-md:${activeMobileTab === 'appeals' ? 'hidden' : 'block'}`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2">
               <h2 className="text-[1.5rem] font-pjs font-bold text-[#1a1a1a] tracking-tight">Timeline of Incidents</h2>
               <div className="flex items-center gap-3 max-md:flex-row max-md:w-full">
@@ -245,7 +265,6 @@ export default function StudentViolations() {
                 </button>
               </div>
             </div>
-          </div>
 
           {/* ══════════════════════════ INCIDENT CARDS LIST ══════════════════════════ */}
           <section className="space-y-4">
@@ -390,10 +409,10 @@ export default function StudentViolations() {
                         {violation.status === 'PENDING' && (
                           <button
                             onClick={() => handleTakeAction(violation)}
-                            className="px-8 max-md:px-4 py-3 max-md:py-3.5 max-md:w-full max-md:mt-2 max-md:block bg-[#003624] text-white rounded-xl font-pjs font-bold text-[12px] uppercase tracking-widest hover:bg-emerald-900 transition-all shadow-lg active:scale-95 shrink-0"
+                            className="flex items-center justify-center gap-2 px-8 max-md:px-4 py-3 max-md:py-3.5 max-md:w-full max-md:mt-2 bg-[#003624] text-white rounded-xl font-pjs font-bold text-[12px] uppercase tracking-widest hover:bg-emerald-900 transition-all shadow-lg active:scale-95 shrink-0 cursor-pointer"
                           >
                             <span>View Details</span>
-                            <span className="material-symbols-outlined text-[16px]">visibility</span>
+                            <span className="material-symbols-outlined text-[18px] text-current leading-none select-none">visibility</span>
                           </button>
                         )}
                   </div>
@@ -404,12 +423,13 @@ export default function StudentViolations() {
               })
             )}
         </section>
-      </div>
+          </div>
+        </div>
         
-        {/* Sidebar 30% Content */ }
-  <div className={`lg:col-span-4 space-y-6 ${mobileTab === 'TIMELINE' ? 'max-md:hidden' : ''}`}>
-    <SentAppealsWidget />
-  </div>
+        {/* Appeals History Wrapper */}
+        <div className={`md:col-span-4 lg:col-span-4 space-y-6 md:block max-md:${activeMobileTab === 'timeline' ? 'hidden' : 'block'}`}>
+          <SentAppealsWidget />
+        </div>
       </div>
         
 

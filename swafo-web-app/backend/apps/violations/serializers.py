@@ -27,10 +27,22 @@ def resolve_building_coords(location_name: str):
 class AppealSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source='student.user.full_name', read_only=True)
     violation_code = serializers.CharField(source='violation.rule.rule_code', read_only=True)
-    
+    reference_id = serializers.SerializerMethodField()
+    student_number = serializers.CharField(source='student.student_number', read_only=True)
+
+    def get_reference_id(self, obj):
+        if obj.violation_id:
+            return f"#CS-{str(obj.violation_id).zfill(5)}"
+        return f"#APP-{obj.id}"
+
     class Meta:
         model = Appeal
-        fields = ['id', 'violation', 'violation_code', 'student', 'student_name', 'subject', 'description', 'reviewer_remarks', 'status', 'created_at', 'updated_at']
+        fields = [
+            'id', 'violation', 'violation_code', 'reference_id',
+            'student', 'student_number', 'student_name', 
+            'subject', 'description', 'reviewer_remarks', 
+            'status', 'created_at', 'updated_at'
+        ]
         read_only_fields = ['student', 'status', 'reviewer_remarks', 'created_at', 'updated_at']
 
 class AppealUpdateSerializer(serializers.ModelSerializer):

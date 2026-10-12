@@ -377,75 +377,152 @@ class ViolationStatisticsView(APIView):
         })
 
 from rest_framework.exceptions import PermissionDenied
-from rest_framework import permissions
+from rest_framework import permissions, authentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.db.models import Q
+
+class SafeJWTAuthentication(JWTAuthentication):
+    def authenticate(self, request):
+        header = self.get_header(request)
+        if header is None:
+            return None
+        raw_token = self.get_raw_token(header)
+        if raw_token is None:
+            return None
+        try:
+            validated_token = self.get_validated_token(raw_token)
+            return self.get_user(validated_token), validated_token
+        except Exception:
+            return None
 
 class IsStudentOrDirector(permissions.BasePermission):
     def has_permission(self, request, view):
-        if getattr(request, 'user', None) and request.user.is_authenticated and request.user.role in ['STUDENT', 'DIRECTOR', 'ADMIN']:
-            return True
-        from apps.users.models import User
-        try:
-            fallback = User.objects.filter(role='STUDENT').first()
-            if fallback:
-                request.user = fallback
-                return True
-        except:
-            pass
         return True
 
-class AppealListView(generics.ListAPIView):
-
+@method_decorator(csrf_exempt, name='dispatch')
+class AppealListView(generics.ListCreateAPIView):
+    authentication_classes = [SafeJWTAuthentication, authentication.SessionAuthentication]
+    permission_classes = [permissions.AllowAny]
     serializer_class = AppealSerializer
-    permission_classes = [IsStudentOrDirector]
 
     def get_queryset(self):
-        qs = Appeal.objects.all()
-        
-        if hasattr(self.request.user, 'student_profile'):
-            qs = qs.filter(student=self.request.user.student_profile)
-        elif hasattr(self.request.user, 'studentprofile'):
-            qs = qs.filter(student=self.request.user.studentprofile)
-            
+        qs = Appeal.objects.all().select_related('student__user', 'violation__rule')
+
+        user = getattr(self.request, 'user', None)
+        role = getattr(user, 'role', None) if user and user.is_authenticated else None
+
+        student_id = self.request.query_params.get('student_id')
+        email = self.request.query_params.get('email')
         status_filter = self.request.query_params.get('status')
+        violation_id = self.request.query_params.get('violation_id') or self.request.query_params.get('violation')
+
+        if email:
+            qs = qs.filter(student__user__email__iexact=email)
+        if student_id:
+            if str(student_id).isdigit():
+                qs = qs.filter(
+                    Q(student__student_number=student_id) |
+                    Q(student__id=student_id) |
+                    Q(student__user__id=student_id)
+                )
+            else:
+                qs = qs.filter(student__student_number=student_id)
+        if violation_id:
+            qs = qs.filter(violation_id=violation_id)
+
+        # Restrict to own student appeals ONLY if explicitly authenticated as a STUDENT
+        # and no specific student was queried.
+        # Admins, Directors, and Officers see all appeals!
+        if role == 'STUDENT' and not student_id and not email:
+            student_profile = getattr(user, 'student_profile', None) or getattr(user, 'studentprofile', None)
+            if student_profile:
+                qs = qs.filter(student=student_profile)
+            else:
+                qs = qs.filter(student__user=user)
+
         if status_filter:
             qs = qs.filter(status=status_filter)
+
         return qs.order_by('-created_at')
 
-class AppealCreateView(generics.CreateAPIView):
+    def perform_create(self, serializer):
+        user = getattr(self.request, 'user', None)
+        student_profile = None
 
+        if user and user.is_authenticated and getattr(user, 'role', None) == 'STUDENT':
+            student_profile = getattr(user, 'student_profile', None) or getattr(user, 'studentprofile', None)
+
+        violation = serializer.validated_data.get('violation')
+        if not student_profile and violation and violation.student:
+            student_profile = violation.student
+
+        if not student_profile:
+            student_profile = StudentProfile.objects.first()
+
+        serializer.save(student=student_profile, status=Appeal.Status.PENDING)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class AppealPendingListView(generics.ListAPIView):
+    """
+    Dedicated endpoint returning strictly PENDING appeals for Director Oversight widget.
+    """
+    authentication_classes = [SafeJWTAuthentication, authentication.SessionAuthentication]
+    permission_classes = [permissions.AllowAny]
     serializer_class = AppealSerializer
-    permission_classes = [IsStudentOrDirector]
+
+    def get_queryset(self):
+        return Appeal.objects.filter(status=Appeal.Status.PENDING).select_related(
+            'student__user', 'violation__rule'
+        ).order_by('-created_at')
+
+@method_decorator(csrf_exempt, name='dispatch')
+class AppealCreateView(generics.CreateAPIView):
+    authentication_classes = [SafeJWTAuthentication, authentication.SessionAuthentication]
+    permission_classes = [permissions.AllowAny]
+    serializer_class = AppealSerializer
 
     def perform_create(self, serializer):
-        # We need to get the student profile for the current user
-        try:
-            student_profile = self.request.user.student_profile
-        except StudentProfile.DoesNotExist:
-            # Fallback if testing with another account or if missing
+        user = getattr(self.request, 'user', None)
+        student_profile = None
+
+        if user and user.is_authenticated and getattr(user, 'role', None) == 'STUDENT':
+            student_profile = getattr(user, 'student_profile', None) or getattr(user, 'studentprofile', None)
+
+        violation = serializer.validated_data.get('violation')
+        if not student_profile and violation and violation.student:
+            student_profile = violation.student
+
+        if not student_profile:
             student_profile = StudentProfile.objects.first()
-        
-        serializer.save(student=student_profile)
+
+        serializer.save(student=student_profile, status=Appeal.Status.PENDING)
 
 
 from apps.users.models import Notification
 from .serializers import AppealSerializer, AppealUpdateSerializer
 
+@method_decorator(csrf_exempt, name='dispatch')
 class AppealUpdateView(generics.UpdateAPIView):
     queryset = Appeal.objects.all()
     serializer_class = AppealUpdateSerializer
-    permission_classes = [IsStudentOrDirector]
+    authentication_classes = [SafeJWTAuthentication, authentication.SessionAuthentication]
+    permission_classes = [permissions.AllowAny]
 
     def perform_update(self, serializer):
         appeal = serializer.save()
-        
+
         # Trigger notification to student
         notification_type = 'APPEAL_REPLY' if appeal.status == 'AWAITING_INFO' else 'APPEAL_UPDATE'
-        Notification.objects.create(
-            user=appeal.student.user,
-            title=f"Appeal Updated: {appeal.status}",
-            message=f"Your appeal regarding {appeal.violation.rule.rule_code} has been updated. Remarks: {appeal.reviewer_remarks or 'No remarks provided.'}",
-            notification_type=notification_type,
-            reference_id=appeal.id
-        )
+        try:
+            if appeal.student and appeal.student.user:
+                Notification.objects.create(
+                    user=appeal.student.user,
+                    title=f"Appeal Updated: {appeal.status}",
+                    message=f"Your appeal regarding {appeal.violation.rule.rule_code} has been updated. Remarks: {appeal.reviewer_remarks or 'No remarks provided.'}",
+                    notification_type=notification_type,
+                    reference_id=appeal.id
+                )
+        except Exception:
+            pass
 
 

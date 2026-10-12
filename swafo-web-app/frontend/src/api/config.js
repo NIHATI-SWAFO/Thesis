@@ -37,6 +37,7 @@ export const API_ENDPOINTS = {
   VIOLATIONS_LOCATIONS: `${API_BASE_URL}/api/violations/locations/`,
   VIOLATIONS_STATISTICS: `${API_BASE_URL}/api/violations/statistics/`,
   VIOLATIONS_APPEALS: `${API_BASE_URL}/api/violations/appeals/`,
+  VIOLATIONS_APPEALS_PENDING: `${API_BASE_URL}/api/violations/appeals/pending/`,
   VIOLATIONS_APPEALS_SUBMIT: `${API_BASE_URL}/api/violations/appeals/submit/`,
   VIOLATIONS_APPEALS_UPDATE: (id) => `${API_BASE_URL}/api/violations/appeals/${id}/update/`,
   

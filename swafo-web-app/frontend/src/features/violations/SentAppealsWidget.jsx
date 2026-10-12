@@ -64,16 +64,21 @@ export default function SentAppealsWidget() {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Fail-safe: ensure we have both token and user ID before fetching
-    if (user?.token && user?.id) {
-      // Append student_id parameter as an extra frontend safeguard
-      const url = `${API_ENDPOINTS.VIOLATIONS_APPEALS}?student_id=${user.id}`;
+    if (user?.id || user?.email || user?.student_number) {
+      const studentIdentifier = user.student_number || user.id || user.student_profile_id || '';
+      const queryParams = new URLSearchParams();
+      if (studentIdentifier) queryParams.set('student_id', studentIdentifier);
+      if (user.email) queryParams.set('email', user.email);
+
+      const queryString = queryParams.toString();
+      const url = queryString ? `${API_ENDPOINTS.VIOLATIONS_APPEALS}?${queryString}` : API_ENDPOINTS.VIOLATIONS_APPEALS;
       
-      fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${user.token}`
-        }
-      })
+      const headers = {};
+      if (user?.token && user.token !== 'undefined' && user.token !== 'null') {
+        headers['Authorization'] = `Bearer ${user.token}`;
+      }
+
+      fetch(url, { headers })
       .then(res => res.ok ? res.json() : [])
       .then(data => {
         const fetchedAppeals = Array.isArray(data) ? data : (data.results || []);
@@ -113,12 +118,16 @@ export default function SentAppealsWidget() {
     ));
 
     try {
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      if (user?.token && user.token !== 'undefined' && user.token !== 'null') {
+        headers['Authorization'] = `Bearer ${user.token}`;
+      }
+
       await fetch(API_ENDPOINTS.VIOLATIONS_APPEALS_UPDATE(appeal.id), {
         method: "PATCH",
-        headers: {
-          'Authorization': `Bearer ${user.token}`,
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify({ student_read_status: true })
       });
     } catch (err) {

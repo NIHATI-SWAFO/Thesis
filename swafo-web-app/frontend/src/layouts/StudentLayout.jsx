@@ -243,28 +243,8 @@ export default function StudentLayout() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center">
             <NotificationBell isDarkBg={true} role="student" />
-            <div
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform"
-            >
-              <div className="flex flex-col text-right">
-                <span className="text-[12px] font-bold text-white leading-tight truncate max-w-[110px]">
-                  {fullName}
-                </span>
-                <span className="text-[8.5px] text-emerald-400/80 font-black uppercase tracking-wider leading-none">
-                  Student
-                </span>
-              </div>
-              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 font-bold text-xs">
-                {user?.avatar ? (
-                  <img src={user.avatar} className="w-full h-full object-cover rounded-full" alt={fullName} />
-                ) : (
-                  <span>{initials}</span>
-                )}
-              </div>
-            </div>
           </div>
         </header>
 
@@ -284,8 +264,6 @@ export default function StudentLayout() {
 
           {/* Right Actions */}
           <div className="flex items-center gap-4 relative">
-            <NotificationBell isDarkBg={false} role="student" />
-
             <button
               onClick={() => setShowHelp(!showHelp)}
               className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all active:scale-95 group relative ${showHelp ? 'bg-[#003624] text-white shadow-lg' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}
@@ -315,62 +293,16 @@ export default function StudentLayout() {
               </div>
             )}
 
-            <div className="flex items-center gap-4 ml-2 pl-6 border-l border-emerald-50/50">
-              <div className="text-right hidden md:block">
-                <p className="text-[14px] font-pjs font-bold text-[#1a1a1a] leading-tight">{fullName}</p>
-                <p className="text-[10px] font-manrope text-emerald-600 font-bold uppercase tracking-wider">Authenticated Student</p>
-              </div>
-              <div
-                onClick={() => navigate('/student/profile')}
-                className="w-10 h-10 rounded-xl bg-emerald-50 text-[#003624] flex items-center justify-center ring-1 ring-emerald-100/50 shadow-sm overflow-hidden group cursor-pointer hover:bg-[#003624] hover:text-white transition-all duration-300"
-              >
-                <span className="material-symbols-outlined text-[24px]">account_circle</span>
-              </div>
-            </div>
+            <NotificationBell isDarkBg={false} role="student" />
           </div>
         </header>
 
         {/* Scrollable Page Content */}
-        <main className="flex-1 overflow-y-auto px-4 py-5 lg:px-8 lg:py-8 custom-scrollbar pb-24 lg:pb-8">
+        <main className="flex-1 overflow-y-auto px-4 py-5 lg:px-8 lg:py-8 custom-scrollbar">
           <ErrorBoundary>
             <Outlet />
           </ErrorBoundary>
         </main>
-
-        {/* MOBILE BOTTOM NAV */}
-        <div className="md:hidden max-md:fixed max-md:bottom-0 max-md:w-full max-md:h-auto max-md:pt-2 max-md:pb-[calc(1rem+env(safe-area-inset-bottom))] bg-white/80 max-md:backdrop-blur-md border-t border-gray-100 flex items-center justify-evenly px-2 z-[10000] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] pb-6">
-          <NavButton
-            active={location.pathname === '/student/dashboard' || location.pathname === '/student'}
-            onClick={() => navigate('/student/dashboard')}
-            icon="dashboard"
-            label="Home"
-          />
-          <NavButton
-            active={location.pathname.startsWith('/student/violations')}
-            onClick={() => navigate('/student/violations')}
-            icon="gavel"
-            label="Records"
-          />
-          <NavButton
-            active={location.pathname.startsWith('/student/freedom-wall')}
-            onClick={() => navigate('/student/freedom-wall')}
-            icon="campaign"
-            label="Connect"
-          />
-          <NavButton
-            active={location.pathname.startsWith('/student/chatbot')}
-            onClick={() => navigate('/student/chatbot')}
-            icon="chat_bubble"
-            label="ChatBot"
-            isCenter={true}
-          />
-          <NavButton
-            active={location.pathname.startsWith('/student/profile')}
-            onClick={() => navigate('/student/profile')}
-            icon="person"
-            label="Profile"
-          />
-        </div>
       </div>
 
       {/* ══════════════════════════════ FIRST-TIME STUDENT NUMBER PROMPT ══════════════════════════════ */}
@@ -382,29 +314,6 @@ export default function StudentLayout() {
         onSuccess={handleIdConfirmed}
       />
     </div>
-  );
-}
-function NavButton({ active, onClick, icon, label, isCenter = false }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`relative flex flex-col items-center transition-all duration-300 ${active ? '-top-7' : 'top-0'} ${isCenter && !active ? 'opacity-80' : 'opacity-100'}`}
-    >
-      {active ? (
-        <div className="flex flex-col items-center animate-in zoom-in-75 duration-300">
-          <div className="w-[72px] h-[72px] bg-[#1A5C3A] rounded-full border-[6px] border-white shadow-2xl flex items-center justify-center mb-1 active:scale-90 transition-transform">
-            <span className="material-symbols-outlined text-white text-[32px] fill-1">{icon}</span>
-          </div>
-          <span className="text-[10px] font-black tracking-tighter text-[#1A5C3A] whitespace-nowrap">{label}</span>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-1 group active:scale-95 transition-all">
-          <span className="material-symbols-outlined text-[28px] text-slate-400 group-hover:text-slate-600 transition-colors">{icon}</span>
-          <span className="text-[10px] font-black tracking-tighter text-slate-400 group-hover:text-slate-600 transition-colors">{label}</span>
-        </div>
-      )}
-    </button>
   );
 }
 

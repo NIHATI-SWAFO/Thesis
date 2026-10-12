@@ -213,28 +213,8 @@ export default function OfficerLayout() {
               <span className="font-manrope text-[8.5px] uppercase tracking-[0.2em] text-emerald-400/80 font-black leading-none">Officer Station</span>
             </div>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center">
             <NotificationBell isDarkBg={true} role="officer" />
-            <div 
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform"
-            >
-              <div className="flex flex-col text-right">
-                <span className="text-[12px] font-bold text-white leading-tight truncate max-w-[110px]">
-                  {officerDisplayName}
-                </span>
-                <span className="text-[8.5px] text-emerald-400/80 font-black uppercase tracking-wider leading-none">
-                  SWAFO Officer
-                </span>
-              </div>
-              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 font-bold text-xs">
-                {user?.avatar ? (
-                  <img src={user.avatar} className="w-full h-full object-cover rounded-full" alt={officerDisplayName} />
-                ) : (
-                  <span>{initials}</span>
-                )}
-              </div>
-            </div>
           </div>
         </header>
 
@@ -250,19 +230,8 @@ export default function OfficerLayout() {
               className="block w-full rounded-2xl border border-white/10 bg-white/10 py-3 pl-12 pr-4 text-white text-[13px] font-manrope font-semibold placeholder:text-white/30 outline-none" 
             />
           </div>
-          <div className="flex items-center gap-4 ml-6 pl-8 border-l border-white/10">
+          <div className="flex items-center ml-6 pl-8 border-l border-white/10">
             <NotificationBell isDarkBg={true} role="officer" />
-            <div className="flex flex-col items-end">
-              <span className="text-[14px] font-pjs font-bold text-white mb-1">{officerDisplayName}</span>
-              <span className="text-[10px] text-emerald-400/80 font-black uppercase">SWAFO Officer</span>
-            </div>
-            <div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center text-white border border-white/20 font-bold text-xs uppercase tracking-wider shrink-0">
-              {user?.avatar ? (
-                <img src={user.avatar} className="w-full h-full object-cover rounded-2xl" alt={officerDisplayName} />
-              ) : (
-                <span>{initials}</span>
-              )}
-            </div>
           </div>
         </header>
 
