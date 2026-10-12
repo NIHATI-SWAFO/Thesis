@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useMsal } from "@azure/msal-react";
-import { API_BASE_URL } from '../api/config';
+import { API_BASE_URL, API_ENDPOINTS } from '../api/config';
+import { sendPresence } from '../hooks/usePresence';
 
 const AuthContext = createContext();
 
@@ -153,6 +154,7 @@ export const AuthProvider = ({ children }) => {
                 name: data.user?.full_name || officerName, 
                 email: data.user?.email || email,
                 role: 'OFFICER',
+                must_change_password: Boolean(data.user?.must_change_password),
                 token: data.access || null
             };
             localStorage.setItem('swafo_mock_user', JSON.stringify(user));
@@ -166,6 +168,7 @@ export const AuthProvider = ({ children }) => {
                     name: officerName || email.split('@')[0],
                     email: email,
                     role: 'OFFICER',
+                    must_change_password: false,
                     token: 'fallback-officer-token'
                 };
                 localStorage.setItem('swafo_mock_user', JSON.stringify(fallbackUser));
@@ -177,41 +180,53 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const loginAsAdmin = async (adminName, email) => {
+    const loginAsAdmin = async (adminName, email, password) => {
         try {
+            const payload = { email: email };
+            if (password) payload.password = password;
+
             const res = await fetch(`${API_BASE_URL}/api/users/mock-login/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: email })
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || 'Authentication failed');
+            }
 
             const user = { 
                 id: data.user?.id || 1,
-                name: data.user?.full_name || adminName, 
+                name: data.user?.full_name || adminName || 'Director Ruel Elias', 
                 email: data.user?.email || email,
                 role: 'ADMIN',
-                token: data.access || 'admin-demo-token'
+                must_change_password: Boolean(data.user?.must_change_password),
+                token: data.access || null
             };
             localStorage.setItem('swafo_mock_user', JSON.stringify(user));
             setMockUser(user);
             return user;
         } catch (error) {
-            console.warn("Admin mock login network issue, using demo fallback:", error);
-            const user = { 
-                id: 1,
-                name: adminName, 
-                email: email,
-                role: 'ADMIN',
-                token: 'admin-demo-token'
-            };
-            localStorage.setItem('swafo_mock_user', JSON.stringify(user));
-            setMockUser(user);
-            return user;
+            console.error("Admin login error:", error);
+            throw error;
         }
     };
 
+    const updateUser = (updatedFields) => {
+        setCurrentUser(prev => {
+            if (!prev) return null;
+            const updated = { ...prev, ...updatedFields };
+            localStorage.setItem('swafo_mock_user', JSON.stringify(updated));
+            return updated;
+        });
+    };
+
     const logout = () => {
+        // 0. Flag officer/director as inactive right away
+        if (currentUser?.email) {
+            sendPresence(API_ENDPOINTS.PRESENCE_OFFLINE, currentUser.email);
+        }
+
         // 1. Clear local mock data
         localStorage.removeItem('swafo_mock_user');
         setMockUser(null);
@@ -232,10 +247,11 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user: currentUser, loginAsMock, loginAsOfficer, loginAsAdmin, logout }}>
+        <AuthContext.Provider value={{ user: currentUser, loginAsMock, loginAsOfficer, loginAsAdmin, updateUser, logout }}>
             {children}
         </AuthContext.Provider>
     );
+
 };
 
 export const useAuth = () => useContext(AuthContext);

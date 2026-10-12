@@ -3,6 +3,8 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from '../components/common/NotificationBell';
 
+import { API_ENDPOINTS } from '../api/config';
+
 const adminNavItems = [
   { name: 'Director Overview', path: '/admin/dashboard', icon: 'monitoring' },
   { name: 'Case Oversight', path: '/admin/cases', icon: 'gavel' },
@@ -21,10 +23,23 @@ export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [pendingResetCount, setPendingResetCount] = useState(0);
 
   // Close mobile drawer whenever location changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Fetch pending recovery requests for navigation badge
+  useEffect(() => {
+    fetch(API_ENDPOINTS.ADMIN_RESET_REQUESTS)
+      .then(res => res.json())
+      .then(data => {
+        if (data && typeof data.pending_count === 'number') {
+          setPendingResetCount(data.pending_count);
+        }
+      })
+      .catch(() => {});
   }, [location.pathname]);
 
   const handleLogout = () => {
@@ -71,6 +86,7 @@ export default function AdminLayout() {
             );
           })}
         </nav>
+
 
         {/* User Info & Logout */}
         <div className="px-6 mt-auto pt-8 border-t border-white/5 flex flex-col gap-2">
@@ -197,6 +213,19 @@ export default function AdminLayout() {
             </div>
           </div>
           <div className="flex items-center gap-2.5">
+            <Link
+              to="/admin/officer-accounts"
+              title="Officer Accounts"
+              aria-label="Officer Accounts"
+              className="relative w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-white active:scale-90 transition-transform"
+            >
+              <span className="material-symbols-outlined text-[20px]">badge</span>
+              {pendingResetCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-amber-950 text-[10px] font-black flex items-center justify-center ring-2 ring-[#003624]">
+                  {pendingResetCount}
+                </span>
+              )}
+            </Link>
             <NotificationBell isDarkBg={true} role="admin" />
             <div 
               onClick={() => setIsMobileMenuOpen(true)}
@@ -224,8 +253,8 @@ export default function AdminLayout() {
             <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">Global Campus Status</p>
           </div>
 
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3 pr-6 border-r border-gray-100">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 pr-4 border-r border-gray-100">
               <div className="flex flex-col items-end">
                 <span className="text-[11px] font-black text-[#003624] uppercase tracking-tighter">System Health</span>
                 <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-500 uppercase tracking-widest">
@@ -233,6 +262,25 @@ export default function AdminLayout() {
                 </span>
               </div>
             </div>
+
+            {/* Officer Accounts quick access */}
+            <Link
+              to="/admin/officer-accounts"
+              title="Officer Accounts"
+              className={`relative inline-flex items-center gap-2 h-10 pl-3 pr-3.5 rounded-xl border text-[12px] font-bold transition-all ${
+                location.pathname === '/admin/officer-accounts'
+                  ? 'bg-[#003624] border-[#003624] text-white shadow-md shadow-emerald-900/20'
+                  : 'bg-white border-gray-200 text-[#003624] hover:bg-emerald-50 hover:border-emerald-200'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[19px]">badge</span>
+              <span>Officer Accounts</span>
+              {pendingResetCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-amber-950 text-[10px] font-black flex items-center justify-center ring-2 ring-white animate-pulse">
+                  {pendingResetCount}
+                </span>
+              )}
+            </Link>
 
             <NotificationBell isDarkBg={false} role="admin" />
           </div>

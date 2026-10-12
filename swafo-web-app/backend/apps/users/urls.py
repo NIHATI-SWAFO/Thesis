@@ -3,7 +3,13 @@ from .views import (
     StudentSearchView, ProfileByEmailView, StudentListView, StudentProfileDetailView,
     UserListView, UserDetailView, CollegeListView, MockLoginView,
     UpdateBarcodeView, DecodeBarcodeImageView, UpdateStudentNumberView,
-    NotificationListView, NotificationUpdateView, UpdateProfilePictureView
+    NotificationListView, NotificationUpdateView, UpdateProfilePictureView,
+    DirectorForgotPasswordView, DirectorResetPasswordView,
+    OfficerRequestResetView, OfficerAccountsListView, OfficerToggleStatusView,
+    OfficerDeleteView, OfficerCreateView, OfficerManualResetPasswordView, OfficerResetRequestsListView,
+    OfficerApproveResetRequestView, OfficerRejectResetRequestView,
+    SecurityAuditLogsListView, OfficerChangePasswordView,
+    PresenceHeartbeatView, PresenceOfflineView
 )
 
 urlpatterns = [
@@ -20,6 +26,26 @@ urlpatterns = [
     path('users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('colleges/', CollegeListView.as_view(), name='college-list'),
     path('mock-login/', MockLoginView.as_view(), name='mock-login'),
+    path('presence/heartbeat/', PresenceHeartbeatView.as_view(), name='presence-heartbeat'),
+    path('presence/offline/', PresenceOfflineView.as_view(), name='presence-offline'),
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
     path('notifications/<int:pk>/update/', NotificationUpdateView.as_view(), name='notification-update'),
+
+    # Credential Recovery & Password Management
+    path('auth/director/forgot-password/', DirectorForgotPasswordView.as_view(), name='director-forgot-password'),
+    path('auth/director/reset-password/', DirectorResetPasswordView.as_view(), name='director-reset-password'),
+    path('auth/officer/request-reset/', OfficerRequestResetView.as_view(), name='officer-request-reset'),
+    path('auth/change-password/', OfficerChangePasswordView.as_view(), name='officer-change-password'),
+
+    # Director Officer Management & Security
+    path('admin/officers/', OfficerAccountsListView.as_view(), name='admin-officers-list'),
+    path('admin/officers/create/', OfficerCreateView.as_view(), name='admin-officers-create'),
+    path('admin/officers/<int:pk>/delete/', OfficerDeleteView.as_view(), name='admin-officers-delete'),
+    path('admin/officers/<int:pk>/toggle-status/', OfficerToggleStatusView.as_view(), name='admin-officers-toggle-status'),
+    path('admin/officers/<int:pk>/manual-reset/', OfficerManualResetPasswordView.as_view(), name='admin-officers-manual-reset'),
+    path('admin/reset-requests/', OfficerResetRequestsListView.as_view(), name='admin-reset-requests-list'),
+    path('admin/reset-requests/<int:pk>/approve/', OfficerApproveResetRequestView.as_view(), name='admin-reset-requests-approve'),
+    path('admin/reset-requests/<int:pk>/reject/', OfficerRejectResetRequestView.as_view(), name='admin-reset-requests-reject'),
+    path('admin/security-audit-logs/', SecurityAuditLogsListView.as_view(), name='admin-security-audit-logs'),
 ]
+

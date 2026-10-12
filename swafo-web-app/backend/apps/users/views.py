@@ -1,5 +1,11 @@
 import re
 import hashlib
+import secrets
+import string
+from datetime import timedelta
+from django.utils import timezone
+from django.core.mail import send_mail
+from django.conf import settings
 from rest_framework import permissions, generics
 from rest_framework.views import APIView
 from django.db.models import Count, Q
@@ -8,8 +14,68 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 import zxingcpp
 from PIL import Image, ImageOps, ImageEnhance
-from .models import StudentProfile, User
-from .serializers import StudentProfileSerializer, UserSerializer
+from .models import StudentProfile, User, PasswordResetToken, PasswordResetRequest, SecurityAuditLog
+from .serializers import (
+    StudentProfileSerializer, UserSerializer, PasswordResetRequestSerializer,
+    SecurityAuditLogSerializer, OfficerAccountSerializer
+)
+
+OFFICER_REGISTRY = {
+    # Director
+    "ruel.elias@dlsud.edu.ph": {"name": "Director Ruel Elias", "password": "Dir#982xK$82!vQ", "role": User.Role.ADMIN},
+    "director@dlsud.edu.ph": {"name": "Director Ruel Elias", "password": "Dir#982xK$82!vQ", "role": User.Role.ADMIN},
+    "admin@dlsud.edu.ph": {"name": "Director Ruel Elias", "password": "Dir#982xK$82!vQ", "role": User.Role.ADMIN},
+    "director.swafo@dlsud.edu.ph": {"name": "Director Ruel Elias", "password": "Dir#982xK$82!vQ", "role": User.Role.ADMIN},
+
+    # Patrol Officers (Individual Strong Passwords)
+    "erica.aclag@dlsud.edu.ph": {"name": "Erica Aclag", "password": "eA82!qP9#mZ4^71", "role": User.Role.OFFICER, "roleBadge": "Patrol Officer"},
+    "rex.ceballos@dlsud.edu.ph": {"name": "Rex Ceballos", "password": "rC49$vT2@xL8*35", "role": User.Role.OFFICER, "roleBadge": "Patrol Officer"},
+    "juanmiguel.diamante@dlsud.edu.ph": {"name": "Juan Miguel Diamante", "password": "jM73^bW5!kR9#62", "role": User.Role.OFFICER, "roleBadge": "Patrol Officer"},
+    "ervin.doroteo@dlsud.edu.ph": {"name": "Ervin Doroteo", "password": "eD61#zS8*pY3&49", "role": User.Role.OFFICER, "roleBadge": "Patrol Officer"},
+    "michael.nicart@dlsud.edu.ph": {"name": "Michael Nicart", "password": "mN94@tF6^wK2!83", "role": User.Role.OFFICER, "roleBadge": "Patrol Officer"},
+    "mhycel.omana@dlsud.edu.ph": {"name": "Mhycel Omaña", "password": "mO37!hQ4$sV8#51", "role": User.Role.OFFICER, "roleBadge": "Patrol Officer"},
+    "loren.penano@dlsud.edu.ph": {"name": "Loren Peñano", "password": "lP52#uX9%rB6&74", "role": User.Role.OFFICER, "roleBadge": "Patrol Officer"},
+    "rainger.delacruz@dlsud.edu.ph": {"name": "Rainger Dela Cruz", "password": "rD85*kM3!zN7^92", "role": User.Role.OFFICER, "roleBadge": "Patrol Officer"},
+
+    # Staff Officers (Individual Strong Passwords)
+    "timothy.deguzman@dlsud.edu.ph": {"name": "Officer Timothy De Guzman", "password": "tD71!wB4#yS9^28", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "officer1@dlsud.edu.ph": {"name": "Officer Timothy De Guzman", "password": "tD71!wB4#yS9^28", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "officer@dlsud.edu.ph": {"name": "Officer Timothy", "password": "tD71!wB4#yS9^28", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "maria.santos@dlsud.edu.ph": {"name": "Officer Maria Santos", "password": "mS63#vP8@xK2$51", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "officer2@dlsud.edu.ph": {"name": "Officer Maria Santos", "password": "mS63#vP8@xK2$51", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "ricardo.reyes@dlsud.edu.ph": {"name": "Officer Ricardo Reyes", "password": "rR48^qZ5!tM7#93", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "officer3@dlsud.edu.ph": {"name": "Officer Ricardo Reyes", "password": "rR48^qZ5!tM7#93", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "elena.garcia@dlsud.edu.ph": {"name": "Officer Elena Garcia", "password": "eG92$kS6*wL3&84", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "officer4@dlsud.edu.ph": {"name": "Officer Elena Garcia", "password": "eG92$kS6*wL3&84", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "julian.cruz@dlsud.edu.ph": {"name": "Officer Julian Cruz", "password": "jC35!tX8#vP4^62", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "officer5@dlsud.edu.ph": {"name": "Officer Julian Cruz", "password": "jC35!tX8#vP4^62", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "sofia.villanueva@dlsud.edu.ph": {"name": "Officer Sofia Villanueva", "password": "sV84#rK2%mB9&71", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "officer6@dlsud.edu.ph": {"name": "Officer Sofia Villanueva", "password": "sV84#rK2%mB9&71", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "mateo.ramos@dlsud.edu.ph": {"name": "Officer Mateo Ramos", "password": "mR29*zN6!yD5$83", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "officer7@dlsud.edu.ph": {"name": "Officer Mateo Ramos", "password": "mR29*zN6!yD5$83", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "isabella.luna@dlsud.edu.ph": {"name": "Officer Isabella Luna", "password": "iL76^wM3#sT8!49", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "officer8@dlsud.edu.ph": {"name": "Officer Isabella Luna", "password": "iL76^wM3#sT8!49", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "gabriel.castro@dlsud.edu.ph": {"name": "Officer Gabriel Castro", "password": "gC51#qL9@vR4*72", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "officer9@dlsud.edu.ph": {"name": "Officer Gabriel Castro", "password": "gC51#qL9@vR4*72", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "beatrice.mendoza@dlsud.edu.ph": {"name": "Officer Beatrice Mendoza", "password": "bM93!xS5$kZ8#61", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+    "officer10@dlsud.edu.ph": {"name": "Officer Beatrice Mendoza", "password": "bM93!xS5$kZ8#61", "role": User.Role.OFFICER, "roleBadge": "Staff Officer"},
+}
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+def generate_temp_password(length=12):
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    while True:
+        pw = ''.join(secrets.choice(alphabet) for _ in range(length))
+        if (any(c.islower() for c in pw)
+                and any(c.isupper() for c in pw)
+                and any(c.isdigit() for c in pw)
+                and any(c in "!@#$%^&*" for c in pw)):
+            return pw
 
 class MockLoginView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -25,47 +91,7 @@ class MockLoginView(APIView):
             User.objects.filter(username__iexact=identifier).first() or
             User.objects.filter(full_name__iexact=identifier).first()
         )
-        
-        OFFICER_REGISTRY = {
-            # Director
-            "ruel.elias@dlsud.edu.ph": {"name": "Director Ruel Elias", "password": "Dir#982xK$82!vQ", "role": User.Role.ADMIN},
-            "director@dlsud.edu.ph": {"name": "Director Ruel Elias", "password": "Dir#982xK$82!vQ", "role": User.Role.ADMIN},
-            "admin@dlsud.edu.ph": {"name": "Director Ruel Elias", "password": "Dir#982xK$82!vQ", "role": User.Role.ADMIN},
-            "director.swafo@dlsud.edu.ph": {"name": "Director Ruel Elias", "password": "Dir#982xK$82!vQ", "role": User.Role.ADMIN},
 
-            # Patrol Officers (Individual Strong Passwords)
-            "erica.aclag@dlsud.edu.ph": {"name": "Erica Aclag", "password": "eA82!qP9#mZ4^71", "role": User.Role.OFFICER},
-            "rex.ceballos@dlsud.edu.ph": {"name": "Rex Ceballos", "password": "rC49$vT2@xL8*35", "role": User.Role.OFFICER},
-            "juanmiguel.diamante@dlsud.edu.ph": {"name": "Juan Miguel Diamante", "password": "jM73^bW5!kR9#62", "role": User.Role.OFFICER},
-            "ervin.doroteo@dlsud.edu.ph": {"name": "Ervin Doroteo", "password": "eD61#zS8*pY3&49", "role": User.Role.OFFICER},
-            "michael.nicart@dlsud.edu.ph": {"name": "Michael Nicart", "password": "mN94@tF6^wK2!83", "role": User.Role.OFFICER},
-            "mhycel.omana@dlsud.edu.ph": {"name": "Mhycel Omaña", "password": "mO37!hQ4$sV8#51", "role": User.Role.OFFICER},
-            "loren.penano@dlsud.edu.ph": {"name": "Loren Peñano", "password": "lP52#uX9%rB6&74", "role": User.Role.OFFICER},
-            "rainger.delacruz@dlsud.edu.ph": {"name": "Rainger Dela Cruz", "password": "rD85*kM3!zN7^92", "role": User.Role.OFFICER},
-
-            # Staff Officers (Individual Strong Passwords)
-            "timothy.deguzman@dlsud.edu.ph": {"name": "Officer Timothy De Guzman", "password": "tD71!wB4#yS9^28", "role": User.Role.OFFICER},
-            "officer1@dlsud.edu.ph": {"name": "Officer Timothy De Guzman", "password": "tD71!wB4#yS9^28", "role": User.Role.OFFICER},
-            "officer@dlsud.edu.ph": {"name": "Officer Timothy", "password": "tD71!wB4#yS9^28", "role": User.Role.OFFICER},
-            "maria.santos@dlsud.edu.ph": {"name": "Officer Maria Santos", "password": "mS63#vP8@xK2$51", "role": User.Role.OFFICER},
-            "officer2@dlsud.edu.ph": {"name": "Officer Maria Santos", "password": "mS63#vP8@xK2$51", "role": User.Role.OFFICER},
-            "ricardo.reyes@dlsud.edu.ph": {"name": "Officer Ricardo Reyes", "password": "rR48^qZ5!tM7#93", "role": User.Role.OFFICER},
-            "officer3@dlsud.edu.ph": {"name": "Officer Ricardo Reyes", "password": "rR48^qZ5!tM7#93", "role": User.Role.OFFICER},
-            "elena.garcia@dlsud.edu.ph": {"name": "Officer Elena Garcia", "password": "eG92$kS6*wL3&84", "role": User.Role.OFFICER},
-            "officer4@dlsud.edu.ph": {"name": "Officer Elena Garcia", "password": "eG92$kS6*wL3&84", "role": User.Role.OFFICER},
-            "julian.cruz@dlsud.edu.ph": {"name": "Officer Julian Cruz", "password": "jC35!tX8#vP4^62", "role": User.Role.OFFICER},
-            "officer5@dlsud.edu.ph": {"name": "Officer Julian Cruz", "password": "jC35!tX8#vP4^62", "role": User.Role.OFFICER},
-            "sofia.villanueva@dlsud.edu.ph": {"name": "Officer Sofia Villanueva", "password": "sV84#rK2%mB9&71", "role": User.Role.OFFICER},
-            "officer6@dlsud.edu.ph": {"name": "Officer Sofia Villanueva", "password": "sV84#rK2%mB9&71", "role": User.Role.OFFICER},
-            "mateo.ramos@dlsud.edu.ph": {"name": "Officer Mateo Ramos", "password": "mR29*zN6!yD5$83", "role": User.Role.OFFICER},
-            "officer7@dlsud.edu.ph": {"name": "Officer Mateo Ramos", "password": "mR29*zN6!yD5$83", "role": User.Role.OFFICER},
-            "isabella.luna@dlsud.edu.ph": {"name": "Officer Isabella Luna", "password": "iL76^wM3#sT8!49", "role": User.Role.OFFICER},
-            "officer8@dlsud.edu.ph": {"name": "Officer Isabella Luna", "password": "iL76^wM3#sT8!49", "role": User.Role.OFFICER},
-            "gabriel.castro@dlsud.edu.ph": {"name": "Officer Gabriel Castro", "password": "gC51#qL9@vR4*72", "role": User.Role.OFFICER},
-            "officer9@dlsud.edu.ph": {"name": "Officer Gabriel Castro", "password": "gC51#qL9@vR4*72", "role": User.Role.OFFICER},
-            "beatrice.mendoza@dlsud.edu.ph": {"name": "Officer Beatrice Mendoza", "password": "bM93!xS5$kZ8#61", "role": User.Role.OFFICER},
-            "officer10@dlsud.edu.ph": {"name": "Officer Beatrice Mendoza", "password": "bM93!xS5$kZ8#61", "role": User.Role.OFFICER},
-        }
 
         # Auto-provision known officers and directors if missing from deployed DB
         if not user:
@@ -102,6 +128,9 @@ class MockLoginView(APIView):
         if not user:
             return Response({"error": "User account not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        if getattr(user, 'is_deleted', False):
+            return Response({"error": "This officer account has been deleted by the Director."}, status=status.HTTP_403_FORBIDDEN)
+
         if password:
             reg_entry = OFFICER_REGISTRY.get(user.email.lower()) or OFFICER_REGISTRY.get(identifier.lower())
             expected_pw = reg_entry["password"] if reg_entry else None
@@ -116,12 +145,44 @@ class MockLoginView(APIView):
             else:
                 return Response({"error": "Invalid password"}, status=status.HTTP_401_UNAUTHORIZED)
         
+        # Presence: mark session as online at login time
+        now = timezone.now()
+        user.last_login = now
+        user.last_seen = now
+        user.is_online = True
+        user.save(update_fields=['last_login', 'last_seen', 'is_online'])
+
         refresh = RefreshToken.for_user(user)
         return Response({
             'refresh': str(refresh),
             'access': str(refresh.access_token),
             'user': UserSerializer(user).data
         })
+
+
+class PresenceHeartbeatView(APIView):
+    """Called periodically by an active officer session to keep them flagged as online."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip()
+        if not email:
+            return Response({"error": "email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        updated = User.objects.filter(email__iexact=email).update(is_online=True, last_seen=timezone.now())
+        return Response({"ok": bool(updated)})
+
+
+class PresenceOfflineView(APIView):
+    """Called on logout / tab close to immediately flag the officer as inactive."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip()
+        if not email:
+            return Response({"error": "email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        updated = User.objects.filter(email__iexact=email).update(is_online=False)
+        return Response({"ok": bool(updated)})
+
 
 class StudentSearchView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -659,6 +720,491 @@ class UpdateProfilePictureView(APIView):
             "profile_picture": student.profile_picture,
             "student": StudentProfileSerializer(student).data
         }, status=status.HTTP_200_OK)
+
+
+class DirectorForgotPasswordView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip().lower()
+        generic_message = "If this account exists, we sent a password reset link to your email."
+
+        if not email:
+            return Response({"message": generic_message}, status=status.HTTP_200_OK)
+
+        user = User.objects.filter(email__iexact=email, role=User.Role.ADMIN).first()
+        if not user and ('admin' in email or 'director' in email):
+            user = User.objects.filter(username__iexact=email, role=User.Role.ADMIN).first()
+
+        if user:
+            raw_token = secrets.token_hex(32)
+            token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+
+            PasswordResetToken.objects.filter(user=user, is_used=False).update(is_used=True)
+
+            PasswordResetToken.objects.create(
+                user=user,
+                token_hash=token_hash,
+                expires_at=timezone.now() + timedelta(minutes=15),
+                is_used=False
+            )
+
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173').rstrip('/')
+            reset_link = f"{frontend_url}/reset-password?token={raw_token}&email={user.email}"
+
+            subject = "SWAFO Security Portal - Director Password Reset Request"
+            body = (
+                f"Dear {user.full_name or 'Director'},\n\n"
+                f"A password reset request was received for your SWAFO Director account.\n\n"
+                f"Click or copy the link below within 15 minutes to set a new password:\n"
+                f"{reset_link}\n\n"
+                f"If you did not request this, please disregard this email or review your security audit log.\n\n"
+                f"Student Welfare and Formation Office (SWAFO)\n"
+                f"De La Salle University - Dasmariñas"
+            )
+
+            try:
+                send_mail(
+                    subject,
+                    body,
+                    getattr(settings, 'DEFAULT_FROM_EMAIL', 'SWAFO Security <swafo-noreply@dlsud.edu.ph>'),
+                    [user.email],
+                    fail_silently=False
+                )
+            except Exception as e:
+                print(f"[RESET_PASSWORD_NOTICE] Reset link for {user.email}: {reset_link} (Error: {e})")
+
+            SecurityAuditLog.objects.create(
+                action='DIRECTOR_PASSWORD_RESET_REQUESTED',
+                actor=user,
+                target_user=user,
+                ip_address=get_client_ip(request),
+                details=f"15-minute single-use reset token generated for {user.email}"
+            )
+
+        return Response({"message": generic_message}, status=status.HTTP_200_OK)
+
+
+class DirectorResetPasswordView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        token = (request.data.get('token') or '').strip()
+        new_password = (request.data.get('new_password') or '').strip()
+
+        if not token or not new_password:
+            return Response({"error": "Reset token and new password are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(new_password) < 8:
+            return Response({"error": "Password must be at least 8 characters long."}, status=status.HTTP_400_BAD_REQUEST)
+
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        reset_token = PasswordResetToken.objects.filter(
+            token_hash=token_hash,
+            is_used=False,
+            expires_at__gt=timezone.now()
+        ).first()
+
+        if not reset_token:
+            return Response({"error": "Invalid or expired password reset link. Please request a new link."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = reset_token.user
+        user.set_password(new_password)
+        user.must_change_password = False
+        user.save()
+
+        reset_token.is_used = True
+        reset_token.save()
+
+        SecurityAuditLog.objects.create(
+            action='DIRECTOR_PASSWORD_RESET_COMPLETED',
+            actor=user,
+            target_user=user,
+            ip_address=get_client_ip(request),
+            details="Director successfully set a new password via reset token."
+        )
+
+        return Response({"message": "Password reset successful. You can now sign in with your new password."}, status=status.HTTP_200_OK)
+
+
+class OfficerRequestResetView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        identifier = (request.data.get('identifier') or request.data.get('email') or '').strip()
+        if not identifier:
+            return Response({"error": "Please enter your Officer ID or school email."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = (
+            User.objects.filter(email__iexact=identifier, role=User.Role.OFFICER).first() or
+            User.objects.filter(username__iexact=identifier, role=User.Role.OFFICER).first() or
+            User.objects.filter(full_name__iexact=identifier, role=User.Role.OFFICER).first()
+        )
+
+        if not user:
+            for em, info in OFFICER_REGISTRY.items():
+                if info["role"] == User.Role.OFFICER and (em.lower() == identifier.lower() or info["name"].lower() == identifier.lower()):
+                    badge = 'Patrol Officer' if any(em.startswith(p) for p in ['erica', 'rex', 'juan', 'ervin', 'michael', 'mhycel', 'loren', 'rainger']) else 'Staff Officer'
+                    user, _ = User.objects.get_or_create(
+                        email__iexact=em,
+                        defaults={
+                            'username': em,
+                            'email': em,
+                            'full_name': info["name"],
+                            'role': User.Role.OFFICER,
+                            'officer_badge': badge,
+                            'is_active': True,
+                        }
+                    )
+                    break
+
+        officer_name = user.full_name if user else identifier.split('@')[0].replace('.', ' ').title()
+        officer_email = user.email if user else (identifier if '@' in identifier else f"{identifier}@dlsud.edu.ph")
+        officer_id = identifier if '@' not in identifier else (user.username if user else '')
+
+        req_obj = PasswordResetRequest.objects.create(
+            user=user,
+            officer_name=officer_name,
+            officer_email=officer_email,
+            officer_id=officer_id,
+            status=PasswordResetRequest.Status.PENDING
+        )
+
+        SecurityAuditLog.objects.create(
+            action='OFFICER_RESET_REQUESTED',
+            actor=user,
+            target_user=user,
+            ip_address=get_client_ip(request),
+            details=f"Password reset request created for officer {officer_name} ({officer_email})"
+        )
+
+        return Response({
+            "message": "Reset request submitted to the Director. Please check with the Director for your temporary credentials.",
+            "request_id": req_obj.id
+        }, status=status.HTTP_201_CREATED)
+
+
+class OfficerCreateView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        full_name = (request.data.get('full_name') or '').strip()
+        email = (request.data.get('email') or '').strip().lower()
+        badge = 'Patrol Officer'
+        custom_password = (request.data.get('password') or '').strip()
+        must_change_pw = request.data.get('must_change_password', True)
+
+        if not full_name:
+            return Response({"error": "Full name is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not email:
+            return Response({"error": "Institutional email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check existing user
+        existing_user = User.objects.filter(email__iexact=email).first()
+        if existing_user:
+            if not getattr(existing_user, 'is_deleted', False):
+                return Response({
+                    "error": f"An officer account with email '{email}' already exists and is active."
+                }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                user = existing_user
+                user.is_deleted = False
+                user.is_active = True
+                user.role = User.Role.OFFICER
+                user.full_name = full_name
+                user.officer_badge = badge
+                user.must_change_password = bool(must_change_pw)
+        else:
+            user = User(
+                username=email,
+                email=email,
+                full_name=full_name,
+                role=User.Role.OFFICER,
+                officer_badge=badge,
+                is_active=True,
+                is_deleted=False,
+                must_change_password=bool(must_change_pw)
+            )
+
+        import secrets
+        import string
+        if custom_password:
+            final_password = custom_password
+        else:
+            chars = string.ascii_letters + string.digits + "!@#$%"
+            final_password = ''.join(secrets.choice(chars) for _ in range(12))
+
+        user.set_password(final_password)
+        user.save()
+
+        actor = request.user if request.user.is_authenticated else None
+
+        SecurityAuditLog.objects.create(
+            action='OFFICER_ACCOUNT_CREATED',
+            actor=actor,
+            target_user=user,
+            ip_address=get_client_ip(request),
+            details=f"Designated patrol officer account created: {full_name} ({email})"
+        )
+
+        return Response({
+            "message": f"Patrol officer account for {full_name} created successfully.",
+            "officer": OfficerAccountSerializer(user).data,
+            "temporary_password": final_password
+        }, status=status.HTTP_201_CREATED)
+
+
+class OfficerAccountsListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        # Guarantee baseline designated patrol officers exist
+        patrol_emails = [
+            em for em, data in OFFICER_REGISTRY.items()
+            if data.get("roleBadge") == "Patrol Officer"
+        ]
+
+        for em in patrol_emails:
+            data = OFFICER_REGISTRY[em]
+            u = User.objects.filter(email__iexact=em).first()
+            if not u:
+                u = User.objects.create(
+                    username=em,
+                    email=em,
+                    full_name=data["name"],
+                    role=User.Role.OFFICER,
+                    officer_badge='Patrol Officer',
+                    is_active=True,
+                    is_deleted=False
+                )
+                u.set_password(data["password"])
+                u.save()
+            elif u.officer_badge != 'Patrol Officer' and not getattr(u, 'is_deleted', False):
+                u.officer_badge = 'Patrol Officer'
+                u.save(update_fields=['officer_badge'])
+
+        # Stay designated patrol officers only
+        officers = User.objects.filter(
+            role=User.Role.OFFICER, 
+            officer_badge='Patrol Officer',
+            is_deleted=False
+        ).order_by('full_name')
+        return Response(OfficerAccountSerializer(officers, many=True).data)
+
+    def post(self, request):
+        return OfficerCreateView().post(request)
+
+
+class OfficerDeleteView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, pk):
+        return self._handle_delete(request, pk)
+
+    def delete(self, request, pk):
+        return self._handle_delete(request, pk)
+
+    def _handle_delete(self, request, pk):
+        try:
+            officer = User.objects.get(pk=pk, role=User.Role.OFFICER)
+        except User.DoesNotExist:
+            return Response({"error": "Officer not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        officer_name = officer.full_name
+        officer_email = officer.email
+
+        # Mark soft-deleted and disable access
+        officer.is_deleted = True
+        officer.is_active = False
+        officer.is_online = False
+        officer.save(update_fields=['is_deleted', 'is_active', 'is_online'])
+
+        actor = request.user if request.user.is_authenticated else None
+
+        SecurityAuditLog.objects.create(
+            action='OFFICER_ACCOUNT_DELETED',
+            actor=actor,
+            target_user=officer,
+            ip_address=get_client_ip(request),
+            details=f"Patrol officer account deleted: {officer_name} ({officer_email})"
+        )
+
+        return Response({
+            "message": f"Officer {officer_name} has been deleted successfully.",
+            "officer_id": pk
+        })
+
+# Backwards compatibility alias
+OfficerToggleStatusView = OfficerDeleteView
+
+
+class OfficerManualResetPasswordView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, pk):
+        try:
+            officer = User.objects.get(pk=pk, role=User.Role.OFFICER)
+        except User.DoesNotExist:
+            return Response({"error": "Officer not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        temp_password = generate_temp_password(12)
+        officer.set_password(temp_password)
+        officer.must_change_password = True
+        officer.save()
+
+        actor = request.user if request.user.is_authenticated else None
+
+        SecurityAuditLog.objects.create(
+            action='OFFICER_PASSWORD_MANUAL_RESET',
+            actor=actor,
+            target_user=officer,
+            ip_address=get_client_ip(request),
+            details=f"Director generated temporary password for {officer.full_name} ({officer.email})"
+        )
+
+        return Response({
+            "message": f"Temporary password generated for {officer.full_name}.",
+            "officer_name": officer.full_name,
+            "officer_email": officer.email,
+            "temporary_password": temp_password
+        })
+
+
+class OfficerResetRequestsListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        requests_qs = PasswordResetRequest.objects.all().order_by('-requested_at')
+        pending_count = PasswordResetRequest.objects.filter(status=PasswordResetRequest.Status.PENDING).count()
+
+        return Response({
+            "pending_count": pending_count,
+            "requests": PasswordResetRequestSerializer(requests_qs, many=True).data
+        })
+
+
+class OfficerApproveResetRequestView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, pk):
+        try:
+            reset_req = PasswordResetRequest.objects.get(pk=pk)
+        except PasswordResetRequest.DoesNotExist:
+            return Response({"error": "Reset request not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        temp_password = generate_temp_password(12)
+
+        user = reset_req.user
+        if not user:
+            user = User.objects.filter(email__iexact=reset_req.officer_email).first()
+
+        if user:
+            user.set_password(temp_password)
+            user.must_change_password = True
+            user.save()
+            reset_req.user = user
+
+        actor = request.user if request.user.is_authenticated else None
+        reset_req.status = PasswordResetRequest.Status.APPROVED
+        reset_req.reviewed_at = timezone.now()
+        reset_req.reviewed_by = actor
+        reset_req.save()
+
+        SecurityAuditLog.objects.create(
+            action='OFFICER_RESET_APPROVED',
+            actor=actor,
+            target_user=user,
+            ip_address=get_client_ip(request),
+            details=f"Reset request #{reset_req.id} approved for {reset_req.officer_name} ({reset_req.officer_email})."
+        )
+
+        return Response({
+            "message": f"Reset request for {reset_req.officer_name} has been approved.",
+            "officer_name": reset_req.officer_name,
+            "officer_email": reset_req.officer_email,
+            "temporary_password": temp_password
+        })
+
+
+class OfficerRejectResetRequestView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, pk):
+        try:
+            reset_req = PasswordResetRequest.objects.get(pk=pk)
+        except PasswordResetRequest.DoesNotExist:
+            return Response({"error": "Reset request not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        reason = (request.data.get('reason') or '').strip()
+        actor = request.user if request.user.is_authenticated else None
+
+        reset_req.status = PasswordResetRequest.Status.REJECTED
+        reset_req.rejection_reason = reason or "Request rejected by Director."
+        reset_req.reviewed_at = timezone.now()
+        reset_req.reviewed_by = actor
+        reset_req.save()
+
+        SecurityAuditLog.objects.create(
+            action='OFFICER_RESET_REJECTED',
+            actor=actor,
+            target_user=reset_req.user,
+            ip_address=get_client_ip(request),
+            details=f"Reset request #{reset_req.id} rejected. Reason: {reset_req.rejection_reason}"
+        )
+
+        return Response({
+            "message": "Reset request rejected.",
+            "request_id": reset_req.id
+        })
+
+
+class SecurityAuditLogsListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        logs = SecurityAuditLog.objects.all().order_by('-timestamp')[:150]
+        return Response(SecurityAuditLogSerializer(logs, many=True).data)
+
+
+class OfficerChangePasswordView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip()
+        current_password = request.data.get('current_password', '')
+        new_password = (request.data.get('new_password') or '').strip()
+
+        if not email or not new_password:
+            return Response({"error": "Email and new password are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(new_password) < 8:
+            return Response({"error": "New password must be at least 8 characters long."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email__iexact=email).first()
+        if not user:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if not user.must_change_password and current_password:
+            if not user.check_password(current_password):
+                return Response({"error": "Current password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.must_change_password = False
+        user.save()
+
+        SecurityAuditLog.objects.create(
+            action='OFFICER_PASSWORD_CHANGED',
+            actor=user,
+            target_user=user,
+            ip_address=get_client_ip(request),
+            details=f"Officer {user.full_name} ({user.email}) successfully changed password."
+        )
+
+        return Response({
+            "message": "Password updated successfully. You can now use your new password.",
+            "user": UserSerializer(user).data
+        })
+
 
 
 

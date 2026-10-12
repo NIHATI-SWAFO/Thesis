@@ -44,6 +44,9 @@ export default function StudentLayout() {
         .then(data => {
           if (data && !data.error) {
             setStudentProfile(data);
+            if (data?.user_details?.full_name || data?.user?.full_name) {
+              localStorage.setItem(`swafo_student_name_${user.email}`, data.user_details?.full_name || data.user?.full_name);
+            }
             if (data.needs_id_confirmation && !dismissed) {
               setShowIdPrompt(true);
             }
@@ -82,9 +85,19 @@ export default function StudentLayout() {
     logout();
   };
 
-  const fullName = user?.name || user?.email?.split('@')[0] || 'Student';
+  const cachedName = user?.email ? localStorage.getItem(`swafo_student_name_${user.email}`) : null;
+  const fullName =
+    studentProfile?.user_details?.full_name ||
+    studentProfile?.user?.full_name ||
+    cachedName ||
+    (user?.name && user.name.toLowerCase() !== 'student' ? user.name : null) ||
+    user?.full_name ||
+    (user?.email ? user.email.split('@')[0].replace(/[._]/g, ' ') : null) ||
+    'Student';
+
   const initials = fullName
     .split(' ')
+    .filter(Boolean)
     .map(n => n[0])
     .slice(0, 2)
     .join('')
@@ -140,8 +153,8 @@ export default function StudentLayout() {
               )}
             </div>
             <div className="flex flex-col overflow-hidden min-w-0">
-              <span className="text-[12px] font-pjs font-bold text-[#003624] truncate leading-tight group-hover:text-emerald-700 transition-colors">{fullName}</span>
-              <span className="text-[9px] font-bold text-emerald-700/80 uppercase tracking-wider">SWAFO Student</span>
+              <span className="text-[12px] font-pjs font-bold text-[#003624] truncate leading-tight group-hover:text-emerald-700 transition-colors" title={fullName}>{fullName}</span>
+              <span className="text-[9px] font-bold text-emerald-700/80 uppercase tracking-wider">Student</span>
             </div>
           </Link>
           <button 
@@ -232,7 +245,7 @@ export default function StudentLayout() {
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-[13px] font-bold text-white truncate leading-tight">{fullName}</span>
-                <span className="text-[9px] text-emerald-400/80 font-black uppercase tracking-wider">SWAFO Student</span>
+                <span className="text-[9px] text-emerald-400/80 font-black uppercase tracking-wider">Student</span>
               </div>
             </div>
 
