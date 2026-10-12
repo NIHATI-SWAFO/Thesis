@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0004_notification_notification_type_and_more'),
+        ('users', '0005_studentprofile_is_id_confirmed'),
     ]
 
     operations = [
