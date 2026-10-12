@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from '../components/common/NotificationBell';
+import { API_ENDPOINTS } from '../api/config';
+import usePresence from '../hooks/usePresence';
 
 const navItems = [
   { name: 'Dashboard', path: '/officer/dashboard', icon: 'dashboard' },
@@ -16,12 +18,54 @@ const navItems = [
 ];
 
 export default function OfficerLayout() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
+  usePresence(user?.email);
   const location = useLocation();
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Forced password change state
+  const [forceNewPassword, setForceNewPassword] = useState('');
+  const [forceConfirmPassword, setForceConfirmPassword] = useState('');
+  const [forceShowPassword, setForceShowPassword] = useState(false);
+  const [forceError, setForceError] = useState('');
+  const [forceLoading, setForceLoading] = useState(false);
+
+  const handleForceChangePassword = async (e) => {
+    e.preventDefault();
+    setForceError('');
+    if (forceNewPassword.length < 8) {
+      setForceError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (forceNewPassword !== forceConfirmPassword) {
+      setForceError('Passwords do not match.');
+      return;
+    }
+    setForceLoading(true);
+    try {
+      const res = await fetch(API_ENDPOINTS.CHANGE_PASSWORD, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user?.email,
+          new_password: forceNewPassword
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update password');
+      if (updateUser) {
+        updateUser({ must_change_password: false });
+      }
+    } catch (err) {
+      setForceError(err.message || 'Error updating password.');
+    } finally {
+      setForceLoading(false);
+    }
+  };
+
 
   const officerDisplayName = user?.name || user?.full_name || 'SWAFO Officer';
 
@@ -240,6 +284,78 @@ export default function OfficerLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* ─── Mandatory Password Change Modal ─── */}
+      {user?.must_change_password && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-emerald-100">
+            <div className="flex items-center gap-3.5 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#003624] text-[#a1dbba] flex items-center justify-center shadow-md shrink-0">
+                <span className="material-symbols-outlined text-[24px]">lock_reset</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md">
+                  Mandatory Security Update
+                </span>
+                <h3 className="text-lg font-bold text-gray-900 font-pjs mt-0.5">
+                  Update Temporary Password
+                </h3>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-600 leading-relaxed font-manrope mb-4">
+              Your account was initialized or reset with temporary credentials. For campus security protocol, you must create a new personal password to continue.
+            </p>
+
+            {forceError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl mb-3">
+                {forceError}
+              </div>
+            )}
+
+            <form onSubmit={handleForceChangePassword} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500">
+                  New Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={forceShowPassword ? 'text' : 'password'}
+                    required
+                    value={forceNewPassword}
+                    onChange={(e) => setForceNewPassword(e.target.value)}
+                    placeholder="Minimum 8 characters"
+                    className="w-full text-xs p-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#003624] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500">
+                  Confirm New Password
+                </label>
+                <input
+                  type={forceShowPassword ? 'text' : 'password'}
+                  required
+                  value={forceConfirmPassword}
+                  onChange={(e) => setForceConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  className="w-full text-xs p-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#003624] outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={forceLoading}
+                className="w-full py-3 bg-[#003624] text-white text-xs font-bold rounded-xl hover:bg-[#0f4d35] transition-colors cursor-pointer mt-2 disabled:opacity-60"
+              >
+                {forceLoading ? 'Securing Account...' : 'Set New Password & Proceed'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

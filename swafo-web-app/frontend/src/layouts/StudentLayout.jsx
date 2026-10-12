@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { API_ENDPOINTS } from '../api/config';
 import NotificationBell from '../components/common/NotificationBell';
 import StudentNumberPromptModal from '../components/StudentNumberPromptModal';
 import ErrorBoundary from '../components/common/ErrorBoundary';
-import { API_ENDPOINTS } from '../api/config';
 
 const navItems = [
   { name: 'Dashboard', path: '/student/dashboard', icon: 'dashboard' },
@@ -26,9 +26,15 @@ export default function StudentLayout() {
   const [topSearch, setTopSearch] = useState('');
   const [showIdPrompt, setShowIdPrompt] = useState(false);
   const [studentProfile, setStudentProfile] = useState(null);
+  const [avatarUrl, setAvatarUrl] = useState(() => {
+    return user?.avatar || (user?.email ? localStorage.getItem(`swafo_student_avatar_${user.email}`) : null) || localStorage.getItem('swafo_student_avatar_current') || null;
+  });
 
   useEffect(() => {
     if (user?.email) {
+      const cached = localStorage.getItem(`swafo_student_avatar_${user.email}`) || localStorage.getItem('swafo_student_avatar_current');
+      if (cached) setAvatarUrl(cached);
+
       const dismissed = sessionStorage.getItem(`swafo_id_prompt_dismissed_${user.email}`);
       fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name || '')}`)
         .then(res => {
@@ -38,14 +44,30 @@ export default function StudentLayout() {
         .then(data => {
           if (data && !data.error) {
             setStudentProfile(data);
+            if (data?.user_details?.full_name || data?.user?.full_name) {
+              localStorage.setItem(`swafo_student_name_${user.email}`, data.user_details?.full_name || data.user?.full_name);
+            }
             if (data.needs_id_confirmation && !dismissed) {
               setShowIdPrompt(true);
             }
+            if (data.profile_picture) {
+              setAvatarUrl(data.profile_picture);
+              localStorage.setItem(`swafo_student_avatar_${user.email}`, data.profile_picture);
+              localStorage.setItem('swafo_student_avatar_current', data.profile_picture);
+            }
           }
         })
-        .catch(err => console.error("ID prompt profile check error:", err));
+        .catch(err => console.error("Profile check error:", err));
     }
   }, [user]);
+
+  useEffect(() => {
+    const handleAvatarUpdate = (e) => {
+      setAvatarUrl(e.detail || null);
+    };
+    window.addEventListener('swafo-avatar-updated', handleAvatarUpdate);
+    return () => window.removeEventListener('swafo-avatar-updated', handleAvatarUpdate);
+  }, []);
 
   const handleIdConfirmed = (updatedProfile) => {
     setStudentProfile(updatedProfile);
@@ -63,9 +85,19 @@ export default function StudentLayout() {
     logout();
   };
 
-  const fullName = user?.name || user?.email?.split('@')[0] || 'Student';
+  const cachedName = user?.email ? localStorage.getItem(`swafo_student_name_${user.email}`) : null;
+  const fullName =
+    studentProfile?.user_details?.full_name ||
+    studentProfile?.user?.full_name ||
+    cachedName ||
+    (user?.name && user.name.toLowerCase() !== 'student' ? user.name : null) ||
+    user?.full_name ||
+    (user?.email ? user.email.split('@')[0].replace(/[._]/g, ' ') : null) ||
+    'Student';
+
   const initials = fullName
     .split(' ')
+    .filter(Boolean)
     .map(n => n[0])
     .slice(0, 2)
     .join('')
@@ -112,16 +144,20 @@ export default function StudentLayout() {
 
         {/* Profile Card & Action */}
         <div className="px-5 mt-auto flex flex-col gap-2 pt-6 border-t border-emerald-50/60">
-          <div className="flex items-center gap-3 px-3 py-2 rounded-2xl bg-white border border-emerald-100/60 shadow-sm">
-            <div className="w-8 h-8 rounded-full bg-[#003624] text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
-              {initials}
+          <Link to="/student/profile" className="flex items-center gap-3 px-3 py-2 rounded-2xl bg-white border border-emerald-100/60 shadow-sm hover:border-emerald-300 transition-colors group">
+            <div className="w-8 h-8 rounded-full bg-[#003624] text-white flex items-center justify-center font-bold text-xs uppercase shrink-0 overflow-hidden">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
             </div>
             <div className="flex flex-col overflow-hidden min-w-0">
-              <span className="text-[12px] font-pjs font-bold text-[#003624] truncate leading-tight">{fullName}</span>
-              <span className="text-[9px] font-bold text-emerald-700/80 uppercase tracking-wider">SWAFO Student</span>
+              <span className="text-[12px] font-pjs font-bold text-[#003624] truncate leading-tight group-hover:text-emerald-700 transition-colors" title={fullName}>{fullName}</span>
+              <span className="text-[9px] font-bold text-emerald-700/80 uppercase tracking-wider">Student</span>
             </div>
-          </div>
-          <button
+          </Link>
+          <button 
             onClick={() => setShowHelp(!showHelp)}
             className="flex items-center gap-4 px-6 py-2.5 rounded-full text-slate-500 hover:text-[#003624] hover:bg-emerald-50 transition-all w-full text-left cursor-pointer"
           >
@@ -200,16 +236,16 @@ export default function StudentLayout() {
           {/* Student Info & Actions in Drawer Footer */}
           <div className="px-4 mt-auto pt-4 border-t border-white/10 flex flex-col gap-2 shrink-0">
             <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/5 border border-white/10">
-              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xs shrink-0">
-                {user?.avatar ? (
-                  <img src={user.avatar} className="w-full h-full object-cover rounded-full" alt={fullName} />
+              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xs shrink-0 overflow-hidden">
+                {avatarUrl || user?.avatar ? (
+                  <img src={avatarUrl || user.avatar} className="w-full h-full object-cover rounded-full" alt={fullName} />
                 ) : (
                   <span>{initials}</span>
                 )}
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-[13px] font-bold text-white truncate leading-tight">{fullName}</span>
-                <span className="text-[9px] text-emerald-400/80 font-black uppercase tracking-wider">SWAFO Student</span>
+                <span className="text-[9px] text-emerald-400/80 font-black uppercase tracking-wider">Student</span>
               </div>
             </div>
 
