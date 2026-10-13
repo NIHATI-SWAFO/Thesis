@@ -204,8 +204,8 @@ const riskLabelFromCount = (count) => {
   return 'Low Risk';
 };
 
-// Compute up to 4 nearby checkpoints from raw location data array.
-// Priority: proximity radius cascade → then rank by risk (temporal decay score or raw violation count).
+// Compute up to 4 nearby checkpoints from raw location data array using a Greedy Nearest-Neighbor path.
+// Priority: candidate pool selection by risk (temporal decay score or raw violation count) → greedy walkable route.
 const computeCheckpointsFromData = (area, locationData, useDecay = false) => {
   if (!area || !locationData?.length) return [];
   const withDist = locationData
@@ -213,21 +213,20 @@ const computeCheckpointsFromData = (area, locationData, useDecay = false) => {
     .map(l => ({ ...l, _dist: haversineKm(area.lng, area.lat, l.lng, l.lat) }))
     .filter(l => (l.name || l.location_name) !== area.name);
 
-  // Expand radius until we find buildings: 40m → 100m → 250m → 500m → no cap
-  let nearby = [];
-  for (const radiusKm of [0.04, 0.10, 0.25, 0.50]) {
-    nearby = withDist.filter(l => l._dist <= radiusKm);
-    if (nearby.length >= 1) break;
+  // Expand radius in concentric walking rings until we gather at least 4 nearby candidate buildings
+  let candidates = [];
+  for (const radiusKm of [0.08, 0.20, 0.35, 0.60, 1.20]) {
+    candidates = withDist.filter(l => l._dist <= radiusKm);
+    if (candidates.length >= 4) break;
   }
-  // Final fallback: no radius — take 4 closest by raw distance
-  if (nearby.length === 0) {
-    nearby = [...withDist].sort((a, b) => a._dist - b._dist).slice(0, 4);
+  if (candidates.length === 0) {
+    candidates = [...withDist].sort((a, b) => a._dist - b._dist).slice(0, 4);
   }
 
-  // Rank candidate pool by risk:
-  // If useDecay: rank by decay_score / risk_score (recent acute hotspots first)
+  // 1. Candidate Prioritization based on active mode:
+  // If useDecay: rank by decay_score / risk_score (recent acute incidents first)
   // If raw: rank by count (classic cumulative violation volume)
-  return nearby
+  const prioritizedCandidates = [...candidates]
     .sort((a, b) => {
       if (useDecay) {
         const scoreB = b.decay_score != null ? b.decay_score : (b.risk_score || b.count || 0);
@@ -236,24 +235,47 @@ const computeCheckpointsFromData = (area, locationData, useDecay = false) => {
       }
       return (b.count || 0) - (a.count || 0);
     })
-    .slice(0, 4)
-    .map((l, i) => {
-      const score = useDecay && (l.decay_score != null || l.risk_score != null)
-        ? (l.decay_score != null ? l.decay_score : l.risk_score)
-        : (l.count || 0);
-      return {
-        id: `cp-${i + 1}`,
-        name: l.name || l.location_name,
-        zone: useDecay
-          ? (score > 75 ? 'Critical Hotspot' : score >= 51 ? 'High Hotspot' : score >= 26 ? 'Moderate Risk' : 'Low Risk')
-          : riskLabelFromCount(l.count || 0),
-        riskCount: score,
-        isDecayed: useDecay,
-        rawCount: l.count || 0,
-        lng: l.lng,
-        lat: l.lat,
-      };
-    });
+    .slice(0, 4);
+
+  // Stage 2: Pure Greedy Nearest Neighbor (TSP) walkable path sequencing:
+  // Starting from `area`, sequentially pick the closest unvisited checkpoint (pure physical walking distance)
+  // so the officer follows a natural, continuous, walkable patrol sequence without zigzagging.
+  const route = [];
+  let currentPos = { lng: area.lng, lat: area.lat };
+  const unvisited = [...prioritizedCandidates];
+
+  while (unvisited.length > 0) {
+    let bestIdx = 0;
+    let minDist = Infinity;
+    for (let i = 0; i < unvisited.length; i++) {
+      const d = haversineKm(currentPos.lng, currentPos.lat, unvisited[i].lng, unvisited[i].lat);
+      if (d < minDist) {
+        minDist = d;
+        bestIdx = i;
+      }
+    }
+    const nextStop = unvisited.splice(bestIdx, 1)[0];
+    route.push(nextStop);
+    currentPos = { lng: nextStop.lng, lat: nextStop.lat };
+  }
+
+  return route.map((l, i) => {
+    const score = useDecay && (l.decay_score != null || l.risk_score != null)
+      ? (l.decay_score != null ? l.decay_score : l.risk_score)
+      : (l.count || 0);
+    return {
+      id: `cp-${i + 1}`,
+      name: l.name || l.location_name,
+      zone: useDecay
+        ? (score > 75 ? 'Critical Hotspot' : score >= 51 ? 'High Hotspot' : score >= 26 ? 'Moderate Risk' : 'Low Risk')
+        : riskLabelFromCount(l.count || 0),
+      riskCount: score,
+      isDecayed: useDecay,
+      rawCount: l.count || 0,
+      lng: l.lng,
+      lat: l.lat,
+    };
+  });
 };
 
 
@@ -926,7 +948,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
       };
 
       // All other buildings in this assigned zone
-      const otherBuildings = zoneLocs
+      const zoneCandidates = zoneLocs
         .filter(locName => clean(locName) !== areaClean)
         .map((locName, idx) => {
           const coords = getLocationCoords(locName);
@@ -936,7 +958,6 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
             : (found?.count || 0);
           const dist = coords && selectedCoords ? haversineKm(selectedCoords.lng, selectedCoords.lat, coords.lng, coords.lat) : idx;
           return {
-            id: `cp-zone-${idx + 1}`,
             name: coords?.name || locName,
             zone: currentZone.zone,
             riskCount: risk,
@@ -946,11 +967,43 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
             lat: coords?.lat || area.lat,
             _dist: dist
           };
-        })
-        // Sort remaining buildings by proximity to create a natural walking route through the zone
-        .sort((a, b) => a._dist - b._dist);
+        });
 
-      return [selectedEntry, ...otherBuildings];
+      // Prioritize zone buildings based on active mode (recent acute hotspots vs all-time volume)
+      const prioritizedZoneBuildings = [...zoneCandidates]
+        .sort((a, b) => {
+          if (decay) {
+            return (b.riskCount || 0) - (a.riskCount || 0);
+          }
+          return (b.rawCount || 0) - (a.rawCount || 0);
+        })
+        .slice(0, 4);
+
+      // Stage 2: Pure Greedy Nearest Neighbor (TSP) walkable path sequencing:
+      // Starting from selected starting building, visit the closest unvisited building step-by-step
+      const sequencedZoneBuildings = [];
+      let currentPos = { lng: selectedCoords.lng, lat: selectedCoords.lat };
+      const unvisitedZone = [...prioritizedZoneBuildings];
+
+      while (unvisitedZone.length > 0) {
+        let bestIdx = 0;
+        let minDist = Infinity;
+        for (let i = 0; i < unvisitedZone.length; i++) {
+          const d = haversineKm(currentPos.lng, currentPos.lat, unvisitedZone[i].lng, unvisitedZone[i].lat);
+          if (d < minDist) {
+            minDist = d;
+            bestIdx = i;
+          }
+        }
+        const nextStop = unvisitedZone.splice(bestIdx, 1)[0];
+        sequencedZoneBuildings.push({
+          ...nextStop,
+          id: `cp-zone-${sequencedZoneBuildings.length + 1}`
+        });
+        currentPos = { lng: nextStop.lng, lat: nextStop.lat };
+      }
+
+      return [selectedEntry, ...sequencedZoneBuildings];
     }
 
     // Default fallback when unassigned
