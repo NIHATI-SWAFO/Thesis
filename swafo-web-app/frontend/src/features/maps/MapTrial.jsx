@@ -83,17 +83,18 @@ const UNCLUSTERED_LAYER = {
 };
 
 const LEGEND_ITEMS = [
-  { color: '#00c851', label: 'Low',       range: '1–3' },
-  { color: '#ffbb33', label: 'Moderate',  range: '4–6' },
-  { color: '#ff8800', label: 'High',      range: '7–10' },
-  { color: '#ff4444', label: 'Very High', range: '11–20' },
-  { color: '#CC0000', label: 'Critical',  range: '21+' },
+  { color: '#00c851', label: 'Low',       desc: 'Normal / Cool' },
+  { color: '#ffbb33', label: 'Moderate',  desc: 'Monitored' },
+  { color: '#ff8800', label: 'High',      desc: 'Active Hotspot' },
+  { color: '#CC0000', label: 'Critical',  desc: 'Immediate Priority' },
 ];
 
 export default function MapTrial() {
   const mapContainer = useRef(null);
   const mapInstance  = useRef(null);
   const popupRef     = useRef(null);
+  const locationSummaryRef = useRef([]);
+  const showLocationPopupRef = useRef(null);
 
   const [geojsonFeatureCount, setGeojsonFeatureCount] = useState(null);
   const [coords,   setCoords]   = useState({ lng: DLSUD_CENTER[0], lat: DLSUD_CENTER[1], zoom: 17 });
@@ -102,6 +103,7 @@ export default function MapTrial() {
   const [loading,  setLoading]  = useState(false);
   const [stats,    setStats]    = useState({ total: 0, locations: 0, topLocation: null });
   const [filters,  setFilters]  = useState({ date_from: '', date_to: '', category: '' });
+  const [useDecay, setUseDecay]  = useState(false);
   const [showLegend, setShowLegend] = useState(false);
 
   // ── Add cluster layers once after source exists ─────────────────────────
@@ -113,12 +115,15 @@ export default function MapTrial() {
   }, []);
 
   // ── Fetch + refresh data ────────────────────────────────────────────────
-  const fetchAndRefresh = useCallback(async (mapObj, filterParams) => {
+  const fetchAndRefresh = useCallback(async (mapObj, filterParams, decayEnabled = useDecay) => {
     if (!mapObj) return;
     setLoading(true);
     const params = new URLSearchParams(
       Object.fromEntries(Object.entries(filterParams).filter(([, v]) => v !== ''))
     );
+    if (decayEnabled) {
+      params.set('decay', 'true');
+    }
     try {
       const res  = await fetch(`${API_ENDPOINTS.VIOLATIONS_HEATMAP}?${params}`);
       if (!res.ok) throw new Error(`API returned ${res.status}`);
@@ -126,6 +131,7 @@ export default function MapTrial() {
 
       const geojson = data.geojson || { type: 'FeatureCollection', features: [] };
       setGeojsonFeatureCount(geojson.features.length);
+      locationSummaryRef.current = data.location_summary || [];
 
       if (mapObj.getSource('violations-source')) {
         mapObj.getSource('violations-source').setData(geojson);
@@ -137,15 +143,61 @@ export default function MapTrial() {
           cluster:       true,
           clusterRadius: 20,
           clusterMaxZoom: 16,    // split clusters early so you see individual dots at zoom 17
+          clusterProperties: {
+            'total_weight': ['+', ['get', 'weight']]
+          }
         });
         addClusterLayers(mapObj);
       }
 
-      const hotLocs = (data.location_summary || []).filter(l => l.count > 0);
+      // Dynamic cluster circle color styling based on whether decay is enabled
+      if (mapObj.getLayer('clusters')) {
+        if (decayEnabled) {
+          mapObj.setPaintProperty('clusters', 'circle-color', [
+            'step', ['coalesce', ['get', 'total_weight'], ['get', 'point_count']],
+            '#00c851', 26,   // <= 25 -> Low (Green)
+            '#ffbb33', 51,   // 26-50 -> Moderate (Yellow)
+            '#ff8800', 76,   // 51-75 -> High (Orange)
+            '#CC0000'        // > 75 -> Critical (Dark Red)
+          ]);
+        } else {
+          mapObj.setPaintProperty('clusters', 'circle-color', [
+            'step', ['get', 'point_count'],
+            '#00c851', 4,   // 1–3  → green
+            '#ffbb33', 7,   // 4–6  → yellow
+            '#ff8800', 11,  // 7–10 → orange
+            '#ff4444', 21,  // 11–20→ red
+            '#CC0000'       // 21+  → dark red
+          ]);
+        }
+      }
+
+      if (mapObj.getLayer('violations-heatmap')) {
+        if (decayEnabled) {
+          mapObj.setPaintProperty('violations-heatmap', 'heatmap-weight', [
+            'interpolate', ['linear'], ['coalesce', ['get', 'total_weight'], ['get', 'weight'], 1],
+            1, 0.1,
+            25, 0.4,
+            50, 0.7,
+            75, 1.0
+          ]);
+        } else {
+          mapObj.setPaintProperty('violations-heatmap', 'heatmap-weight', [
+            'interpolate', ['linear'], ['coalesce', ['get', 'point_count'], 1],
+            1, 0.2,
+            5, 0.5,
+            10, 0.8,
+            20, 1.0
+          ]);
+        }
+      }
+
+      const hotLocs = (data.location_summary || []).filter(l => (l.risk_score || l.count) > 0);
       setStats({
         total:       data.total_violations || 0,
         locations:   hotLocs.length,
         topLocation: hotLocs[0] || null,
+        decayApplied: Boolean(data.decay_applied),
       });
     } catch (err) {
       console.error('Heatmap fetch failed:', err);
@@ -153,7 +205,92 @@ export default function MapTrial() {
     } finally {
       setLoading(false);
     }
-  }, [addClusterLayers]);
+  }, [addClusterLayers, useDecay]);
+
+  // ── Unified Location Popup Function (shows all cases for the building) ─
+  const showLocationPopup = useCallback((locName, coords, m) => {
+    if (!m) return;
+    const cleanName = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const targetClean = cleanName(locName);
+    const locData = (locationSummaryRef.current || []).find(l => {
+      const c = cleanName(l.name);
+      return c === targetClean || c.includes(targetClean) || targetClean.includes(c);
+    });
+
+    const totalCount = locData?.count || 1;
+    const recentCount = locData?.recent_count || 0;
+    const riskTier = locData?.risk_tier || 'Low';
+    const violations = locData?.violations || [];
+
+    const tierColors = {
+      Critical:    { bg: '#FEE2E2', text: '#991B1B', border: '#F87171', dot: '#DC2626', label: 'Critical Hotspot' },
+      'Very High': { bg: '#FEE2E2', text: '#991B1B', border: '#F87171', dot: '#DC2626', label: 'Very High Risk' },
+      High:        { bg: '#FFEDD5', text: '#9A3412', border: '#FB923C', dot: '#EA580C', label: 'High Hotspot' },
+      Moderate:    { bg: '#FEF9C3', text: '#854D0E', border: '#FACC15', dot: '#CA8A04', label: 'Moderate Risk' },
+      Low:         { bg: '#DCFCE7', text: '#166534', border: '#86EFAC', dot: '#16A34A', label: 'Low / Stable' },
+    };
+    const tier = tierColors[riskTier] || tierColors.Low;
+
+    const violationsHtml = violations.length > 0 ? violations.map(v => `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:6px 8px;background:#f8fafc;border-radius:8px;border:1px solid #f1f5f9;margin-bottom:4px;">
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:11px;font-weight:800;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.rule_code || v.category}</div>
+          <div style="font-size:9px;font-weight:600;color:#64748b;">${v.category} · ${v.timestamp}</div>
+        </div>
+        <span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:6px;background:${v.status === 'OPEN' ? '#fef3c7' : '#e2e8f0'};color:${v.status === 'OPEN' ? '#92400e' : '#475569'};text-transform:uppercase;">${v.status}</span>
+      </div>
+    `).join('') : '<div style="font-size:11px;color:#94a3b8;padding:8px;text-align:center;">No recent case details</div>';
+
+    const moreText = (totalCount > violations.length)
+      ? `<div style="font-size:9px;font-weight:700;color:#94a3b8;text-align:center;margin-top:4px;">+ ${totalCount - violations.length} older cases recorded</div>`
+      : '';
+
+    const contentHtml = `
+      <div style="padding:14px 16px;font-family:system-ui,-apple-system,sans-serif;width:290px;max-width:90vw;">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:9px;font-weight:900;color:#003624;text-transform:uppercase;letter-spacing:0.12em;">Campus Hotspot</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;background:${tier.bg};border:1px solid ${tier.border};font-size:9px;font-weight:900;color:${tier.text};">
+            <span style="width:6px;height:6px;border-radius:50%;background:${tier.dot};display:inline-block;"></span>
+            ${tier.label}
+          </span>
+        </div>
+        <div style="font-size:15px;font-weight:900;color:#0f172a;line-height:1.2;margin-bottom:10px;">${locData?.name || locName || 'Campus Location'}</div>
+
+        <!-- Metrics Grid -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
+          <div style="background:#f1f5f9;border-radius:10px;padding:8px 10px;">
+            <div style="font-size:8px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;">All-Time</div>
+            <div style="font-size:15px;font-weight:900;color:#0f172a;line-height:1;">${totalCount} <span style="font-size:10px;font-weight:700;color:#64748b;">cases</span></div>
+          </div>
+          <div style="background:${recentCount > 0 ? '#fef3c7' : '#f1f5f9'};border-radius:10px;padding:8px 10px;">
+            <div style="font-size:8px;font-weight:800;color:${recentCount > 0 ? '#92400e' : '#64748b'};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;">Last 30 Days</div>
+            <div style="font-size:15px;font-weight:900;color:${recentCount > 0 ? '#b45309' : '#0f172a'};line-height:1;">${recentCount} <span style="font-size:10px;font-weight:700;color:${recentCount > 0 ? '#92400e' : '#64748b'};">${recentCount > 0 ? 'active' : 'quiet'}</span></div>
+          </div>
+        </div>
+
+        <!-- Case breakdown header -->
+        <div style="font-size:9px;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;display:flex;justify-content:space-between;">
+          <span>Incident History</span>
+          <span style="color:#94a3b8;font-weight:700;">${violations.length} shown</span>
+        </div>
+
+        <!-- Scrollable Cases list -->
+        <div style="max-height:140px;overflow-y:auto;padding-right:2px;margin-bottom:4px;">
+          ${violationsHtml}
+        </div>
+        ${moreText}
+      </div>
+    `;
+
+    if (popupRef.current) popupRef.current.remove();
+    popupRef.current = new mapboxgl.Popup({ closeButton: true, maxWidth: '330px', className: 'swafo-popup', offset: 16 })
+      .setLngLat(coords)
+      .setHTML(contentHtml)
+      .addTo(m);
+  }, []);
+
+  showLocationPopupRef.current = showLocationPopup;
 
   // ── Initialize map ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -205,40 +342,38 @@ export default function MapTrial() {
         }
       });
 
-      // ── Cluster click → zoom in ───────────────────────────────────────
-      m.on('click', 'clusters', (e) => {
-        const features = m.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+      // ── Cluster click → show building popup ───────────────────────────
+      const handleClusterClick = (e) => {
+        const features = m.queryRenderedFeatures(e.point, { layers: ['clusters', 'cluster-count'] });
+        if (!features.length) return;
         const clusterId = features[0].properties.cluster_id;
-        m.getSource('violations-source').getClusterExpansionZoom(clusterId, (err, zoom) => {
-          if (err) return;
-          m.easeTo({ center: features[0].geometry.coordinates, zoom });
+        const coords = features[0].geometry.coordinates.slice();
+        
+        m.getSource('violations-source').getClusterLeaves(clusterId, 50, 0, (err, leaves) => {
+          const locName = leaves?.[0]?.properties?.location_name || 'Campus Building';
+          if (showLocationPopupRef.current) {
+            showLocationPopupRef.current(locName, coords, m);
+          }
         });
-      });
+      };
 
-      // ── Individual point click → popup ────────────────────────────────
+      m.on('click', 'clusters', handleClusterClick);
+      m.on('click', 'cluster-count', handleClusterClick);
+
+      // ── Individual point click → show building popup ──────────────────
       m.on('click', 'unclustered-point', (e) => {
-        const { location_name, rule_code, category, status, timestamp } = e.features[0].properties;
+        if (!e.features.length) return;
+        const { location_name } = e.features[0].properties;
         const coords = e.features[0].geometry.coordinates.slice();
-        if (popupRef.current) popupRef.current.remove();
-        popupRef.current = new mapboxgl.Popup({ closeButton: true, maxWidth: '260px', className: 'swafo-popup', offset: 16 })
-          .setLngLat(coords)
-          .setHTML(`
-            <div style="padding:12px 16px;font-family:sans-serif;">
-              <div style="font-size:9px;font-weight:900;color:#003624;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:4px;">Violation Record</div>
-              <div style="font-size:14px;font-weight:800;color:#111;line-height:1.3;margin-bottom:8px;">${location_name}</div>
-              <div style="display:flex;flex-direction:column;gap:4px;background:#f8fafc;border-radius:10px;padding:8px 10px;font-size:11px;">
-                <div><span style="color:#94a3b8;font-weight:700;">Rule: </span><span style="font-weight:800;color:#1e293b;">${rule_code}</span></div>
-                <div><span style="color:#94a3b8;font-weight:700;">Category: </span><span style="font-weight:800;color:#1e293b;">${category}</span></div>
-                <div><span style="color:#94a3b8;font-weight:700;">Status: </span><span style="font-weight:800;color:#003624;">${status}</span></div>
-                <div><span style="color:#94a3b8;font-weight:700;">Date: </span><span style="font-weight:800;color:#1e293b;">${timestamp}</span></div>
-              </div>
-            </div>
-          `)
-          .addTo(m);
+        if (showLocationPopupRef.current) {
+          showLocationPopupRef.current(location_name, coords, m);
+        }
       });
 
       m.on('mouseenter', 'clusters',          () => { m.getCanvas().style.cursor = 'pointer'; });
       m.on('mouseleave', 'clusters',          () => { m.getCanvas().style.cursor = ''; });
+      m.on('mouseenter', 'cluster-count',     () => { m.getCanvas().style.cursor = 'pointer'; });
+      m.on('mouseleave', 'cluster-count',     () => { m.getCanvas().style.cursor = ''; });
       m.on('mouseenter', 'unclustered-point', () => { m.getCanvas().style.cursor = 'pointer'; });
       m.on('mouseleave', 'unclustered-point', () => { m.getCanvas().style.cursor = ''; });
       m.on('move', () => {
@@ -257,17 +392,17 @@ export default function MapTrial() {
 
   useEffect(() => {
     if (!mapReady || !mapInstance.current) return;
-    fetchAndRefresh(mapInstance.current, filters);
-  }, [filters, mapReady, fetchAndRefresh]);
+    fetchAndRefresh(mapInstance.current, filters, useDecay);
+  }, [filters, useDecay, mapReady, fetchAndRefresh]);
 
   // ── Auto-poll every 30s so new violations appear without page refresh ────
   useEffect(() => {
     if (!mapReady || !mapInstance.current) return;
     const interval = setInterval(() => {
-      fetchAndRefresh(mapInstance.current, filters);
+      fetchAndRefresh(mapInstance.current, filters, useDecay);
     }, 30000);
     return () => clearInterval(interval);
-  }, [filters, mapReady, fetchAndRefresh]);
+  }, [filters, useDecay, mapReady, fetchAndRefresh]);
 
 
   const handleFilter = (key, val) => setFilters(f => ({ ...f, [key]: val }));
@@ -350,6 +485,40 @@ export default function MapTrial() {
               <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px] pointer-events-none">expand_more</span>
             </div>
           </div>
+
+          {/* Hotspot Recency Toggle: All-Time vs Recent */}
+          <div className="col-span-2 sm:col-span-1 flex flex-col gap-1 sm:min-w-[190px]">
+            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+              Hotspot Recency
+            </label>
+            <div className="h-[44px] bg-slate-100 p-1 rounded-2xl flex items-center border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setUseDecay(false)}
+                className={`flex-1 h-full rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  !useDecay
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">history</span>
+                <span>All-Time</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUseDecay(true)}
+                className={`flex-1 h-full rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  useDecay
+                    ? 'bg-[#1A5C3A] text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">bolt</span>
+                <span>Recent</span>
+              </button>
+            </div>
+          </div>
+
           <div className="col-span-2 sm:col-span-1 flex items-center justify-between sm:justify-start gap-2 sm:ml-auto">
             {loading && (
               <div className="flex items-center gap-1.5 text-[11px] sm:text-[12px] font-bold text-emerald-600 h-[40px] sm:h-[44px]">
@@ -365,6 +534,28 @@ export default function MapTrial() {
             )}
           </div>
         </div>
+
+        {/* Explainer guidance banner for Officers */}
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="material-symbols-outlined text-[17px] text-emerald-700 shrink-0">info</span>
+            <p className="text-[11px] font-bold text-slate-600 leading-tight">
+              {useDecay ? (
+                <>
+                  <strong className="text-emerald-800 font-black">⚡ Recent Mode:</strong> Circle numbers show total records (e.g. 22). Colors show recent activity (green = quiet in last 30d, red = active this week).
+                </>
+              ) : (
+                <>
+                  <strong className="text-slate-800 font-black">📅 All-Time Mode:</strong> Circle numbers and colors both reflect cumulative historical volume.
+                </>
+              )}
+            </p>
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 shrink-0 hidden sm:inline">
+            Tap any circle to view case breakdown
+          </span>
+        </div>
+
         {hasFilters && (
           <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Active:</span>
@@ -384,7 +575,9 @@ export default function MapTrial() {
           </span>
           {stats.topLocation && (
             <span className="text-slate-400 hidden sm:inline">
-              · Hottest: <strong className="text-[#CC0000] font-black">{stats.topLocation.name} ({stats.topLocation.count})</strong>
+              · Hottest: <strong className="text-[#CC0000] font-black">
+                {stats.topLocation.name} ({stats.topLocation.count} violations)
+              </strong>
             </span>
           )}
         </div>
@@ -443,14 +636,16 @@ export default function MapTrial() {
 
             {showLegend && (
               <div className="bg-white/95 backdrop-blur-md px-4 py-3 sm:px-5 sm:py-4 rounded-2xl border border-white shadow-lg animate-in fade-in slide-in-from-bottom-2">
-                <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-3">Cluster Intensity</p>
+                <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 sm:mb-3">
+                  Hotspot Risk Levels
+                </p>
                 <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
-                  {LEGEND_ITEMS.map(({ color, label, range }) => (
+                  {LEGEND_ITEMS.map(({ color, label, desc }) => (
                     <div key={label} className="flex items-center gap-2 sm:gap-3">
                       <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full flex-shrink-0 shadow-sm" style={{ background: color }} />
                       <div className="flex flex-col leading-none">
                         <span className="text-[10px] sm:text-[11px] font-black text-slate-700">{label}</span>
-                        <span className="text-[8px] sm:text-[9px] font-bold text-slate-400">{range} violations</span>
+                        <span className="text-[8px] sm:text-[9px] font-bold text-slate-400">{desc}</span>
                       </div>
                     </div>
                   ))}

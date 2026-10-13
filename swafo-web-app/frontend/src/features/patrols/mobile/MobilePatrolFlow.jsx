@@ -205,8 +205,8 @@ const riskLabelFromCount = (count) => {
 };
 
 // Compute up to 4 nearby checkpoints from raw location data array.
-// Priority: proximity radius cascade → then rank by risk (violation count).
-const computeCheckpointsFromData = (area, locationData) => {
+// Priority: proximity radius cascade → then rank by risk (temporal decay score or raw violation count).
+const computeCheckpointsFromData = (area, locationData, useDecay = false) => {
   if (!area || !locationData?.length) return [];
   const withDist = locationData
     .filter(l => l.lng != null && l.lat != null)
@@ -224,18 +224,36 @@ const computeCheckpointsFromData = (area, locationData) => {
     nearby = [...withDist].sort((a, b) => a._dist - b._dist).slice(0, 4);
   }
 
-  // Rank candidate pool by risk (highest violation count first)
+  // Rank candidate pool by risk:
+  // If useDecay: rank by decay_score / risk_score (recent acute hotspots first)
+  // If raw: rank by count (classic cumulative violation volume)
   return nearby
-    .sort((a, b) => (b.count || 0) - (a.count || 0))
+    .sort((a, b) => {
+      if (useDecay) {
+        const scoreB = b.decay_score != null ? b.decay_score : (b.risk_score || b.count || 0);
+        const scoreA = a.decay_score != null ? a.decay_score : (a.risk_score || a.count || 0);
+        return scoreB - scoreA;
+      }
+      return (b.count || 0) - (a.count || 0);
+    })
     .slice(0, 4)
-    .map((l, i) => ({
-      id: `cp-${i + 1}`,
-      name: l.name || l.location_name,
-      zone: riskLabelFromCount(l.count || 0),
-      riskCount: l.count || 0,
-      lng: l.lng,
-      lat: l.lat,
-    }));
+    .map((l, i) => {
+      const score = useDecay && (l.decay_score != null || l.risk_score != null)
+        ? (l.decay_score != null ? l.decay_score : l.risk_score)
+        : (l.count || 0);
+      return {
+        id: `cp-${i + 1}`,
+        name: l.name || l.location_name,
+        zone: useDecay
+          ? (score > 75 ? 'Critical Hotspot' : score >= 51 ? 'High Hotspot' : score >= 26 ? 'Moderate Risk' : 'Low Risk')
+          : riskLabelFromCount(l.count || 0),
+        riskCount: score,
+        isDecayed: useDecay,
+        rawCount: l.count || 0,
+        lng: l.lng,
+        lat: l.lat,
+      };
+    });
 };
 
 
@@ -733,6 +751,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
   const [patrolledToday, setPatrolledToday] = useState([]);
   const [patrolMode, setPatrolMode] = useState('route'); // 'single' | 'route'
   const [previewCheckpoints, setPreviewCheckpoints] = useState([]);
+  const [usePatrolDecay, setUsePatrolDecay] = useState(false);
 
   // ── Step 3: Officer Monthly Zone Assignment State ──────────────────────────
   const [assignedZone, setAssignedZone] = useState(null);
@@ -832,8 +851,14 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
     fetchOfficerZone();
   }, []);
 
-  // Assign risk label + color based on violation count
-  const getRiskLevel = (count) => {
+  // Assign risk label + color based on violation count or decayed score
+  const getRiskLevel = (count, isDecayed = usePatrolDecay) => {
+    if (isDecayed) {
+      if (count > 75) return { label: 'Critical Hotspot', color: '#CC0000', dot: 'bg-[#CC0000]' };
+      if (count >= 51) return { label: 'High Hotspot', color: '#ff8800', dot: 'bg-[#ff8800]' };
+      if (count >= 26) return { label: 'Moderate Risk', color: '#ffbb33', dot: 'bg-[#ffbb33]' };
+      return { label: 'Low / Stable', color: '#00c851', dot: 'bg-[#00c851]' };
+    }
     if (count >= 21) return { label: 'Critical', color: '#CC0000', dot: 'bg-[#CC0000]' };
     if (count >= 11) return { label: 'Very High', color: '#ff4444', dot: 'bg-[#ff4444]' };
     if (count >= 7)  return { label: 'High', color: '#ff8800', dot: 'bg-[#ff8800]' };
@@ -864,9 +889,10 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
   };
 
   // Wraps checkpoint generation; when officer has an assigned zone, creates the complete route of all designated buildings in their zone
-  const computeNearbyCheckpoints = (area) => {
+  const computeNearbyCheckpoints = (area, decay = usePatrolDecay) => {
     if (!area) return [];
     const currentZone = assignedZoneRef.current;
+    const clean = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
     // If officer has an assigned zone, include all designated buildings in this zone!
     if (currentZone && currentZone.zone) {
@@ -874,18 +900,21 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
         ? currentZone.locations 
         : (ZONE_PRESET_LOCATIONS[currentZone.zone] || []);
       
-      const clean = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const areaClean = clean(area.name);
+      const locMatch = (locationDataRef.current || []).find(l => clean(l.name || l.location_name) === areaClean);
+      const selectedRisk = decay && (locMatch?.decay_score != null || locMatch?.risk_score != null)
+        ? (locMatch.decay_score != null ? locMatch.decay_score : locMatch.risk_score)
+        : (locMatch?.count || 0);
 
       // Selected area is the first stop (START)
       const selectedCoords = getLocationCoords(area.name) || { lng: area.lng, lat: area.lat };
-      const selectedRisk = (locationDataRef.current || []).find(l => clean(l.name || l.location_name) === areaClean)?.count || 0;
-
       const selectedEntry = {
         id: 'cp-selected',
         name: area.name,
         zone: currentZone.zone,
         riskCount: selectedRisk,
+        rawCount: locMatch?.count || 0,
+        isDecayed: decay,
         lng: selectedCoords.lng,
         lat: selectedCoords.lat,
       };
@@ -895,13 +924,18 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
         .filter(locName => clean(locName) !== areaClean)
         .map((locName, idx) => {
           const coords = getLocationCoords(locName);
-          const risk = (locationDataRef.current || []).find(l => clean(l.name || l.location_name) === clean(locName))?.count || 0;
+          const found = (locationDataRef.current || []).find(l => clean(l.name || l.location_name) === clean(locName));
+          const risk = decay && (found?.decay_score != null || found?.risk_score != null)
+            ? (found.decay_score != null ? found.decay_score : found.risk_score)
+            : (found?.count || 0);
           const dist = coords && selectedCoords ? haversineKm(selectedCoords.lng, selectedCoords.lat, coords.lng, coords.lat) : idx;
           return {
             id: `cp-zone-${idx + 1}`,
             name: coords?.name || locName,
             zone: currentZone.zone,
             riskCount: risk,
+            rawCount: found?.count || 0,
+            isDecayed: decay,
             lng: coords?.lng || area.lng,
             lat: coords?.lat || area.lat,
             _dist: dist
@@ -914,19 +948,24 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
     }
 
     // Default fallback when unassigned
-    const nearby = computeCheckpointsFromData(area, locationDataRef.current || []);
+    const nearby = computeCheckpointsFromData(area, locationDataRef.current || [], decay);
+    const areaMatch = (locationDataRef.current || []).find(l => clean(l.name || l.location_name) === clean(area.name));
+    const startRisk = decay && (areaMatch?.decay_score != null || areaMatch?.risk_score != null)
+      ? (areaMatch.decay_score != null ? areaMatch.decay_score : areaMatch.risk_score)
+      : (areaMatch?.count || 0);
+
     return [
-      { id: 'cp-selected', name: area.name, zone: 'Selected Area', riskCount: 0, lng: area.lng, lat: area.lat },
+      { id: 'cp-selected', name: area.name, zone: 'Selected Area', riskCount: startRisk, rawCount: areaMatch?.count || 0, isDecayed: decay, lng: area.lng, lat: area.lat },
       ...nearby,
     ].slice(0, 5);
   };
 
-  // Recompute previewCheckpoints whenever selectedArea or assignedZone changes
+  // Recompute previewCheckpoints whenever selectedArea, assignedZone or usePatrolDecay changes
   useEffect(() => {
     if (selectedArea) {
-      setPreviewCheckpoints(computeNearbyCheckpoints(selectedArea));
+      setPreviewCheckpoints(computeNearbyCheckpoints(selectedArea, usePatrolDecay));
     }
-  }, [selectedArea, assignedZone]);
+  }, [selectedArea, assignedZone, usePatrolDecay]);
 
   // Core Area Selection Logic with Zone Restriction Enforcement (Step 3)
   const processAreaSelection = (areaName, pinLng, pinLat) => {
@@ -994,7 +1033,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
 
   const handleConfirmArea = () => {
     if (!selectedArea) return;
-    const freshPreview = computeNearbyCheckpoints(selectedArea);
+    const freshPreview = computeNearbyCheckpoints(selectedArea, usePatrolDecay);
     const checkpoints = patrolMode === 'single'
       ? [{ id: 'cp-selected', name: selectedArea.name, zone: assignedZone?.zone || 'Single Building Patrol', riskCount: 0, lng: selectedArea.lng, lat: selectedArea.lat }]
       : freshPreview;
@@ -1006,6 +1045,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
       checkpoints,
       patrolMode,
       assignedZone: assignedZone?.zone,
+      usePatrolDecay,
       locationData: locationDataRef.current || [],
     }));
     setSheetVisible(false);
@@ -1475,13 +1515,44 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
         {/* Hidden in single-building mode or when no area is selected yet */}
         {formData.patrolMode !== 'single' && selectedArea && (
         <div className="bg-[#1A5C3A] rounded-[28px] p-6 shadow-lg mb-8 relative overflow-hidden">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-8 h-8 bg-[#39E58C]/20 rounded-lg flex items-center justify-center"><span className="material-symbols-outlined text-[#39E58C] text-[20px]">magic_button</span></div>
-            <div>
-              <h3 className="font-black text-white text-[16px] tracking-tight">AI Suggested Route</h3>
-              <p className="text-[9px] font-black text-[#39E58C] uppercase tracking-widest">
-                NEARBY BUILDINGS · SORTED BY RISK
-              </p>
+          <div className="flex items-center justify-between gap-3 mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-[#39E58C]/20 rounded-lg flex items-center justify-center">
+                <span className="material-symbols-outlined text-[#39E58C] text-[20px]">magic_button</span>
+              </div>
+              <div>
+                <h3 className="font-black text-white text-[16px] tracking-tight">AI Suggested Route</h3>
+                <p className="text-[9px] font-black text-[#39E58C] uppercase tracking-widest">
+                  {usePatrolDecay ? 'PRIORITIZING RECENT INCIDENTS' : 'PRIORITIZING ALL-TIME VOLUME'}
+                </p>
+              </div>
+            </div>
+            {/* Hotspot Recency Toggle Pill */}
+            <div className="bg-black/20 p-1 rounded-xl flex items-center border border-white/10 shrink-0">
+              <button
+                type="button"
+                onClick={() => setUsePatrolDecay(false)}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                  !usePatrolDecay
+                    ? 'bg-white text-[#1A5C3A] shadow-sm'
+                    : 'text-white/70 hover:text-white'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[13px]">history</span>
+                <span>All-Time</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUsePatrolDecay(true)}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                  usePatrolDecay
+                    ? 'bg-[#39E58C] text-[#003624] shadow-sm'
+                    : 'text-white/70 hover:text-white'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[13px]">bolt</span>
+                <span>Recent</span>
+              </button>
             </div>
           </div>
 
@@ -1489,7 +1560,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
           {previewCheckpoints.length > 0 ? (
             <div className="space-y-4">
               {previewCheckpoints.map((cp, idx) => {
-                const risk = getRiskLevel(cp.riskCount || 0);
+                const risk = getRiskLevel(cp.riskCount || 0, cp.isDecayed);
                 const isFirst = idx === 0;
                 return (
                   <div key={cp.id} className="flex items-center gap-3">
@@ -1508,7 +1579,11 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full shrink-0" style={{backgroundColor: risk.color}} />
                         <span className="text-[9px] font-black text-white/50 uppercase tracking-widest truncate">{cp.zone || risk.label}</span>
-                        {cp.riskCount > 0 && <span className="text-[9px] font-bold text-white/40 shrink-0">• {cp.riskCount} violations</span>}
+                        {(cp.rawCount > 0 || cp.riskCount > 0) && (
+                          <span className="text-[9px] font-bold text-white/40 shrink-0">
+                            • {cp.rawCount || cp.riskCount} violations
+                          </span>
+                        )}
                       </div>
                     </div>
                     {isFirst && (
@@ -1603,7 +1678,13 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
 
       {/* ── Slide-up Area Confirmation Sheet ─────────────────────────────────── */}
       {sheetVisible && selectedArea && (() => {
-        const riskStyle = (rc) => {
+        const riskStyle = (rc, isDecayed = usePatrolDecay) => {
+          if (isDecayed) {
+            if (rc > 75) return { label: 'Critical Hotspot', bg: '#FEE2E2', text: '#DC2626', dot: '#DC2626' };
+            if (rc >= 51) return { label: 'High Hotspot',     bg: '#FEF3C7', text: '#D97706', dot: '#D97706' };
+            if (rc >= 26) return { label: 'Moderate Risk',   bg: '#FEF9C3', text: '#CA8A04', dot: '#CA8A04' };
+            return              { label: 'Low / Stable',     bg: '#DCFCE7', text: '#16A34A', dot: '#16A34A' };
+          }
           if (rc >= 21) return { label: 'Critical Risk',   bg: '#FEE2E2', text: '#DC2626', dot: '#DC2626' };
           if (rc >= 11) return { label: 'Very High Risk',  bg: '#FEE2E2', text: '#DC2626', dot: '#DC2626' };
           if (rc >= 7)  return { label: 'High Risk',       bg: '#FEF3C7', text: '#D97706', dot: '#D97706' };
@@ -1660,21 +1741,47 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
               {patrolMode === 'route' && previewCheckpoints.length > 0 && (
                 <div className="mb-6 border border-gray-200 rounded-[20px] p-4 bg-[#F3F4F6] shadow-sm max-h-[260px] overflow-y-auto custom-scrollbar">
                   {/* Section header */}
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-[#1A5C3A] text-[15px]">route</span>
                       <p className="text-[10px] font-black text-[#1A5C3A] uppercase tracking-widest">Checkpoint Route</p>
                     </div>
-                    <span className="text-[8px] font-black text-[#1A5C3A] bg-[#E8F5E9] px-2.5 py-0.5 rounded-full uppercase tracking-widest">
-                      {previewCheckpoints.length} Stops
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="bg-gray-200/80 p-0.5 rounded-lg flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => setUsePatrolDecay(false)}
+                          className={`px-2 py-0.5 rounded-md text-[9px] font-black transition-all cursor-pointer ${
+                            !usePatrolDecay
+                              ? 'bg-white text-gray-800 shadow-xs'
+                              : 'text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          All-Time
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setUsePatrolDecay(true)}
+                          className={`px-2 py-0.5 rounded-md text-[9px] font-black transition-all cursor-pointer ${
+                            usePatrolDecay
+                              ? 'bg-[#1A5C3A] text-white shadow-xs'
+                              : 'text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          Recent
+                        </button>
+                      </div>
+                      <span className="text-[8px] font-black text-[#1A5C3A] bg-[#E8F5E9] px-2.5 py-1 rounded-full uppercase tracking-widest">
+                        {previewCheckpoints.length} Stops
+                      </span>
+                    </div>
                   </div>
 
                   {/* Timeline rows */}
                   <div className="relative">
                     {previewCheckpoints.map((cp, idx) => {
                       const rc = cp.riskCount || 0;
-                      const risk = rc > 0 ? riskStyle(rc) : null;
+                      const risk = rc > 0 ? riskStyle(rc, cp.isDecayed) : null;
                       const isFirst = idx === 0;
                       const isLast = idx === previewCheckpoints.length - 1;
                       return (
@@ -1701,7 +1808,7 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
                                 <div className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-md" style={{ backgroundColor: risk.bg }}>
                                   <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: risk.dot }} />
                                   <span className="text-[8px] font-bold" style={{ color: risk.text }}>
-                                    {risk.label} - {rc} violations
+                                    {risk.label} - {cp.rawCount || rc} violations
                                   </span>
                                 </div>
                               )}

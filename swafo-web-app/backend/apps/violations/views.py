@@ -6,6 +6,7 @@ from django.views.decorators.http import require_GET
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from collections import defaultdict
+import math
 from apps.users.models import StudentProfile
 from apps.handbook.models import HandbookEntry
 from django.db import models
@@ -279,21 +280,77 @@ class HeatmapView(APIView):
                     return None, None
             return lat, lng
 
+        # ── Temporal Decay Parameter ─────────────────────────────────────────
+        apply_decay = request.query_params.get('decay', 'false').lower() in ('true', '1', 'yes')
+        now = timezone.now()
+        SEVERITY_WEIGHTS = {
+            'major': 30.0,
+            'minor': 15.0,
+            'traffic': 10.0,
+            'general': 10.0,
+        }
+        LAMBDA_DECAY = 0.023  # 30-day half-life: ln(2) / 30 ≈ 0.0231
+
         # ── One GeoJSON feature per violation ──────────────────────────────
         features = []
+        location_counts = defaultdict(lambda: {
+            'lat': None,
+            'lng': None,
+            'count': 0,
+            'recent_count': 0,
+            'decay_score': 0.0,
+            'name': '',
+            'violations': []
+        })
+
         for v in violations:
             lat, lng = resolve_coords(v)
             if lat is None:
                 continue  # skip violations with no resolvable location
+
+            cat_lower = (v.rule.category.lower() if v.rule and v.rule.category else 'minor')
+            base_severity = 10.0
+            for k, val in SEVERITY_WEIGHTS.items():
+                if k in cat_lower:
+                    base_severity = val
+                    break
+
+            days_elapsed = max(0, (now - v.timestamp).days)
+            if apply_decay:
+                weight = base_severity * math.exp(-LAMBDA_DECAY * days_elapsed)
+            else:
+                weight = 1.0
+
+            key = v.location_name or v.location or 'Unknown'
+            location_counts[key]['lat'] = lat
+            location_counts[key]['lng'] = lng
+            location_counts[key]['count'] += 1
+            if days_elapsed <= 30:
+                location_counts[key]['recent_count'] += 1
+            location_counts[key]['decay_score'] += base_severity * math.exp(-LAMBDA_DECAY * days_elapsed)
+            location_counts[key]['name'] = key
+            location_counts[key]['violations'].append({
+                'id': v.id,
+                'rule_code': v.rule.rule_code if v.rule else '',
+                'category': v.rule.category if v.rule else 'Unknown',
+                'status': v.status,
+                'timestamp': v.timestamp.strftime('%Y-%m-%d'),
+                'days_elapsed': days_elapsed,
+                'description': v.description[:100] if v.description else '',
+            })
+
             features.append({
                 "type": "Feature",
                 "properties": {
                     "id":            v.id,
-                    "location_name": v.location_name or v.location or "Unknown",
+                    "location_name": key,
                     "category":      v.rule.category if v.rule else "Unknown",
                     "rule_code":     v.rule.rule_code if v.rule else "",
                     "status":        v.status,
                     "timestamp":     v.timestamp.strftime('%Y-%m-%d'),
+                    "weight":        round(weight, 2),
+                    "days_elapsed":  days_elapsed,
+                    "decay_applied": apply_decay,
                 },
                 "geometry": {
                     "type": "Point",
@@ -304,27 +361,40 @@ class HeatmapView(APIView):
         geojson = {"type": "FeatureCollection", "features": features}
 
         # ── Aggregated location_summary with resolved coords ─────────────────
-        location_counts = defaultdict(lambda: {'lat': None, 'lng': None, 'count': 0, 'name': ''})
-        for v in violations:
-            lat, lng = resolve_coords(v)
-            if lat is None:
-                continue
-            key = v.location_name or v.location or 'Unknown'
-            location_counts[key]['lat']    = lat
-            location_counts[key]['lng']    = lng
-            location_counts[key]['count'] += 1
-            location_counts[key]['name']   = key
+        def get_risk_tier(score, is_decay):
+            if is_decay:
+                if score > 75: return 'Critical'
+                if score >= 51: return 'High'
+                if score >= 26: return 'Moderate'
+                return 'Low'
+            else:
+                if score >= 21: return 'Critical'
+                if score >= 11: return 'Very High'
+                if score >= 7: return 'High'
+                if score >= 4: return 'Moderate'
+                return 'Low'
 
         location_summary = sorted(
-            [{'name': d['name'], 'lat': d['lat'], 'lng': d['lng'], 'count': d['count']}
+            [{
+                'name': d['name'],
+                'lat': d['lat'],
+                'lng': d['lng'],
+                'count': d['count'],
+                'recent_count': d['recent_count'],
+                'decay_score': round(d['decay_score'], 1),
+                'risk_score': round(d['decay_score'], 1) if apply_decay else d['count'],
+                'risk_tier': get_risk_tier(d['decay_score'] if apply_decay else d['count'], apply_decay),
+                'violations': sorted(d['violations'], key=lambda x: x['days_elapsed'])[:15],
+            }
              for d in location_counts.values() if d['lat'] is not None],
-            key=lambda x: -x['count']
+            key=lambda x: -x['decay_score'] if apply_decay else -x['count']
         )
 
         return Response({
             'geojson':          geojson,
             'location_summary': location_summary,
             'total_violations': len(features),
+            'decay_applied':    apply_decay,
         })
 
 
