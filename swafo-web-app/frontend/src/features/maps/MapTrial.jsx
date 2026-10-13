@@ -380,7 +380,11 @@ export default function MapTrial() {
         const c = m.getCenter();
         setCoords({ lng: c.lng.toFixed(4), lat: c.lat.toFixed(4), zoom: m.getZoom().toFixed(2) });
       });
-      m.on('error', (e) => setError(e.error?.message || 'Map failed to load'));
+      m.on('error', (e) => {
+        const msg = e?.error?.message || '';
+        if (msg.includes('Could not load models') || msg.includes('maple1') || msg.includes('lod2')) return;
+        setError(msg || 'Map failed to load');
+      });
 
     } catch (err) { setError(err.message); }
 

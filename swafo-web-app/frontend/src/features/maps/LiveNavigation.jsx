@@ -59,6 +59,12 @@ export default function LiveNavigation() {
     });
     mapRef.current = m;
 
+    m.on('error', (e) => {
+      const msg = e?.error?.message || '';
+      if (msg.includes('Could not load models') || msg.includes('maple1') || msg.includes('lod2')) return;
+      console.warn('Mapbox notice:', msg || e);
+    });
+
     m.on('load', () => {
       // ── Campus boundary overlay ────────────────────────────────────────────
       try {

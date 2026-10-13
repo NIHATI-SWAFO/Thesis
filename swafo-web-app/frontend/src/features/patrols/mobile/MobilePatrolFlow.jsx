@@ -294,6 +294,12 @@ const FullMapScreen = ({ onBack, trailCoords = [] }) => {
       });
       mapRef.current = m;
 
+      m.on('error', (e) => {
+        const msg = e?.error?.message || '';
+        if (msg.includes('Could not load models') || msg.includes('maple1') || msg.includes('lod2')) return;
+        console.warn('Mapbox notice:', msg || e);
+      });
+
       m.on('load', () => {
         // Violations Source
         m.addSource('violations-source', {
@@ -1080,6 +1086,12 @@ const SelectAreaScreen = ({ onConfirm, onBack, formData, setFormData }) => {
         attributionControl: false,
       });
       mapRef.current = m;
+
+      m.on('error', (e) => {
+        const msg = e?.error?.message || '';
+        if (msg.includes('Could not load models') || msg.includes('maple1') || msg.includes('lod2')) return;
+        console.warn('Mapbox notice:', msg || e);
+      });
 
       m.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
 
@@ -2007,6 +2019,12 @@ const LiveMapScreen = ({ onEnd, onExpand, onBack, seconds, isPatrolActive, setIs
         attributionControl: false,
       });
       mapRef.current = m;
+
+      m.on('error', (e) => {
+        const msg = e?.error?.message || '';
+        if (msg.includes('Could not load models') || msg.includes('maple1') || msg.includes('lod2')) return;
+        console.warn('Mapbox notice:', msg || e);
+      });
 
       m.on('load', () => {
         m.resize();
