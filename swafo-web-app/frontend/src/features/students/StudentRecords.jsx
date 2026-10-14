@@ -237,7 +237,7 @@ export default function StudentRecords({ role = 'officer' }) {
               <div>
                 <p className="text-[10px] font-black text-emerald-400/80 uppercase tracking-[0.25em] sm:tracking-[0.3em] mb-1">DLSU-D Student Handbook 2022–2027</p>
                 <h2 className="text-[18px] sm:text-[22px] font-pjs font-bold text-white leading-tight">Institutional Standing &amp; The 3 Core Privileges</h2>
-                <p className="text-[12px] sm:text-[13px] text-white/60 mt-1 font-medium">Clearance (§14), Academic Honors, and Good Moral Character</p>
+                <p className="text-[12px] sm:text-[13px] text-white/60 mt-1 font-medium">Clearance, Academic Honors, and Good Moral Character</p>
               </div>
               <button
                 onClick={() => setShowRiskHelp(false)}
@@ -253,7 +253,7 @@ export default function StudentRecords({ role = 'officer' }) {
               {/* What & Why */}
               <div>
                 <p className="text-[12px] sm:text-[13px] font-medium text-slate-600 leading-relaxed">
-                  SWAFO evaluates students not as arbitrary numbers, but through the <strong className="text-[#003624]">DLSU-D Student Handbook Disciplinary Framework</strong>. A student's standing directly governs their real-world institutional privileges: enrollment clearance, academic honor qualifications, and official certifications.
+                  SWAFO evaluates students through the <strong className="text-[#003624]">DLSU-D Student Handbook Disciplinary Framework</strong>. A student's standing directly governs their real-world institutional privileges: enrollment clearance, academic honor qualifications, and official certifications.
                 </p>
               </div>
 
@@ -264,7 +264,7 @@ export default function StudentRecords({ role = 'officer' }) {
                   <div className="flex items-start gap-2.5">
                     <span className="material-symbols-outlined text-emerald-700 text-[18px] shrink-0 mt-0.5">verified_user</span>
                     <div>
-                      <strong className="text-[#003624]">1. Institutional Clearance (Section 14):</strong>
+                      <strong className="text-[#003624]">1. Institutional Clearance:</strong>
                       <p className="text-slate-600 mt-0.5">Controls registration, add/drop of courses, transcript issuance (OTR), and graduation eligibility.</p>
                     </div>
                   </div>
@@ -272,7 +272,7 @@ export default function StudentRecords({ role = 'officer' }) {
                     <span className="material-symbols-outlined text-amber-700 text-[18px] shrink-0 mt-0.5">workspace_premium</span>
                     <div>
                       <strong className="text-[#003624]">2. Dean's List &amp; Latin Honors:</strong>
-                      <p className="text-slate-600 mt-0.5">Academic awards strictly require good conduct standing; warnings or probation disqualify candidate (§26.4, §27.3.5).</p>
+                      <p className="text-slate-600 mt-0.5">Academic awards strictly require good conduct standing; warnings or probation disqualify candidate.</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2.5">
@@ -285,17 +285,6 @@ export default function StudentRecords({ role = 'officer' }) {
                 </div>
               </div>
 
-              {/* Restorative Justice & 30-Day Half-Life */}
-              <div className="flex items-start gap-3.5 p-4 sm:p-5 bg-emerald-50/70 rounded-2xl border border-emerald-100">
-                <span className="material-symbols-outlined text-[#003624] text-[24px] sm:text-[26px] shrink-0 mt-0.5">restore</span>
-                <div>
-                  <p className="text-[12px] sm:text-[13px] font-bold text-[#003624] mb-0.5">30-Day Half-Life (Restorative Discipline)</p>
-                  <p className="text-[11px] sm:text-[12px] text-emerald-900/80 leading-relaxed">
-                    Minor violations lose <strong>50% of their weight every 30 days</strong> of sustained good conduct. Resolving pending cases immediately removes the unresolved penalty multiplier, giving students a clear restorative path to rehabilitate their standing.
-                  </p>
-                </div>
-              </div>
-
               {/* Handbook Standing Tiers Guide */}
               <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Institutional Standing Tiers</p>
@@ -303,7 +292,7 @@ export default function StudentRecords({ role = 'officer' }) {
                   {[
                     { 
                       label: 'LOW', 
-                      standing: 'Good Standing (§14)', 
+                      standing: 'Good Standing', 
                       color: 'bg-emerald-500', 
                       text: 'text-emerald-800', 
                       bg: 'bg-emerald-50/70', 
@@ -313,7 +302,7 @@ export default function StudentRecords({ role = 'officer' }) {
                     },
                     { 
                       label: 'MODERATE', 
-                      standing: 'Under Review (§27.1)', 
+                      standing: 'Under Review', 
                       color: 'bg-amber-400', 
                       text: 'text-amber-800', 
                       bg: 'bg-amber-50/70', 
@@ -323,7 +312,7 @@ export default function StudentRecords({ role = 'officer' }) {
                     },
                     { 
                       label: 'HIGH', 
-                      standing: 'Disciplinary Warning (§26.4)', 
+                      standing: 'Disciplinary Warning', 
                       color: 'bg-orange-500', 
                       text: 'text-orange-800', 
                       bg: 'bg-orange-50/70', 
@@ -333,7 +322,7 @@ export default function StudentRecords({ role = 'officer' }) {
                     },
                     { 
                       label: 'CRITICAL', 
-                      standing: 'Disciplinary Probation (§27.3.5)', 
+                      standing: 'Disciplinary Probation', 
                       color: 'bg-rose-500', 
                       text: 'text-rose-800', 
                       bg: 'bg-rose-50/70', 

@@ -114,8 +114,7 @@ export default function StudentDashboard() {
     clearance_impact: 'CLEARED',
     honors_eligibility: 'ELIGIBLE',
     gmc_status: 'AVAILABLE',
-    handbook_citation: 'Section 14',
-    consequence_summary: "Unrestricted institutional clearance (§14). Eligible for Dean's List and Latin Honors; unconditional Good Moral Certificate (GMC) issuance.",
+    consequence_summary: "Unrestricted institutional clearance. Eligible for Dean's List and Latin Honors; unconditional Good Moral Certificate (GMC) issuance.",
     color: 'emerald',
   };
 
