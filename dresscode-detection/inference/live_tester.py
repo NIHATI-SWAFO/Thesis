@@ -17,7 +17,14 @@ from detect import assess_compliance, draw_detections, CLASS_NAMES
 # CONFIGURATION
 # ============================================================
 BASE_DIR = Path(__file__).parent.parent
-MODEL_PATH = BASE_DIR / "results" / "enhanced-uwear-dev" / "weights" / "best.pt"
+ROOT_DIR = BASE_DIR.parent
+
+_CANDIDATES = [
+    ROOT_DIR / "models" / "best.pt",
+    BASE_DIR / "models" / "best.pt",
+    BASE_DIR / "results" / "enhanced-uwear-dev" / "weights" / "best.pt",
+]
+MODEL_PATH = next((p for p in _CANDIDATES if p.exists()), None)
 CONFIDENCE_THRESHOLD = 0.35
 
 # Default settings (you can change these in the UI by pressing keys)
@@ -25,8 +32,8 @@ CURRENT_MODE = "CIVILIAN_MODE"
 YEAR_LEVEL = 1
 
 def main():
-    if not MODEL_PATH.exists():
-        print(f"ERROR: Model not found at {MODEL_PATH}")
+    if not MODEL_PATH or not MODEL_PATH.exists():
+        print(f"ERROR: Model not found at {[str(p) for p in _CANDIDATES]}")
         sys.exit(1)
 
     print(f"Loading model: {MODEL_PATH}")
