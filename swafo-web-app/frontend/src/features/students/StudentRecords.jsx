@@ -403,120 +403,104 @@ export default function StudentRecords({ role = 'officer' }) {
               const hasPending = selectedStudentForPrivileges.has_pending_violations;
 
               return (
-                <div className="px-5 sm:px-8 py-5 sm:py-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
+                <div className="px-5 sm:px-8 py-5 sm:py-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
                   
-                  {/* Current Academic Standing Banner */}
-                  <div className={`p-4 sm:p-5 rounded-2xl border ${risk.badge} flex flex-col gap-2`}>
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${risk.bar} ${risk.tier === 'CRITICAL' ? 'animate-pulse' : ''}`}></span>
-                      <span className="text-[14px] font-pjs font-extrabold tracking-tight uppercase">{risk.standing}</span>
+                  {/* Current Academic Standing Overview */}
+                  <div className={`p-4 rounded-2xl border ${risk.badge} flex flex-col gap-2.5`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${risk.bar} ${risk.tier === 'CRITICAL' ? 'animate-pulse' : ''}`}></span>
+                        <span className="text-[15px] font-pjs font-extrabold tracking-tight uppercase">{risk.standing}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+                        <span className="bg-white/90 px-2.5 py-0.5 rounded-md border border-black/5">
+                          {totalVios} Infraction{totalVios !== 1 ? 's' : ''}
+                        </span>
+                        {hasPending && (
+                          <span className="bg-amber-100 text-amber-900 border border-amber-200 px-2.5 py-0.5 rounded-md">
+                            Pending Case
+                          </span>
+                        )}
+                        {selectedStudentForPrivileges.is_repeat_offender && (
+                          <span className="bg-rose-100 text-rose-900 border border-rose-200 px-2.5 py-0.5 rounded-md">
+                            Repeat Offender
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p className="text-[12px] font-medium leading-relaxed opacity-90">
                       {risk.consequence}
                     </p>
-                    <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-black/5 text-[11px] font-bold">
-                      <span className="bg-white/90 px-2 py-0.5 rounded-md border border-black/5">
-                        {totalVios} Total Infraction{totalVios !== 1 ? 's' : ''}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-md border ${hasPending ? 'bg-amber-100 text-amber-900 border-amber-200' : 'bg-emerald-100 text-emerald-900 border-emerald-200'}`}>
-                        {hasPending ? 'Pending Obligations Unsettled' : 'All Obligations Resolved'}
-                      </span>
-                      {selectedStudentForPrivileges.is_repeat_offender && (
-                        <span className="bg-rose-100 text-rose-900 border border-rose-200 px-2 py-0.5 rounded-md">
-                          Repeat Offender
-                        </span>
-                      )}
-                    </div>
                   </div>
 
                   {/* The 3 Core Privileges Grid */}
-                  <div>
-                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">
-                      The 3 Core Institutional Privileges
-                    </h3>
-                    <div className="grid grid-cols-1 gap-3">
-                      
-                      {/* Stake 1: Clearance */}
-                      <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-all">
-                        <div className="flex items-start justify-between gap-3 mb-2">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-[#003624] flex items-center justify-center shrink-0">
-                              <span className="material-symbols-outlined text-[18px]">verified_user</span>
-                            </div>
-                            <div>
-                              <h4 className="text-[13px] font-pjs font-bold text-[#003624]">1. Institutional Clearance</h4>
-                              <p className="text-[10px] text-slate-400 font-medium">Enrollment &amp; Graduation Rights</p>
-                            </div>
-                          </div>
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${risk.privilegePills.clearance.bg}`}>
-                            {risk.privilegePills.clearance.label}
-                          </span>
-                        </div>
-                        <p className="text-[11.5px] text-slate-600 leading-relaxed font-medium">
-                          {risk.clearance === 'HOLD' && 'Enrollment and graduation are LOCKED. Student cannot add/drop courses, receive official transcripts (OTR), or participate in commencement exercises until cleared by SWAFO.'}
-                          {risk.clearance === 'RESTRICTED' && 'Clearance is restricted. The student must attend mandatory restorative formation and settle outstanding disciplinary liabilities before next enrollment.'}
-                          {risk.clearance === 'CONDITIONAL' && 'Conditional clearance granted. Notice issued to resolve active minor infractions before end-of-semester clearance sign-off.'}
-                          {risk.clearance === 'CLEARED' && 'Unrestricted institutional clearance granted. Full eligibility to enroll, process academic credentials, and participate in all university activities.'}
-                        </p>
-                      </div>
-
-                      {/* Stake 2: Honors */}
-                      <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-all">
-                        <div className="flex items-start justify-between gap-3 mb-2">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center shrink-0">
-                              <span className="material-symbols-outlined text-[18px]">workspace_premium</span>
-                            </div>
-                            <div>
-                              <h4 className="text-[13px] font-pjs font-bold text-[#003624]">2. Dean\'s List &amp; Latin Honors</h4>
-                              <p className="text-[10px] text-slate-400 font-medium">Academic Integrity &amp; Conduct Clause</p>
-                            </div>
-                          </div>
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${risk.privilegePills.honors.bg}`}>
-                            {risk.privilegePills.honors.label}
-                          </span>
-                        </div>
-                        <p className="text-[11.5px] text-slate-600 leading-relaxed font-medium">
-                          {risk.honors === 'FORFEITED' && 'Academic honors are completely forfeited. Disciplinary Probation permanently precludes graduation with Latin Honors and term Dean\'s List awards.'}
-                          {risk.honors === 'DISQUALIFIED' && 'Disqualified from term honors. Repeated or major infractions breach university conduct standards, disqualifying the student from the Dean\'s List for this academic term.'}
-                          {risk.honors === 'UNDER_REVIEW' && 'Honors eligibility is subject to conduct committee clearance. Pending cases must be resolved satisfactorily before term awards are finalized.'}
-                          {risk.honors === 'ELIGIBLE' && 'Full honors qualification. Student maintains exemplary disciplinary standing with zero conduct disqualifications.'}
-                        </p>
-                      </div>
-
-                      {/* Stake 3: GMC */}
-                      <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-all">
-                        <div className="flex items-start justify-between gap-3 mb-2">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-900 flex items-center justify-center shrink-0">
-                              <span className="material-symbols-outlined text-[18px]">assignment_turned_in</span>
-                            </div>
-                            <div>
-                              <h4 className="text-[13px] font-pjs font-bold text-[#003624]">3. Certificate of Good Moral Character (GMC)</h4>
-                              <p className="text-[10px] text-slate-400 font-medium">Employment, Board Exams &amp; Scholarships</p>
-                            </div>
-                          </div>
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${risk.privilegePills.gmc.bg}`}>
-                            {risk.privilegePills.gmc.label}
-                          </span>
-                        </div>
-                        <p className="text-[11.5px] text-slate-600 leading-relaxed font-medium">
-                          {risk.gmc === 'DENIED' && 'Issuance of Good Moral Character is denied during active disciplinary probation pursuant to Student Discipline Board guidelines.'}
-                          {risk.gmc === 'WITHHELD' && 'GMC certificate withheld. Cannot be issued for scholarship renewal, board examination endorsement (PRC), or transfer until sanction requirements are met.'}
-                          {risk.gmc === 'DEFERRED' && 'Issuance temporarily deferred. Student must settle active pending infractions with SWAFO before certificate can be signed.'}
-                          {risk.gmc === 'AVAILABLE' && 'Good Moral Certificate is available for immediate official issuance by SWAFO staff without administrative hold.'}
-                        </p>
-                      </div>
-
-                    </div>
-                  </div>
-
-                  {/* Restorative Information */}
-                  <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100 flex items-start gap-3">
-                    <span className="material-symbols-outlined text-[#003624] text-[20px] shrink-0 mt-0.5">restore</span>
-                    <p className="text-[11px] text-emerald-900 leading-relaxed font-medium">
-                      <strong>Restorative Formation:</strong> SWAFO prioritizes student development over punishment. Infractions decay with a 30-day half-life when compliant, and resolving cases removes the unresolved penalty.
+                  <div className="space-y-2.5">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                      Privilege Status &amp; Impact
                     </p>
+
+                    {/* Privilege 1: Clearance */}
+                    <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200/80 bg-white flex items-center justify-between gap-3 shadow-xs">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#003624] flex items-center justify-center shrink-0 border border-emerald-100">
+                          <span className="material-symbols-outlined text-[20px]">verified_user</span>
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-[13px] font-pjs font-bold text-[#003624]">Institutional Clearance</h4>
+                          <p className="text-[11.5px] text-slate-500 font-medium">
+                            {risk.clearance === 'HOLD' ? 'Enrollment & graduation locked; official transcript requests blocked' :
+                             risk.clearance === 'RESTRICTED' ? 'Restricted enrollment; mandatory formation required before registration' :
+                             risk.clearance === 'CONDITIONAL' ? 'Conditional clearance; active obligations must be resolved' :
+                             'Full unrestricted clearance for enrollment and graduation'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border shrink-0 ${risk.privilegePills.clearance.bg}`}>
+                        {risk.privilegePills.clearance.label}
+                      </span>
+                    </div>
+
+                    {/* Privilege 2: Honors */}
+                    <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200/80 bg-white flex items-center justify-between gap-3 shadow-xs">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-900 flex items-center justify-center shrink-0 border border-amber-100">
+                          <span className="material-symbols-outlined text-[20px]">workspace_premium</span>
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-[13px] font-pjs font-bold text-[#003624]">Dean's List &amp; Latin Honors</h4>
+                          <p className="text-[11.5px] text-slate-500 font-medium">
+                            {risk.honors === 'FORFEITED' ? 'Permanently forfeited during disciplinary probation period' :
+                             risk.honors === 'DISQUALIFIED' ? 'Disqualified from Dean\'s List awards for the current term' :
+                             risk.honors === 'UNDER_REVIEW' ? 'Under review pending student clearance committee evaluation' :
+                             'Fully eligible for term Dean\'s List and graduation Latin Honors'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border shrink-0 ${risk.privilegePills.honors.bg}`}>
+                        {risk.privilegePills.honors.label}
+                      </span>
+                    </div>
+
+                    {/* Privilege 3: GMC */}
+                    <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200/80 bg-white flex items-center justify-between gap-3 shadow-xs">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-900 flex items-center justify-center shrink-0 border border-indigo-100">
+                          <span className="material-symbols-outlined text-[20px]">assignment_turned_in</span>
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-[13px] font-pjs font-bold text-[#003624]">Certificate of Good Moral Character</h4>
+                          <p className="text-[11.5px] text-slate-500 font-medium">
+                            {risk.gmc === 'DENIED' ? 'Denied; case officially referred to Student Discipline Board' :
+                             risk.gmc === 'WITHHELD' ? 'Withheld until all sanction formation requirements are cleared' :
+                             risk.gmc === 'DEFERRED' ? 'Deferred pending case resolution with SWAFO' :
+                             'Available for immediate official issuance by SWAFO staff'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border shrink-0 ${risk.privilegePills.gmc.bg}`}>
+                        {risk.privilegePills.gmc.label}
+                      </span>
+                    </div>
                   </div>
 
                 </div>
