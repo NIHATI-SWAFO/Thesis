@@ -708,25 +708,17 @@ export default function StudentRecords({ role = 'officer' }) {
                          const risk = getRiskLevel(student);
                          return (
                            <div className="flex flex-col gap-2 min-w-[240px]">
-                             {/* Standing Tier Badge */}
-                             <div className="flex items-center">
-                               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10.5px] font-black uppercase tracking-wider border shadow-xs ${risk.badge}`}>
-                                 <span className={`w-1.5 h-1.5 rounded-full ${risk.bar} ${risk.tier === 'CRITICAL' ? 'animate-pulse' : ''}`}></span>
-                                 {risk.standing}
-                               </span>
-                             </div>
-
                              {/* 3 Core Stakes Micro-Pills */}
-                             <div className="grid grid-cols-3 gap-1">
-                               <div className={`px-1.5 py-1 rounded text-center border text-[9px] font-black tracking-tight ${risk.privilegePills.clearance.bg}`} title="Institutional Clearance (§14)">
+                             <div className="grid grid-cols-3 gap-1.5">
+                               <div className={`px-2 py-1.5 rounded-lg text-center border text-[9.5px] font-black tracking-tight ${risk.privilegePills.clearance.bg}`} title="Institutional Clearance">
                                  <span className="block text-[7.5px] opacity-60 font-bold uppercase">Clearance</span>
                                  <span className="truncate block">{risk.privilegePills.clearance.label}</span>
                                </div>
-                               <div className={`px-1.5 py-1 rounded text-center border text-[9px] font-black tracking-tight ${risk.privilegePills.honors.bg}`} title="Dean's List & Latin Honors">
+                               <div className={`px-2 py-1.5 rounded-lg text-center border text-[9.5px] font-black tracking-tight ${risk.privilegePills.honors.bg}`} title="Dean's List & Latin Honors">
                                  <span className="block text-[7.5px] opacity-60 font-bold uppercase">Honors</span>
                                  <span className="truncate block">{risk.privilegePills.honors.label}</span>
                                </div>
-                               <div className={`px-1.5 py-1 rounded text-center border text-[9px] font-black tracking-tight ${risk.privilegePills.gmc.bg}`} title="Good Moral Certificate (GMC)">
+                               <div className={`px-2 py-1.5 rounded-lg text-center border text-[9.5px] font-black tracking-tight ${risk.privilegePills.gmc.bg}`} title="Good Moral Certificate (GMC)">
                                  <span className="block text-[7.5px] opacity-60 font-bold uppercase">GMC</span>
                                  <span className="truncate block">{risk.privilegePills.gmc.label}</span>
                                </div>
@@ -852,17 +844,10 @@ export default function StudentRecords({ role = 'officer' }) {
                     </span>
                   </div>
 
-                  {/* Third Row: Institutional Standing & 3 Privileges Card */}
+                  {/* Third Row: Institutional 3 Privileges Card */}
                   <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 space-y-2">
-                    <div className="flex items-center">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9.5px] font-black uppercase tracking-wider border ${risk.badge}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${risk.bar} ${risk.tier === 'CRITICAL' ? 'animate-pulse' : ''}`}></span>
-                        {risk.standing}
-                      </span>
-                    </div>
-
                     {/* 3 Core Stakes Micro-Pills */}
-                    <div className="grid grid-cols-3 gap-1">
+                    <div className="grid grid-cols-3 gap-1.5">
                       <div className={`px-1.5 py-1 rounded-lg text-center border text-[9px] font-black ${risk.privilegePills.clearance.bg}`}>
                         <span className="block text-[7.5px] opacity-60 font-bold uppercase">Clearance</span>
                         <span className="truncate block">{risk.privilegePills.clearance.label}</span>
