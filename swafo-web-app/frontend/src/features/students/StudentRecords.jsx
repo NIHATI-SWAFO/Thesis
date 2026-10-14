@@ -13,6 +13,7 @@ export default function StudentRecords({ role = 'officer' }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState('ALL');
   const [showRiskHelp, setShowRiskHelp] = useState(false);
+  const [selectedStudentForPrivileges, setSelectedStudentForPrivileges] = useState(null);
   const { colleges } = useColleges();
   const itemsPerPage = 10;
 
@@ -93,104 +94,115 @@ export default function StudentRecords({ role = 'officer' }) {
     }).catch(err => console.error("Error updating clearance:", err));
   };
 
-  const getRiskLevel = (score, studentStanding) => {
-    if (studentStanding) {
-      const tier = studentStanding.tier;
-      if (tier === 'CRITICAL') {
-        return {
-          label: 'CRITICAL',
-          standing: studentStanding.standing || 'Disciplinary Probation',
-          citation: studentStanding.handbook_citation || 'Section 27.3.5',
-          consequence: studentStanding.consequence_summary,
-          clearance: studentStanding.clearance_impact,
-          honors: studentStanding.honors_eligibility,
-          color: 'text-rose-600',
-          bar: 'bg-rose-500',
-          badge: 'bg-rose-50 border-rose-200 text-rose-700',
-        };
-      }
-      if (tier === 'HIGH') {
-        return {
-          label: 'HIGH',
-          standing: studentStanding.standing || 'Disciplinary Warning',
-          citation: studentStanding.handbook_citation || 'Section 26.4',
-          consequence: studentStanding.consequence_summary,
-          clearance: studentStanding.clearance_impact,
-          honors: studentStanding.honors_eligibility,
-          color: 'text-orange-600',
-          bar: 'bg-orange-500',
-          badge: 'bg-orange-50 border-orange-200 text-orange-700',
-        };
-      }
-      if (tier === 'MODERATE') {
-        return {
-          label: 'MODERATE',
-          standing: studentStanding.standing || 'Under Review',
-          citation: studentStanding.handbook_citation || 'Section 27.1',
-          consequence: studentStanding.consequence_summary,
-          clearance: studentStanding.clearance_impact,
-          honors: studentStanding.honors_eligibility,
-          color: 'text-amber-600',
-          bar: 'bg-amber-400',
-          badge: 'bg-amber-50 border-amber-200 text-amber-700',
-        };
-      }
-      return {
-        label: 'LOW',
-        standing: studentStanding.standing || 'Good Standing',
-        citation: studentStanding.handbook_citation || 'Section 14',
-        consequence: studentStanding.consequence_summary,
-        clearance: studentStanding.clearance_impact,
-        honors: studentStanding.honors_eligibility,
-        color: 'text-emerald-700',
-        bar: 'bg-emerald-500',
-        badge: 'bg-emerald-50 border-emerald-200 text-emerald-800',
-      };
+  const getRiskLevel = (studentOrScore, maybeStanding, maybeStudent) => {
+    let student = null;
+    let score = 0;
+    let studentStanding = null;
+
+    if (studentOrScore && typeof studentOrScore === 'object' && !('tier' in studentOrScore)) {
+      student = studentOrScore;
+      score = student.risk_score || 0;
+      studentStanding = student.risk_standing || null;
+    } else {
+      score = typeof studentOrScore === 'number' ? studentOrScore : 0;
+      studentStanding = maybeStanding || null;
+      student = maybeStudent || null;
     }
 
-    if (score > 75) return { 
-      label: 'CRITICAL', 
-      standing: 'Disciplinary Probation', 
-      citation: 'Section 27.3.5',
-      consequence: 'Clearance placed on HOLD (§14) blocking enrollment and graduation. Honors forfeited; referral to SWAFO Director and SDB (§27.3.5).',
-      clearance: 'HOLD',
-      honors: 'FORFEITED',
-      color: 'text-rose-600', 
-      bar: 'bg-rose-500', 
-      badge: 'bg-rose-50 border-rose-200 text-rose-700' 
-    };
-    if (score > 50) return { 
-      label: 'HIGH', 
-      standing: 'Disciplinary Warning', 
-      citation: 'Section 26.4',
-      consequence: 'Disqualified from Dean\'s List and Latin Honors. Clearance restricted; Good Moral Certificate withheld (§26.4).',
-      clearance: 'RESTRICTED',
-      honors: 'DISQUALIFIED',
-      color: 'text-orange-600', 
-      bar: 'bg-orange-500', 
-      badge: 'bg-orange-50 border-orange-200 text-orange-700' 
-    };
-    if (score > 25) return { 
-      label: 'MODERATE', 
-      standing: 'Under Review', 
-      citation: 'Section 27.1',
-      consequence: 'Conditional clearance. Honors subject to review; Good Moral Certificate deferred pending case resolution (§27.1).',
-      clearance: 'CONDITIONAL',
-      honors: 'UNDER_REVIEW',
-      color: 'text-amber-600', 
-      bar: 'bg-amber-400', 
-      badge: 'bg-amber-50 border-amber-200 text-amber-700' 
-    };
-    return { 
-      label: 'LOW', 
-      standing: 'Good Standing', 
-      citation: 'Section 14',
-      consequence: 'Unrestricted institutional clearance (§14). Eligible for Dean\'s List and Latin Honors; unconditional GMC issuance.',
-      clearance: 'CLEARED',
-      honors: 'ELIGIBLE',
-      color: 'text-emerald-700', 
-      bar: 'bg-emerald-500', 
-      badge: 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+    const totalVios = student?.violation_count ?? 0;
+    const hasPending = student?.has_pending_violations ?? false;
+    const isManualHold = student?.clearance_status === 'HOLD' || (studentStanding && studentStanding.clearance_impact === 'HOLD');
+
+    let tier = studentStanding?.tier;
+
+    // Strict alignment: 8+ violations or manual hold MUST be CRITICAL (Disciplinary Probation)
+    if (isManualHold || totalVios >= 8 || score > 75) {
+      tier = 'CRITICAL';
+    } else if (totalVios >= 5 || score > 50) {
+      tier = 'HIGH';
+    } else if (totalVios >= 2 || hasPending || score > 25) {
+      tier = 'MODERATE';
+    } else {
+      tier = tier || 'LOW';
+    }
+
+    if (tier === 'CRITICAL') {
+      return {
+        label: 'CRITICAL',
+        tier: 'CRITICAL',
+        standing: 'Disciplinary Probation',
+        citation: studentStanding?.handbook_citation || 'Section 27.3.5',
+        consequence: studentStanding?.consequence_summary || 'Clearance placed on HOLD (§14) blocking enrollment and graduation. Honors forfeited; referral to SWAFO Director and SDB (§27.3.5).',
+        clearance: studentStanding?.clearance_impact || 'HOLD',
+        honors: studentStanding?.honors_eligibility || 'FORFEITED',
+        gmc: studentStanding?.gmc_status || 'DENIED',
+        color: 'text-rose-600',
+        bar: 'bg-rose-500',
+        badge: 'bg-rose-50 border-rose-200 text-rose-700',
+        privilegePills: {
+          clearance: { label: 'HOLD', bg: 'bg-rose-100 text-rose-800 border-rose-200', icon: 'block' },
+          honors: { label: 'FORFEITED', bg: 'bg-rose-100 text-rose-800 border-rose-200', icon: 'cancel' },
+          gmc: { label: 'DENIED', bg: 'bg-rose-100 text-rose-800 border-rose-200', icon: 'do_not_disturb_on' },
+        }
+      };
+    }
+    if (tier === 'HIGH') {
+      return {
+        label: 'HIGH',
+        tier: 'HIGH',
+        standing: 'Disciplinary Warning',
+        citation: studentStanding?.handbook_citation || 'Section 26.4',
+        consequence: studentStanding?.consequence_summary || 'Disqualified from Dean\'s List and Latin Honors. Clearance restricted; Good Moral Certificate withheld (§26.4).',
+        clearance: studentStanding?.clearance_impact || 'RESTRICTED',
+        honors: studentStanding?.honors_eligibility || 'DISQUALIFIED',
+        gmc: studentStanding?.gmc_status || 'WITHHELD',
+        color: 'text-orange-600',
+        bar: 'bg-orange-500',
+        badge: 'bg-orange-50 border-orange-200 text-orange-700',
+        privilegePills: {
+          clearance: { label: 'RESTRICTED', bg: 'bg-orange-100 text-orange-800 border-orange-200', icon: 'warning' },
+          honors: { label: 'DISQUALIFIED', bg: 'bg-orange-100 text-orange-800 border-orange-200', icon: 'close' },
+          gmc: { label: 'WITHHELD', bg: 'bg-orange-100 text-orange-800 border-orange-200', icon: 'pan_tool' },
+        }
+      };
+    }
+    if (tier === 'MODERATE') {
+      return {
+        label: 'MODERATE',
+        tier: 'MODERATE',
+        standing: 'Under Review',
+        citation: studentStanding?.handbook_citation || 'Section 27.1',
+        consequence: studentStanding?.consequence_summary || 'Conditional clearance. Honors subject to review; Good Moral Certificate deferred pending case resolution (§27.1).',
+        clearance: studentStanding?.clearance_impact || 'CONDITIONAL',
+        honors: studentStanding?.honors_eligibility || 'UNDER_REVIEW',
+        gmc: studentStanding?.gmc_status || 'DEFERRED',
+        color: 'text-amber-600',
+        bar: 'bg-amber-400',
+        badge: 'bg-amber-50 border-amber-200 text-amber-700',
+        privilegePills: {
+          clearance: { label: 'CONDITIONAL', bg: 'bg-amber-100 text-amber-800 border-amber-200', icon: 'rule' },
+          honors: { label: 'REVIEW', bg: 'bg-amber-100 text-amber-800 border-amber-200', icon: 'hourglass_top' },
+          gmc: { label: 'DEFERRED', bg: 'bg-amber-100 text-amber-800 border-amber-200', icon: 'pending' },
+        }
+      };
+    }
+    return {
+      label: 'LOW',
+      tier: 'LOW',
+      standing: 'Good Standing',
+      citation: studentStanding?.handbook_citation || 'Section 14',
+      consequence: studentStanding?.consequence_summary || 'Unrestricted institutional clearance (§14). Eligible for Dean\'s List and Latin Honors; unconditional GMC issuance.',
+      clearance: studentStanding?.clearance_impact || 'CLEARED',
+      honors: studentStanding?.honors_eligibility || 'ELIGIBLE',
+      gmc: studentStanding?.gmc_status || 'AVAILABLE',
+      color: 'text-emerald-700',
+      bar: 'bg-emerald-500',
+      badge: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+      privilegePills: {
+        clearance: { label: 'CLEARED', bg: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: 'check_circle' },
+        honors: { label: 'ELIGIBLE', bg: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: 'verified' },
+        gmc: { label: 'AVAILABLE', bg: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: 'assignment_turned_in' },
+      }
     };
   };
 
@@ -210,22 +222,22 @@ export default function StudentRecords({ role = 'officer' }) {
   return (
     <div className="max-w-[1600px] mx-auto animate-fade-in-up pb-12">
 
-      {/* ── Risk Score Explainer Modal ────────────────────────────────────── */}
+      {/* ── Handbook & Privileges Explainer Modal ───────────────────────── */}
       {showRiskHelp && createPortal(
         <div
           className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-emerald-950/60 backdrop-blur-md"
           onClick={() => setShowRiskHelp(false)}
         >
           <div
-            className="bg-white rounded-2xl sm:rounded-[2.5rem] w-full max-w-[620px] max-h-[92vh] flex flex-col overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.35)] border border-white/20 animate-in zoom-in-95 duration-200"
+            className="bg-white rounded-2xl sm:rounded-[2.5rem] w-full max-w-[640px] max-h-[92vh] flex flex-col overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.35)] border border-white/20 animate-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="bg-[#003624] px-5 sm:px-10 py-5 sm:py-8 flex items-start justify-between shrink-0">
               <div>
-                <p className="text-[10px] font-black text-emerald-400/70 uppercase tracking-[0.25em] sm:tracking-[0.3em] mb-1">Handbook &amp; Algorithm Alignment</p>
-                <h2 className="text-[18px] sm:text-[22px] font-pjs font-bold text-white leading-tight">Temporal Risk Score &amp; Student Standing</h2>
-                <p className="text-[12px] sm:text-[13px] text-white/60 mt-1 font-medium">Evaluation of institutional standing, clearance, and awards</p>
+                <p className="text-[10px] font-black text-emerald-400/80 uppercase tracking-[0.25em] sm:tracking-[0.3em] mb-1">DLSU-D Student Handbook 2022–2027</p>
+                <h2 className="text-[18px] sm:text-[22px] font-pjs font-bold text-white leading-tight">Institutional Standing &amp; The 3 Core Privileges</h2>
+                <p className="text-[12px] sm:text-[13px] text-white/60 mt-1 font-medium">Clearance (§14), Academic Honors, and Good Moral Character</p>
               </div>
               <button
                 onClick={() => setShowRiskHelp(false)}
@@ -241,106 +253,303 @@ export default function StudentRecords({ role = 'officer' }) {
               {/* What & Why */}
               <div>
                 <p className="text-[12px] sm:text-[13px] font-medium text-slate-600 leading-relaxed">
-                  Raw violation counts treat an incident from <strong className="text-[#003624]">months ago</strong> identically to one from <strong className="text-[#003624]">yesterday</strong>. The Temporal Decay algorithm measures <em>recency, severity, and resolution status</em> to determine the student's current disciplinary standing and institutional privileges under the Student Handbook.
+                  SWAFO evaluates students not as arbitrary numbers, but through the <strong className="text-[#003624]">DLSU-D Student Handbook Disciplinary Framework</strong>. A student's standing directly governs their real-world institutional privileges: enrollment clearance, academic honor qualifications, and official certifications.
                 </p>
               </div>
 
-              {/* Formula */}
-              <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">Approved Proposal Formula</p>
-                <div className="bg-[#003624] rounded-xl px-4 sm:px-5 py-3 font-mono text-[11px] sm:text-[13px] text-emerald-300 mb-3.5 overflow-x-auto">
-                  score = severity × e<sup>−0.023 × days_ago</sup> × (1.5 if unresolved)
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 text-[11px] sm:text-[12px]">
-                  <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-rose-500 mt-1 shrink-0"></span>
-                    <span className="text-slate-600"><strong>Major</strong> — 30 pts base</span>
+              {/* The 3 Core Stakes */}
+              <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-100 space-y-3">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">The 3 Concrete Stakes</p>
+                <div className="space-y-2.5 text-[11.5px] sm:text-[12px]">
+                  <div className="flex items-start gap-2.5">
+                    <span className="material-symbols-outlined text-emerald-700 text-[18px] shrink-0 mt-0.5">verified_user</span>
+                    <div>
+                      <strong className="text-[#003624]">1. Institutional Clearance (Section 14):</strong>
+                      <p className="text-slate-600 mt-0.5">Controls registration, add/drop of courses, transcript issuance (OTR), and graduation eligibility.</p>
+                    </div>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 mt-1 shrink-0"></span>
-                    <span className="text-slate-600"><strong>Minor</strong> — 15 pts base</span>
+                  <div className="flex items-start gap-2.5">
+                    <span className="material-symbols-outlined text-amber-700 text-[18px] shrink-0 mt-0.5">workspace_premium</span>
+                    <div>
+                      <strong className="text-[#003624]">2. Dean's List &amp; Latin Honors:</strong>
+                      <p className="text-slate-600 mt-0.5">Academic awards strictly require good conduct standing; warnings or probation disqualify candidate (§26.4, §27.3.5).</p>
+                    </div>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-slate-400 mt-1 shrink-0"></span>
-                    <span className="text-slate-600"><strong>Dress code</strong> — 10 pts base</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500 mt-1 shrink-0"></span>
-                    <span className="text-slate-600"><strong>Unresolved</strong> — ×1.5 multiplier</span>
+                  <div className="flex items-start gap-2.5">
+                    <span className="material-symbols-outlined text-indigo-700 text-[18px] shrink-0 mt-0.5">assignment_turned_in</span>
+                    <div>
+                      <strong className="text-[#003624]">3. Certificate of Good Moral Character (GMC):</strong>
+                      <p className="text-slate-600 mt-0.5">Essential endorsement for PRC board exam applications, scholarship renewal, employment, and law/med school.</p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Half-life */}
+              {/* Restorative Justice & 30-Day Half-Life */}
               <div className="flex items-start gap-3.5 p-4 sm:p-5 bg-emerald-50/70 rounded-2xl border border-emerald-100">
-                <span className="material-symbols-outlined text-[#003624] text-[24px] sm:text-[26px] shrink-0 mt-0.5">schedule</span>
+                <span className="material-symbols-outlined text-[#003624] text-[24px] sm:text-[26px] shrink-0 mt-0.5">restore</span>
                 <div>
                   <p className="text-[12px] sm:text-[13px] font-bold text-[#003624] mb-0.5">30-Day Half-Life (Restorative Discipline)</p>
                   <p className="text-[11px] sm:text-[12px] text-emerald-900/80 leading-relaxed">
-                    A violation loses <strong>50% of its risk weight every 30 days</strong> without re-offense. Sustained compliance naturally restores a student's standing over time.
+                    Minor violations lose <strong>50% of their weight every 30 days</strong> of sustained good conduct. Resolving pending cases immediately removes the unresolved penalty multiplier, giving students a clear restorative path to rehabilitate their standing.
                   </p>
                 </div>
               </div>
 
-              {/* Risk Tiers & Student Standing */}
+              {/* Handbook Standing Tiers Guide */}
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Student Impact &amp; Standing Guide</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Institutional Standing Tiers</p>
                 <div className="space-y-2.5">
                   {[
                     { 
-                      range: '0 – 25', 
                       label: 'LOW', 
-                      standing: 'Good Standing', 
+                      standing: 'Good Standing (§14)', 
                       color: 'bg-emerald-500', 
                       text: 'text-emerald-800', 
                       bg: 'bg-emerald-50/70', 
                       border: 'border-emerald-200/60', 
-                      impact: 'Unrestricted clearance (§14). Eligible for Dean\'s List & Latin Honors; unconditional Good Moral Certificate (GMC) issuance.' 
+                      criteria: 'Clean record (0–1 resolved minor violation, 0 pending).',
+                      impact: 'Clearance CLEARED; Honors ELIGIBLE; GMC AVAILABLE unconditionally.' 
                     },
                     { 
-                      range: '26 – 50', 
                       label: 'MODERATE', 
-                      standing: 'Under Review', 
+                      standing: 'Under Review (§27.1)', 
                       color: 'bg-amber-400', 
                       text: 'text-amber-800', 
                       bg: 'bg-amber-50/70', 
                       border: 'border-amber-200/60', 
-                      impact: 'Conditional clearance. Good Moral Certificate deferred pending resolution of active obligations. Formal admonition on record.' 
+                      criteria: '2–4 infractions, 1 major offense, or active pending case.',
+                      impact: 'Clearance CONDITIONAL; Honors subject to semester review; GMC DEFERRED.' 
                     },
                     { 
-                      range: '51 – 75', 
                       label: 'HIGH', 
-                      standing: 'Disciplinary Warning', 
+                      standing: 'Disciplinary Warning (§26.4)', 
                       color: 'bg-orange-500', 
                       text: 'text-orange-800', 
                       bg: 'bg-orange-50/70', 
                       border: 'border-orange-200/60', 
-                      impact: 'Disqualified from Dean\'s List & Latin Honors (conduct clause). Good Moral Certificate withheld; mandatory SWAFO Formation Program (§26.4).' 
+                      criteria: '5–7 infractions or 2 major offenses. Formation required.',
+                      impact: 'Clearance RESTRICTED; Honors DISQUALIFIED; GMC WITHHELD.' 
                     },
                     { 
-                      range: '76 – 100', 
                       label: 'CRITICAL', 
-                      standing: 'Disciplinary Probation', 
+                      standing: 'Disciplinary Probation (§27.3.5)', 
                       color: 'bg-rose-500', 
                       text: 'text-rose-800', 
                       bg: 'bg-rose-50/70', 
                       border: 'border-rose-200/60', 
-                      impact: 'Clearance placed on HOLD (§14) blocking enrollment & graduation. Forfeiture of honors; referral to Student Discipline Board (§27.3.5) with risk of suspension or expulsion.' 
+                      criteria: '8+ infractions, 3+ major offenses, or manual clearance HOLD.',
+                      impact: 'Clearance HOLD (enrollment locked); Honors FORFEITED; GMC DENIED; SDB referral.' 
                     },
                   ].map(tier => (
                     <div key={tier.label} className={`flex items-start gap-3 sm:gap-3.5 p-3 sm:px-4 sm:py-3 rounded-2xl border ${tier.bg} ${tier.border}`}>
-                      <div className={`w-2 sm:w-2.5 h-10 rounded-full ${tier.color} shrink-0 mt-0.5`}></div>
-                      <div className="w-20 sm:w-24 shrink-0">
-                        <span className={`text-[10px] font-black uppercase tracking-wider ${tier.text}`}>{tier.standing}</span>
-                        <p className="text-[10px] font-mono text-slate-400 font-bold">{tier.range} pts</p>
+                      <div className={`w-2 sm:w-2.5 h-12 rounded-full ${tier.color} shrink-0 mt-0.5`}></div>
+                      <div className="w-24 sm:w-28 shrink-0">
+                        <span className={`text-[10.5px] font-black uppercase tracking-wider block ${tier.text}`}>{tier.standing}</span>
+                        <p className="text-[9.5px] font-bold text-slate-500 mt-0.5">{tier.criteria}</p>
                       </div>
-                      <p className={`text-[10px] sm:text-[11px] font-medium leading-relaxed ${tier.text}`}>{tier.impact}</p>
+                      <p className={`text-[10.5px] sm:text-[11px] font-medium leading-relaxed ${tier.text} pl-1`}>{tier.impact}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Student Privileges & Standing Dossier Modal ────────────────── */}
+      {selectedStudentForPrivileges && createPortal(
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-emerald-950/60 backdrop-blur-md"
+          onClick={() => setSelectedStudentForPrivileges(null)}
+        >
+          <div
+            className="bg-white rounded-2xl sm:rounded-[2.5rem] w-full max-w-[680px] max-h-[92vh] flex flex-col overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.35)] border border-white/20 animate-in zoom-in-95 duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-[#003624] px-5 sm:px-8 py-5 sm:py-6 flex items-start justify-between shrink-0">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center text-white font-black text-[16px] shrink-0">
+                  {selectedStudentForPrivileges.user_details?.full_name?.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'ST'}
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-emerald-400/80 uppercase tracking-[0.25em] mb-0.5">Institutional Standing Dossier</p>
+                  <h2 className="text-[18px] sm:text-[20px] font-pjs font-bold text-white leading-tight">
+                    {selectedStudentForPrivileges.user_details?.full_name || 'Student Record'}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-0.5 text-white/60 text-[11px] font-medium font-mono">
+                    <span>ID: {selectedStudentForPrivileges.student_number}</span>
+                    <span>•</span>
+                    <span className="truncate max-w-[200px]">{selectedStudentForPrivileges.course || 'Academic Program'}</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedStudentForPrivileges(null)}
+                className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all text-white shrink-0 mt-0.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            {(() => {
+              const risk = getRiskLevel(selectedStudentForPrivileges);
+              const totalVios = selectedStudentForPrivileges.violation_count || 0;
+              const hasPending = selectedStudentForPrivileges.has_pending_violations;
+
+              return (
+                <div className="px-5 sm:px-8 py-5 sm:py-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
+                  
+                  {/* Current Academic Standing Banner */}
+                  <div className={`p-4 sm:p-5 rounded-2xl border ${risk.badge} flex flex-col gap-2`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${risk.bar} ${risk.tier === 'CRITICAL' ? 'animate-pulse' : ''}`}></span>
+                        <span className="text-[14px] font-pjs font-extrabold tracking-tight uppercase">{risk.standing}</span>
+                      </div>
+                      <span className="text-[11px] font-mono font-bold bg-white/80 px-2.5 py-0.5 rounded-full border border-black/10">
+                        {risk.citation}
+                      </span>
+                    </div>
+                    <p className="text-[12px] font-medium leading-relaxed opacity-90">
+                      {risk.consequence}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-black/5 text-[11px] font-bold">
+                      <span className="bg-white/90 px-2 py-0.5 rounded-md border border-black/5">
+                        {totalVios} Total Infraction{totalVios !== 1 ? 's' : ''}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-md border ${hasPending ? 'bg-amber-100 text-amber-900 border-amber-200' : 'bg-emerald-100 text-emerald-900 border-emerald-200'}`}>
+                        {hasPending ? 'Pending Obligations Unsettled' : 'All Obligations Resolved'}
+                      </span>
+                      {selectedStudentForPrivileges.is_repeat_offender && (
+                        <span className="bg-rose-100 text-rose-900 border border-rose-200 px-2 py-0.5 rounded-md">
+                          Repeat Offender (§26)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* The 3 Core Privileges Grid */}
+                  <div>
+                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                      The 3 Core Institutional Privileges
+                    </h3>
+                    <div className="grid grid-cols-1 gap-3">
+                      
+                      {/* Stake 1: Clearance */}
+                      <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-all">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-[#003624] flex items-center justify-center shrink-0">
+                              <span className="material-symbols-outlined text-[18px]">verified_user</span>
+                            </div>
+                            <div>
+                              <h4 className="text-[13px] font-pjs font-bold text-[#003624]">1. Institutional Clearance</h4>
+                              <p className="text-[10px] text-slate-400 font-medium">Student Handbook Section 14</p>
+                            </div>
+                          </div>
+                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${risk.privilegePills.clearance.bg}`}>
+                            {risk.privilegePills.clearance.label}
+                          </span>
+                        </div>
+                        <p className="text-[11.5px] text-slate-600 leading-relaxed font-medium">
+                          {risk.clearance === 'HOLD' && 'Enrollment and graduation are LOCKED under Section 14. Student cannot add/drop courses, receive official transcripts (OTR), or participate in commencement exercises until cleared by SWAFO.'}
+                          {risk.clearance === 'RESTRICTED' && 'Clearance is restricted. The student must attend mandatory restorative formation (§26.4) and settle outstanding disciplinary liabilities before next enrollment.'}
+                          {risk.clearance === 'CONDITIONAL' && 'Conditional clearance granted. Notice issued to resolve active minor infractions before end-of-semester clearance sign-off (§27.1).'}
+                          {risk.clearance === 'CLEARED' && 'Unrestricted institutional clearance granted. Full eligibility to enroll, process academic credentials, and participate in all university activities.'}
+                        </p>
+                      </div>
+
+                      {/* Stake 2: Honors */}
+                      <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-all">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center shrink-0">
+                              <span className="material-symbols-outlined text-[18px]">workspace_premium</span>
+                            </div>
+                            <div>
+                              <h4 className="text-[13px] font-pjs font-bold text-[#003624]">2. Dean\'s List &amp; Latin Honors</h4>
+                              <p className="text-[10px] text-slate-400 font-medium">Academic Integrity &amp; Conduct Clause</p>
+                            </div>
+                          </div>
+                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${risk.privilegePills.honors.bg}`}>
+                            {risk.privilegePills.honors.label}
+                          </span>
+                        </div>
+                        <p className="text-[11.5px] text-slate-600 leading-relaxed font-medium">
+                          {risk.honors === 'FORFEITED' && 'Academic honors are completely forfeited. Disciplinary Probation (§27.3.5) permanently precludes graduation with Latin Honors and term Dean\'s List awards.'}
+                          {risk.honors === 'DISQUALIFIED' && 'Disqualified from term honors. Repeated or major infractions breach university conduct standards (§26.4), disqualifying the student from the Dean\'s List for this academic term.'}
+                          {risk.honors === 'UNDER_REVIEW' && 'Honors eligibility is subject to conduct committee clearance. Pending cases must be resolved satisfactorily before term awards are finalized.'}
+                          {risk.honors === 'ELIGIBLE' && 'Full honors qualification. Student maintains exemplary disciplinary standing with zero conduct disqualifications.'}
+                        </p>
+                      </div>
+
+                      {/* Stake 3: GMC */}
+                      <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-all">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-900 flex items-center justify-center shrink-0">
+                              <span className="material-symbols-outlined text-[18px]">assignment_turned_in</span>
+                            </div>
+                            <div>
+                              <h4 className="text-[13px] font-pjs font-bold text-[#003624]">3. Certificate of Good Moral Character (GMC)</h4>
+                              <p className="text-[10px] text-slate-400 font-medium">Employment, Board Exams &amp; Scholarships</p>
+                            </div>
+                          </div>
+                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${risk.privilegePills.gmc.bg}`}>
+                            {risk.privilegePills.gmc.label}
+                          </span>
+                        </div>
+                        <p className="text-[11.5px] text-slate-600 leading-relaxed font-medium">
+                          {risk.gmc === 'DENIED' && 'Issuance of Good Moral Character is denied during active disciplinary probation (§27.3.5) pursuant to Student Discipline Board guidelines.'}
+                          {risk.gmc === 'WITHHELD' && 'GMC certificate withheld. Cannot be issued for scholarship renewal, board examination endorsement (PRC), or transfer until sanction requirements are met (§26.4).'}
+                          {risk.gmc === 'DEFERRED' && 'Issuance temporarily deferred. Student must settle active pending infractions with SWAFO before certificate can be signed (§27.1).'}
+                          {risk.gmc === 'AVAILABLE' && 'Good Moral Certificate is available for immediate official issuance by SWAFO staff without administrative hold.'}
+                        </p>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* Restorative Information */}
+                  <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100 flex items-start gap-3">
+                    <span className="material-symbols-outlined text-[#003624] text-[20px] shrink-0 mt-0.5">restore</span>
+                    <p className="text-[11px] text-emerald-900 leading-relaxed font-medium">
+                      <strong>Restorative Formation:</strong> SWAFO prioritizes student development over punishment. Infractions decay with a 30-day half-life when compliant, and resolving cases removes the unresolved penalty.
+                    </p>
+                  </div>
+
+                </div>
+              );
+            })()}
+
+            {/* Modal Footer */}
+            <div className="bg-slate-50 px-5 sm:px-8 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2.5 shrink-0">
+              <button
+                onClick={() => {
+                  const id = selectedStudentForPrivileges.student_number;
+                  setSelectedStudentForPrivileges(null);
+                  navigate(`/${role}/students/${id}`);
+                }}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#003624] text-white hover:bg-[#00271a] text-[12px] font-black transition-all shadow-sm cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">folder_open</span>
+                <span>Open Student Incident Dossier</span>
+              </button>
+
+              <button
+                onClick={() => setSelectedStudentForPrivileges(null)}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 text-[12px] font-bold transition-all cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
           </div>
         </div>,
         document.body
@@ -438,11 +647,11 @@ export default function StudentRecords({ role = 'officer' }) {
                 <th className="py-6 px-8 lg:px-10 text-[11px] font-black text-slate-400 uppercase tracking-widest">Institutional Compliance</th>
                 <th className="py-6 px-8 lg:px-10 text-[11px] font-black text-slate-400 uppercase tracking-widest">
                   <div className="flex items-center gap-2">
-                    Behavioral Standing &amp; Privileges
+                    Institutional Standing &amp; Privileges
                     <button
                       onClick={() => setShowRiskHelp(true)}
-                      className="w-5 h-5 rounded-full bg-slate-200 text-slate-500 hover:bg-[#003624] hover:text-white transition-all flex items-center justify-center text-[11px] font-black leading-none"
-                      title="How is this standing evaluated?"
+                      className="w-5 h-5 rounded-full bg-slate-200 text-slate-500 hover:bg-[#003624] hover:text-white transition-all flex items-center justify-center text-[11px] font-black leading-none cursor-pointer"
+                      title="How is institutional standing & privileges evaluated under the handbook?"
                     >
                       ?
                     </button>
@@ -501,35 +710,45 @@ export default function StudentRecords({ role = 'officer' }) {
                     </td>
                     <td className="py-8 px-8 lg:px-10">
                        {(() => {
-                         const risk = getRiskLevel(student.risk_score || 0, student.risk_standing);
+                         const risk = getRiskLevel(student);
                          return (
-                           <div 
-                             className="flex flex-col gap-1.5 min-w-[190px] group/risk relative cursor-help"
-                             title={`${risk.standing} (${risk.citation}): ${risk.consequence}`}
-                           >
+                           <div className="flex flex-col gap-2 min-w-[240px]">
+                             {/* Standing Tier Badge */}
                              <div className="flex items-center justify-between gap-2">
-                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${risk.badge}`}>
-                                 <span className={`w-1.5 h-1.5 rounded-full ${risk.bar} ${risk.label === 'CRITICAL' ? 'animate-pulse' : ''}`}></span>
+                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10.5px] font-black uppercase tracking-wider border ${risk.badge}`}>
+                                 <span className={`w-1.5 h-1.5 rounded-full ${risk.bar} ${risk.tier === 'CRITICAL' ? 'animate-pulse' : ''}`}></span>
                                  {risk.standing}
                                </span>
-                               <span className={`text-[15px] font-black font-mono ${risk.color}`}>{student.risk_score || 0}</span>
-                             </div>
-                             <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                               <div 
-                                 className={`h-full rounded-full transition-all duration-1000 ease-out ${risk.bar}`}
-                                 style={{ width: `${Math.min(student.risk_score || 0, 100)}%` }}
-                               ></div>
-                             </div>
-                             <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
-                               <span>{risk.citation}</span>
-                               <span>{risk.clearance === 'HOLD' ? 'Clearance HOLD' : risk.honors === 'ELIGIBLE' ? 'Honors Eligible' : 'Honors Review'}</span>
+                               <span className="text-[9.5px] font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                 {risk.citation}
+                               </span>
                              </div>
 
-                             {/* Interactive Hover Tooltip summarizing student impact */}
-                             <div className="absolute left-0 bottom-full mb-2 hidden group-hover/risk:block z-30 w-64 p-3 bg-[#003624] text-white rounded-xl shadow-xl text-[11px] font-manrope pointer-events-none transition-all animate-in fade-in">
-                               <p className="font-bold text-emerald-300 uppercase tracking-wider text-[10px] mb-1">{risk.standing} · {student.risk_score || 0} pts</p>
-                               <p className="text-white/80 leading-relaxed text-[10.5px]">{risk.consequence}</p>
+                             {/* 3 Core Stakes Micro-Pills */}
+                             <div className="grid grid-cols-3 gap-1">
+                               <div className={`px-1.5 py-1 rounded text-center border text-[9px] font-black tracking-tight ${risk.privilegePills.clearance.bg}`} title="Institutional Clearance (§14)">
+                                 <span className="block text-[7.5px] opacity-60 font-bold uppercase">Clearance</span>
+                                 <span className="truncate block">{risk.privilegePills.clearance.label}</span>
+                               </div>
+                               <div className={`px-1.5 py-1 rounded text-center border text-[9px] font-black tracking-tight ${risk.privilegePills.honors.bg}`} title="Dean's List & Latin Honors">
+                                 <span className="block text-[7.5px] opacity-60 font-bold uppercase">Honors</span>
+                                 <span className="truncate block">{risk.privilegePills.honors.label}</span>
+                               </div>
+                               <div className={`px-1.5 py-1 rounded text-center border text-[9px] font-black tracking-tight ${risk.privilegePills.gmc.bg}`} title="Good Moral Certificate (GMC)">
+                                 <span className="block text-[7.5px] opacity-60 font-bold uppercase">GMC</span>
+                                 <span className="truncate block">{risk.privilegePills.gmc.label}</span>
+                               </div>
                              </div>
+
+                             {/* Inspect 3 Privileges Button */}
+                             <button
+                               onClick={() => setSelectedStudentForPrivileges(student)}
+                               className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/70 hover:bg-[#003624] text-[#003624] hover:text-white border border-emerald-200/80 hover:border-[#003624] text-[10.5px] font-black tracking-wide transition-all shadow-xs group/btn cursor-pointer"
+                             >
+                               <span className="material-symbols-outlined text-[14px] transition-transform group-hover/btn:scale-110">shield_person</span>
+                               <span>Inspect 3 Privileges</span>
+                               <span className="material-symbols-outlined text-[13px] opacity-60 ml-auto group-hover/btn:translate-x-0.5 transition-transform">chevron_right</span>
+                             </button>
                            </div>
                          );
                        })()}
@@ -582,7 +801,7 @@ export default function StudentRecords({ role = 'officer' }) {
               const id = student.student_number;
               const hasUnresolved = (student.violation_count || 0) > 0 && student.has_pending_violations; 
               const status = student.is_repeat_offender ? 'NON_COMPLIANT' : hasUnresolved ? 'UNDER_REVIEW' : 'COMPLIANT';
-              const risk = getRiskLevel(student.risk_score || 0);
+              const risk = getRiskLevel(student);
 
               return (
                 <div 
@@ -641,38 +860,42 @@ export default function StudentRecords({ role = 'officer' }) {
                     </span>
                   </div>
 
-                  {/* Third Row: Risk Score Bar Card */}
-                  <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 space-y-1.5">
+                  {/* Third Row: Institutional Standing & 3 Privileges Card */}
+                  <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border ${risk.badge}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${risk.bar} ${risk.label === 'CRITICAL' ? 'animate-pulse' : ''}`}></span>
-                          {risk.label} RISK
-                        </span>
-                        <button
-                          onClick={() => setShowRiskHelp(true)}
-                          className="w-4 h-4 rounded-full bg-slate-200 text-slate-500 hover:bg-[#003624] hover:text-white flex items-center justify-center text-[10px] font-black"
-                          title="Score explanation"
-                        >
-                          ?
-                        </button>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9.5px] font-black uppercase tracking-wider border ${risk.badge}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${risk.bar} ${risk.tier === 'CRITICAL' ? 'animate-pulse' : ''}`}></span>
+                        {risk.standing}
+                      </span>
+                      <span className="text-[9.5px] font-mono font-bold text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200">
+                        {risk.citation}
+                      </span>
+                    </div>
+
+                    {/* 3 Core Stakes Micro-Pills */}
+                    <div className="grid grid-cols-3 gap-1">
+                      <div className={`px-1.5 py-1 rounded-lg text-center border text-[9px] font-black ${risk.privilegePills.clearance.bg}`}>
+                        <span className="block text-[7.5px] opacity-60 font-bold uppercase">Clearance</span>
+                        <span className="truncate block">{risk.privilegePills.clearance.label}</span>
                       </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Score</span>
-                        <span className={`text-[16px] font-black ${risk.color}`}>{student.risk_score || 0}</span>
+                      <div className={`px-1.5 py-1 rounded-lg text-center border text-[9px] font-black ${risk.privilegePills.honors.bg}`}>
+                        <span className="block text-[7.5px] opacity-60 font-bold uppercase">Honors</span>
+                        <span className="truncate block">{risk.privilegePills.honors.label}</span>
+                      </div>
+                      <div className={`px-1.5 py-1 rounded-lg text-center border text-[9px] font-black ${risk.privilegePills.gmc.bg}`}>
+                        <span className="block text-[7.5px] opacity-60 font-bold uppercase">GMC</span>
+                        <span className="truncate block">{risk.privilegePills.gmc.label}</span>
                       </div>
                     </div>
 
-                    <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-700 ease-out ${risk.bar}`}
-                        style={{ width: `${Math.min(100, student.risk_score || 0)}%` }}
-                      ></div>
-                    </div>
-
-                    <p className="text-[10px] text-slate-400 font-medium pt-0.5">
-                      30-day temporal decay · recency weighted
-                    </p>
+                    <button
+                      onClick={() => setSelectedStudentForPrivileges(student)}
+                      className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-white hover:bg-[#003624] text-[#003624] hover:text-white border border-slate-200 hover:border-[#003624] text-[11px] font-black tracking-wide transition-all shadow-xs cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">shield_person</span>
+                      <span>Inspect 3 Privileges</span>
+                      <span className="material-symbols-outlined text-[13px] opacity-60 ml-auto">chevron_right</span>
+                    </button>
                   </div>
 
                   {/* Fourth Row: Admin Clearance Toggle (If Admin) */}
