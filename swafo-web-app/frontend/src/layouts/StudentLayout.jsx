@@ -47,8 +47,11 @@ export default function StudentLayout() {
             if (data?.user_details?.full_name || data?.user?.full_name) {
               localStorage.setItem(`swafo_student_name_${user.email}`, data.user_details?.full_name || data.user?.full_name);
             }
-            if (data.needs_id_confirmation && !dismissed) {
+            if (data.needs_id_confirmation && !dismissed && !localStorage.getItem(`swafo_id_confirmed_${user.email}`)) {
               setShowIdPrompt(true);
+            }
+            if (data.is_id_confirmed || data.barcode_value) {
+              localStorage.setItem(`swafo_id_confirmed_${user.email}`, 'true');
             }
             if (data.profile_picture) {
               setAvatarUrl(data.profile_picture);
@@ -71,6 +74,10 @@ export default function StudentLayout() {
 
   const handleIdConfirmed = (updatedProfile) => {
     setStudentProfile(updatedProfile);
+    if (user?.email) {
+      sessionStorage.setItem(`swafo_id_prompt_dismissed_${user.email}`, 'true');
+      localStorage.setItem(`swafo_id_confirmed_${user.email}`, 'true');
+    }
     setShowIdPrompt(false);
   };
 

@@ -32,6 +32,8 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     def get_needs_id_confirmation(self, obj):
         if obj.is_id_confirmed:
             return False
+        if obj.barcode_value and str(obj.barcode_value).strip():
+            return False
         import re
         if obj.user and obj.user.email and re.search(r'\b(20\d{7})\b|\b(\d{9})\b', obj.user.email):
             return False

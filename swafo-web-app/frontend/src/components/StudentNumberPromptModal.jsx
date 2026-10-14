@@ -3,18 +3,39 @@ import { createPortal } from 'react-dom';
 import { API_ENDPOINTS } from '../api/config';
 
 export default function StudentNumberPromptModal({ isOpen, onClose, user, profile, onSuccess }) {
-  const [studentNumber, setStudentNumber] = useState('');
+  const [rawInput, setRawInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  // Normalize input: extracts 9-digit student ID from raw 11-digit barcode or 9-digit number
+  const getNormalized = (val) => {
+    const clean = (val || '').replace(/\D/g, '').slice(0, 11);
+    let extracted = clean;
+    let isBarcode11 = false;
+    if (clean.length === 11 && clean.startsWith('20')) {
+      extracted = clean.slice(2);
+      isBarcode11 = true;
+    } else if (clean.length === 9) {
+      extracted = clean;
+    }
+    return {
+      raw: clean,
+      extracted,
+      isBarcode11,
+      isValid: extracted.length === 9,
+    };
+  };
+
+  const norm = getNormalized(rawInput);
+  const studentNumber = norm.extracted;
+
   useEffect(() => {
     if (isOpen) {
-      // If current profile already has a temporary or detected ID, pre-fill it for easy confirmation
       if (profile?.student_number && profile.student_number.length === 9) {
-        setStudentNumber(profile.student_number);
+        setRawInput(profile.student_number);
       } else {
-        setStudentNumber('');
+        setRawInput('');
       }
       setError('');
       setSuccess(false);
@@ -24,16 +45,16 @@ export default function StudentNumberPromptModal({ isOpen, onClose, user, profil
   if (!isOpen) return null;
 
   const handleInputChange = (e) => {
-    // Only allow numbers and limit to 9 digits
-    const clean = e.target.value.replace(/\D/g, '').slice(0, 9);
-    setStudentNumber(clean);
+    // Allow numbers up to 11 digits (handles both 9-digit ID and 11-digit 20-prefixed barcode)
+    const clean = e.target.value.replace(/\D/g, '').slice(0, 11);
+    setRawInput(clean);
     if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (studentNumber.length !== 9) {
-      setError('Student number must be exactly 9 digits (e.g., 202330395).');
+    if (!norm.isValid) {
+      setError('Student number must be a 9-digit ID (e.g. 202330485) or 11-digit barcode (e.g. 20202330485).');
       return;
     }
 
@@ -47,7 +68,8 @@ export default function StudentNumberPromptModal({ isOpen, onClose, user, profil
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email,
-          student_number: studentNumber,
+          student_number: norm.extracted,
+          barcode_value: norm.isBarcode11 ? norm.raw : undefined,
         }),
       });
 
@@ -145,14 +167,18 @@ export default function StudentNumberPromptModal({ isOpen, onClose, user, profil
           <div>
             <div className="flex items-center justify-between mb-2">
               <label htmlFor="student-id-input" className="text-xs font-pjs font-bold text-slate-800 uppercase tracking-wider">
-                9-Digit Student Number <span className="text-rose-500">*</span>
+                Student Number or ID Barcode <span className="text-rose-500">*</span>
               </label>
               <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-md ${
-                studentNumber.length === 9 
+                norm.isValid 
                   ? 'bg-emerald-100 text-[#006b5d]' 
                   : 'bg-slate-100 text-slate-500'
               }`}>
-                {studentNumber.length === 9 ? '✓ 9 Digits' : `${studentNumber.length}/9 digits`}
+                {norm.isBarcode11 
+                  ? `✓ Barcode: ${norm.extracted}` 
+                  : norm.isValid 
+                    ? '✓ 9 Digits' 
+                    : rawInput.length > 0 ? `${rawInput.length}/9 digits` : '9 digits required'}
               </span>
             </div>
 
@@ -162,18 +188,25 @@ export default function StudentNumberPromptModal({ isOpen, onClose, user, profil
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                maxLength={9}
-                value={studentNumber}
+                maxLength={11}
+                value={rawInput}
                 onChange={handleInputChange}
-                placeholder="202330395"
+                placeholder="202330485 or 20202330485"
                 autoFocus
                 disabled={loading || success}
-                className="w-full text-center text-xl sm:text-2xl font-mono font-extrabold tracking-[0.25em] text-[#003624] bg-emerald-50/40 border-2 border-emerald-200/80 rounded-2xl py-3.5 px-4 placeholder:text-slate-300 placeholder:tracking-widest focus:outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 transition-all shadow-inner"
+                className="w-full text-center text-xl sm:text-2xl font-mono font-extrabold tracking-[0.2em] text-[#003624] bg-emerald-50/40 border-2 border-emerald-200/80 rounded-2xl py-3.5 px-4 placeholder:text-slate-300 placeholder:tracking-normal placeholder:text-base focus:outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 transition-all shadow-inner"
               />
             </div>
-            <p className="text-[11px] text-slate-400 font-manrope mt-1.5 text-center">
-              Found on your physical student ID card (e.g., 202330395).
-            </p>
+            {norm.isBarcode11 && (
+              <p className="text-[11px] text-emerald-700 font-manrope mt-1.5 text-center font-bold">
+                ✓ DLSU-D physical barcode prefix &quot;20&quot; recognized! Student ID will register as: <span className="font-mono underline">{norm.extracted}</span>
+              </p>
+            )}
+            {!norm.isBarcode11 && (
+              <p className="text-[11px] text-slate-400 font-manrope mt-1.5 text-center">
+                Found on your physical student ID card or barcode (e.g. 202330485).
+              </p>
+            )}
           </div>
 
           {/* Feedback Messages */}
@@ -203,9 +236,9 @@ export default function StudentNumberPromptModal({ isOpen, onClose, user, profil
             </button>
             <button
               type="submit"
-              disabled={loading || studentNumber.length !== 9 || success}
+              disabled={loading || !norm.isValid || success}
               className={`w-full sm:w-2/3 py-3.5 px-6 rounded-xl font-pjs font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md ${
-                studentNumber.length === 9 && !loading && !success
+                norm.isValid && !loading && !success
                   ? 'bg-[#003624] hover:bg-[#004d33] text-white shadow-emerald-950/20 active:scale-95 cursor-pointer'
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
               }`}
