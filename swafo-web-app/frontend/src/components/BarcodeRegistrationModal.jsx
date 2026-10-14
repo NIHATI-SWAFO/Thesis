@@ -493,25 +493,32 @@ export default function BarcodeRegistrationModal({
 
             {/* Tab 2: Live Camera Scan */}
             {activeTab === 'camera' && (
-              <div className="p-8 bg-slate-50 rounded-3xl border border-slate-200/80 text-center flex flex-col items-center justify-center space-y-4">
-                <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-900/10">
+              <div className="p-7 bg-slate-50 rounded-3xl border border-slate-200/80 text-center flex flex-col items-center justify-center space-y-4">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-600 to-[#003624] text-white flex items-center justify-center shadow-lg shadow-emerald-900/20">
                   <span className="material-symbols-outlined text-[32px]">qr_code_scanner</span>
                 </div>
                 <div>
                   <h4 className="font-pjs font-bold text-[16px] text-slate-800">
-                    Scan via Web Camera
+                    High-Definition Live Scanner
                   </h4>
                   <p className="font-manrope text-[12px] text-slate-500 mt-1 max-w-sm">
-                    Hold your physical student ID up to your device camera to automatically capture the barcode code.
+                    Point your device camera at the physical ID card barcode. Supports continuous 1080p autofocus, native GPU acceleration, and C++ snapshot decoding.
                   </p>
                 </div>
+
+                <div className="flex flex-wrap justify-center gap-2 max-w-xs text-[10px] font-bold text-emerald-800">
+                  <span className="bg-emerald-100/70 px-2 py-0.5 rounded-md border border-emerald-200">1080p Stream</span>
+                  <span className="bg-emerald-100/70 px-2 py-0.5 rounded-md border border-emerald-200">GPU Accelerated</span>
+                  <span className="bg-emerald-100/70 px-2 py-0.5 rounded-md border border-emerald-200">Flashlight Support</span>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setShowLiveScanner(true)}
-                  className="bg-[#006b5d] hover:bg-[#004d33] text-white px-6 py-3 rounded-2xl font-pjs font-bold text-[13px] flex items-center gap-2 shadow-md transition-all active:scale-95"
+                  className="bg-[#003624] hover:bg-[#002619] text-white px-7 py-3.5 rounded-2xl font-pjs font-bold text-[13px] flex items-center gap-2.5 shadow-md shadow-emerald-950/20 transition-all active:scale-95 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-[18px]">photo_camera</span>
-                  Launch Camera Scanner
+                  <span className="material-symbols-outlined text-[20px]">photo_camera</span>
+                  Open Camera Scanner
                 </button>
               </div>
             )}
