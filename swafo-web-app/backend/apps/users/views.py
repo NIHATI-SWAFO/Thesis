@@ -306,14 +306,24 @@ class UpdateBarcodeView(APIView):
             return Response({"error": "Student record not found. Please verify your student number or institutional email."}, status=status.HTTP_404_NOT_FOUND)
 
         student.barcode_value = barcode_value
+        student.is_id_confirmed = True
 
-        # If we extracted a valid 9-digit student number from the barcode, verify and update student_number if unconfirmed or temporary
+        # If we extracted a valid 9-digit student number from the barcode, verify and update student_number
         if clean_sn_candidate and len(clean_sn_candidate) == 9:
             conflict = StudentProfile.objects.filter(student_number=clean_sn_candidate).exclude(id=student.id).first()
+            if conflict:
+                is_dummy = (
+                    conflict.user.email.startswith('student_') or
+                    not conflict.user.is_active or
+                    not conflict.is_id_confirmed
+                )
+                if is_dummy:
+                    conflict.student_number = f"DUMMY-{clean_sn_candidate}-{conflict.id}"
+                    conflict.save()
+                    conflict = None
+
             if not conflict:
-                if not student.is_id_confirmed or student.student_number != clean_sn_candidate:
-                    student.student_number = clean_sn_candidate
-                    student.is_id_confirmed = True
+                student.student_number = clean_sn_candidate
 
         student.save()
 
@@ -421,13 +431,16 @@ class UpdateStudentNumberView(APIView):
     def post(self, request):
         email = (request.data.get('email') or '').strip()
         new_student_number = (request.data.get('student_number') or '').strip()
+        barcode_value = request.data.get('barcode_value')
 
         if not email:
             return Response({"error": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Allow 11-digit barcode starting with 20 by extracting the 9-digit student number
         clean_sn = re.sub(r'\D', '', new_student_number)
+        raw_barcode_candidate = None
         if len(clean_sn) == 11 and clean_sn.startswith('20'):
+            raw_barcode_candidate = clean_sn
             new_student_number = clean_sn[2:]
         elif len(clean_sn) == 9:
             new_student_number = clean_sn
@@ -441,13 +454,29 @@ class UpdateStudentNumberView(APIView):
 
         conflict = StudentProfile.objects.filter(student_number=new_student_number).exclude(id=student.id).first()
         if conflict:
-            conflict_name = conflict.user.full_name or "another student"
-            return Response({
-                "error": f"Student number {new_student_number} is already registered to {conflict_name}."
-            }, status=status.HTTP_400_BAD_REQUEST)
+            # If the conflicting account is an inactive or dummy seed account, reassign it to unblock the real student
+            is_dummy = (
+                conflict.user.email.startswith('student_') or
+                not conflict.user.is_active or
+                not conflict.is_id_confirmed
+            )
+            if is_dummy:
+                conflict.student_number = f"DUMMY-{new_student_number}-{conflict.id}"
+                conflict.save()
+            else:
+                conflict_name = conflict.user.full_name or "another student"
+                return Response({
+                    "error": f"Student number {new_student_number} is already registered to {conflict_name}."
+                }, status=status.HTTP_400_BAD_REQUEST)
 
         student.student_number = new_student_number
         student.is_id_confirmed = True
+
+        # Link barcode if explicitly passed or if 11-digit barcode was provided
+        final_barcode = barcode_value or raw_barcode_candidate
+        if final_barcode and not student.barcode_value:
+            student.barcode_value = str(final_barcode).strip()
+
         student.save()
 
         return Response({
