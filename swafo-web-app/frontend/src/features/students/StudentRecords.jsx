@@ -131,8 +131,8 @@ export default function StudentRecords({ role = 'officer' }) {
         label: 'CRITICAL',
         tier: 'CRITICAL',
         standing: 'Disciplinary Probation',
-        citation: studentStanding?.handbook_citation || 'Section 27.3.5',
-        consequence: studentStanding?.consequence_summary || 'Clearance placed on HOLD (§14) blocking enrollment and graduation. Honors forfeited; referral to SWAFO Director and SDB (§27.3.5).',
+        citation: '',
+        consequence: studentStanding?.consequence_summary || 'Clearance placed on HOLD blocking enrollment and graduation. Honors forfeited; referral to SWAFO Director and Student Discipline Board.',
         clearance: studentStanding?.clearance_impact || 'HOLD',
         honors: studentStanding?.honors_eligibility || 'FORFEITED',
         gmc: studentStanding?.gmc_status || 'DENIED',
@@ -151,8 +151,8 @@ export default function StudentRecords({ role = 'officer' }) {
         label: 'HIGH',
         tier: 'HIGH',
         standing: 'Disciplinary Warning',
-        citation: studentStanding?.handbook_citation || 'Section 26.4',
-        consequence: studentStanding?.consequence_summary || 'Disqualified from Dean\'s List and Latin Honors. Clearance restricted; Good Moral Certificate withheld (§26.4).',
+        citation: '',
+        consequence: studentStanding?.consequence_summary || 'Disqualified from Dean\'s List and Latin Honors. Clearance restricted; Good Moral Certificate withheld.',
         clearance: studentStanding?.clearance_impact || 'RESTRICTED',
         honors: studentStanding?.honors_eligibility || 'DISQUALIFIED',
         gmc: studentStanding?.gmc_status || 'WITHHELD',
@@ -171,8 +171,8 @@ export default function StudentRecords({ role = 'officer' }) {
         label: 'MODERATE',
         tier: 'MODERATE',
         standing: 'Under Review',
-        citation: studentStanding?.handbook_citation || 'Section 27.1',
-        consequence: studentStanding?.consequence_summary || 'Conditional clearance. Honors subject to review; Good Moral Certificate deferred pending case resolution (§27.1).',
+        citation: '',
+        consequence: studentStanding?.consequence_summary || 'Conditional clearance. Honors subject to review; Good Moral Certificate deferred pending case resolution.',
         clearance: studentStanding?.clearance_impact || 'CONDITIONAL',
         honors: studentStanding?.honors_eligibility || 'UNDER_REVIEW',
         gmc: studentStanding?.gmc_status || 'DEFERRED',
@@ -190,8 +190,8 @@ export default function StudentRecords({ role = 'officer' }) {
       label: 'LOW',
       tier: 'LOW',
       standing: 'Good Standing',
-      citation: studentStanding?.handbook_citation || 'Section 14',
-      consequence: studentStanding?.consequence_summary || 'Unrestricted institutional clearance (§14). Eligible for Dean\'s List and Latin Honors; unconditional GMC issuance.',
+      citation: '',
+      consequence: studentStanding?.consequence_summary || 'Unrestricted institutional clearance. Eligible for Dean\'s List and Latin Honors; unconditional GMC issuance.',
       clearance: studentStanding?.clearance_impact || 'CLEARED',
       honors: studentStanding?.honors_eligibility || 'ELIGIBLE',
       gmc: studentStanding?.gmc_status || 'AVAILABLE',
@@ -407,14 +407,9 @@ export default function StudentRecords({ role = 'officer' }) {
                   
                   {/* Current Academic Standing Banner */}
                   <div className={`p-4 sm:p-5 rounded-2xl border ${risk.badge} flex flex-col gap-2`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${risk.bar} ${risk.tier === 'CRITICAL' ? 'animate-pulse' : ''}`}></span>
-                        <span className="text-[14px] font-pjs font-extrabold tracking-tight uppercase">{risk.standing}</span>
-                      </div>
-                      <span className="text-[11px] font-mono font-bold bg-white/80 px-2.5 py-0.5 rounded-full border border-black/10">
-                        {risk.citation}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${risk.bar} ${risk.tier === 'CRITICAL' ? 'animate-pulse' : ''}`}></span>
+                      <span className="text-[14px] font-pjs font-extrabold tracking-tight uppercase">{risk.standing}</span>
                     </div>
                     <p className="text-[12px] font-medium leading-relaxed opacity-90">
                       {risk.consequence}
@@ -428,7 +423,7 @@ export default function StudentRecords({ role = 'officer' }) {
                       </span>
                       {selectedStudentForPrivileges.is_repeat_offender && (
                         <span className="bg-rose-100 text-rose-900 border border-rose-200 px-2 py-0.5 rounded-md">
-                          Repeat Offender (§26)
+                          Repeat Offender
                         </span>
                       )}
                     </div>
@@ -450,7 +445,7 @@ export default function StudentRecords({ role = 'officer' }) {
                             </div>
                             <div>
                               <h4 className="text-[13px] font-pjs font-bold text-[#003624]">1. Institutional Clearance</h4>
-                              <p className="text-[10px] text-slate-400 font-medium">Student Handbook Section 14</p>
+                              <p className="text-[10px] text-slate-400 font-medium">Enrollment &amp; Graduation Rights</p>
                             </div>
                           </div>
                           <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${risk.privilegePills.clearance.bg}`}>
@@ -458,9 +453,9 @@ export default function StudentRecords({ role = 'officer' }) {
                           </span>
                         </div>
                         <p className="text-[11.5px] text-slate-600 leading-relaxed font-medium">
-                          {risk.clearance === 'HOLD' && 'Enrollment and graduation are LOCKED under Section 14. Student cannot add/drop courses, receive official transcripts (OTR), or participate in commencement exercises until cleared by SWAFO.'}
-                          {risk.clearance === 'RESTRICTED' && 'Clearance is restricted. The student must attend mandatory restorative formation (§26.4) and settle outstanding disciplinary liabilities before next enrollment.'}
-                          {risk.clearance === 'CONDITIONAL' && 'Conditional clearance granted. Notice issued to resolve active minor infractions before end-of-semester clearance sign-off (§27.1).'}
+                          {risk.clearance === 'HOLD' && 'Enrollment and graduation are LOCKED. Student cannot add/drop courses, receive official transcripts (OTR), or participate in commencement exercises until cleared by SWAFO.'}
+                          {risk.clearance === 'RESTRICTED' && 'Clearance is restricted. The student must attend mandatory restorative formation and settle outstanding disciplinary liabilities before next enrollment.'}
+                          {risk.clearance === 'CONDITIONAL' && 'Conditional clearance granted. Notice issued to resolve active minor infractions before end-of-semester clearance sign-off.'}
                           {risk.clearance === 'CLEARED' && 'Unrestricted institutional clearance granted. Full eligibility to enroll, process academic credentials, and participate in all university activities.'}
                         </p>
                       </div>
@@ -482,8 +477,8 @@ export default function StudentRecords({ role = 'officer' }) {
                           </span>
                         </div>
                         <p className="text-[11.5px] text-slate-600 leading-relaxed font-medium">
-                          {risk.honors === 'FORFEITED' && 'Academic honors are completely forfeited. Disciplinary Probation (§27.3.5) permanently precludes graduation with Latin Honors and term Dean\'s List awards.'}
-                          {risk.honors === 'DISQUALIFIED' && 'Disqualified from term honors. Repeated or major infractions breach university conduct standards (§26.4), disqualifying the student from the Dean\'s List for this academic term.'}
+                          {risk.honors === 'FORFEITED' && 'Academic honors are completely forfeited. Disciplinary Probation permanently precludes graduation with Latin Honors and term Dean\'s List awards.'}
+                          {risk.honors === 'DISQUALIFIED' && 'Disqualified from term honors. Repeated or major infractions breach university conduct standards, disqualifying the student from the Dean\'s List for this academic term.'}
                           {risk.honors === 'UNDER_REVIEW' && 'Honors eligibility is subject to conduct committee clearance. Pending cases must be resolved satisfactorily before term awards are finalized.'}
                           {risk.honors === 'ELIGIBLE' && 'Full honors qualification. Student maintains exemplary disciplinary standing with zero conduct disqualifications.'}
                         </p>
@@ -506,9 +501,9 @@ export default function StudentRecords({ role = 'officer' }) {
                           </span>
                         </div>
                         <p className="text-[11.5px] text-slate-600 leading-relaxed font-medium">
-                          {risk.gmc === 'DENIED' && 'Issuance of Good Moral Character is denied during active disciplinary probation (§27.3.5) pursuant to Student Discipline Board guidelines.'}
-                          {risk.gmc === 'WITHHELD' && 'GMC certificate withheld. Cannot be issued for scholarship renewal, board examination endorsement (PRC), or transfer until sanction requirements are met (§26.4).'}
-                          {risk.gmc === 'DEFERRED' && 'Issuance temporarily deferred. Student must settle active pending infractions with SWAFO before certificate can be signed (§27.1).'}
+                          {risk.gmc === 'DENIED' && 'Issuance of Good Moral Character is denied during active disciplinary probation pursuant to Student Discipline Board guidelines.'}
+                          {risk.gmc === 'WITHHELD' && 'GMC certificate withheld. Cannot be issued for scholarship renewal, board examination endorsement (PRC), or transfer until sanction requirements are met.'}
+                          {risk.gmc === 'DEFERRED' && 'Issuance temporarily deferred. Student must settle active pending infractions with SWAFO before certificate can be signed.'}
                           {risk.gmc === 'AVAILABLE' && 'Good Moral Certificate is available for immediate official issuance by SWAFO staff without administrative hold.'}
                         </p>
                       </div>
@@ -714,13 +709,10 @@ export default function StudentRecords({ role = 'officer' }) {
                          return (
                            <div className="flex flex-col gap-2 min-w-[240px]">
                              {/* Standing Tier Badge */}
-                             <div className="flex items-center justify-between gap-2">
-                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10.5px] font-black uppercase tracking-wider border ${risk.badge}`}>
+                             <div className="flex items-center">
+                               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10.5px] font-black uppercase tracking-wider border shadow-xs ${risk.badge}`}>
                                  <span className={`w-1.5 h-1.5 rounded-full ${risk.bar} ${risk.tier === 'CRITICAL' ? 'animate-pulse' : ''}`}></span>
                                  {risk.standing}
-                               </span>
-                               <span className="text-[9.5px] font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                                 {risk.citation}
                                </span>
                              </div>
 
@@ -862,13 +854,10 @@ export default function StudentRecords({ role = 'officer' }) {
 
                   {/* Third Row: Institutional Standing & 3 Privileges Card */}
                   <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9.5px] font-black uppercase tracking-wider border ${risk.badge}`}>
+                    <div className="flex items-center">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9.5px] font-black uppercase tracking-wider border ${risk.badge}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${risk.bar} ${risk.tier === 'CRITICAL' ? 'animate-pulse' : ''}`}></span>
                         {risk.standing}
-                      </span>
-                      <span className="text-[9.5px] font-mono font-bold text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200">
-                        {risk.citation}
                       </span>
                     </div>
 
