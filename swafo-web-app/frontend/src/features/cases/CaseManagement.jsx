@@ -1103,7 +1103,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                 {isTerminal ? 'Institutional Record Locked'
                   : caseData.status === 'DECISION_RENDERED' ? 'Awaiting Fulfillment'
                     : caseData.status === 'AWAITING_DECISION' ? 'Pending Institutional Decision'
-                      : (caseData.requires_director_decision && role === 'admin') ? "Director's Case — §27.3.5"
+                      : (caseData.requires_director_decision && role === 'admin') ? "Director's Executive Case"
                         : isUnassigned ? 'Unclaimed Violation'
                           : caseData.requires_director_decision ? 'Reserved for Director'
                             : 'Ready for Auto-Sanction'}
@@ -1164,7 +1164,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                       <span className="material-symbols-outlined text-[17px] sm:text-[19px] text-rose-500">gavel</span>
                       <div className="flex flex-col">
                         <span className="text-[11px] sm:text-[12px] font-black text-rose-700 uppercase tracking-wider">Reserved for Director</span>
-                        <span className="text-[9.5px] sm:text-[10px] text-rose-500 font-medium">§27.3.5 — SWAFO Director Only</span>
+                        <span className="text-[9.5px] sm:text-[10px] text-rose-500 font-medium">SWAFO Director Only</span>
                       </div>
                     </div>
                   ) : caseData.status === 'AWAITING_DECISION' && role !== 'admin' ? (

@@ -194,8 +194,7 @@ export default function StudentProfile() {
     clearance_impact: 'CLEARED',
     honors_eligibility: 'ELIGIBLE',
     gmc_status: 'AVAILABLE',
-    handbook_citation: 'Section 14',
-    consequence_summary: "Unrestricted institutional clearance (§14). Eligible for Dean's List and Latin Honors; unconditional Good Moral Certificate (GMC) issuance.",
+    consequence_summary: "Unrestricted institutional clearance. Eligible for Dean's List and Latin Honors; unconditional Good Moral Certificate (GMC) issuance.",
     color: 'emerald',
   };
 
@@ -379,27 +378,14 @@ export default function StudentProfile() {
                     <h3 className="text-lg sm:text-xl font-pjs font-bold text-[#003624]">
                       Institutional Standing &amp; Privileges
                     </h3>
-                    <span className="text-[11px] font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
-                      {standingData.handbook_citation}
-                    </span>
                   </div>
                   <p className="text-[12px] font-manrope text-slate-500 mt-0.5">
-                    Comprehensive evaluation of academic honors, privileges, and clearance under the DLSU-D Student Handbook 2022–2027.
+                    Evaluation of academic honors, privileges, and clearance under the DLSU-D Student Handbook.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Recency Risk Score</span>
-                  <span className={`text-lg font-black font-mono ${
-                    standingData.tier === 'LOW' ? 'text-emerald-700' :
-                    standingData.tier === 'CRITICAL' ? 'text-rose-600' :
-                    standingData.tier === 'HIGH' ? 'text-orange-600' : 'text-amber-600'
-                  }`}>
-                    {standingData.score} pts
-                  </span>
-                </div>
                 <span className={`px-3.5 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider border ${
                   standingData.tier === 'LOW' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
                   standingData.tier === 'CRITICAL' ? 'bg-rose-50 text-rose-700 border-rose-200' :
@@ -459,7 +445,7 @@ export default function StudentProfile() {
                       {standingData.clearance_impact}
                     </span>
                   </div>
-                  <h4 className="font-pjs font-bold text-[14px] text-[#003624]">Institutional Clearance (§14)</h4>
+                  <h4 className="font-pjs font-bold text-[14px] text-[#003624]">Institutional Clearance</h4>
                   <p className="font-manrope text-[11px] text-slate-500 mt-1 leading-snug">
                     Clearance status required for semester enrollment, graduation, and transcript release.
                   </p>
@@ -484,14 +470,6 @@ export default function StudentProfile() {
                   </p>
                 </div>
               </div>
-            </div>
-
-            {/* Restorative Justice Principle */}
-            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 text-[11px] font-manrope text-slate-500">
-              <span className="material-symbols-outlined text-emerald-700 text-[18px] shrink-0">hourglass_top</span>
-              <span>
-                <strong className="text-[#003624] font-semibold">Restorative Discipline Principle:</strong> Incident risk weights decay by 50% every 30 days without re-offense. Continued good conduct restores full academic privileges and clearance standing.
-              </span>
             </div>
           </div>
         </div>
