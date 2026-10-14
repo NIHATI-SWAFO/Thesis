@@ -191,39 +191,63 @@ class StudentSearchView(APIView):
         if not query:
             return Response({"error": "Search query is required"}, status=status.HTTP_400_BAD_REQUEST)
         
+        clean_q = query.strip('"').strip("'").strip()
+        clean_digits = re.sub(r'\D', '', clean_q)
+
         # Priority 1: Exact match on barcode_value
-        exact_barcode = StudentProfile.objects.filter(barcode_value__iexact=query)
+        exact_barcode = StudentProfile.objects.filter(barcode_value__iexact=clean_q)
         if exact_barcode.exists():
             return Response(StudentProfileSerializer(exact_barcode, many=True).data)
 
         # Priority 2: Exact match on student_number
-        exact_sn = StudentProfile.objects.filter(student_number__iexact=query)
+        exact_sn = StudentProfile.objects.filter(student_number__iexact=clean_q)
         if exact_sn.exists():
             return Response(StudentProfileSerializer(exact_sn, many=True).data)
 
         # Priority 3: DLSU-D ID Barcode Prefix Normalization (11-digit "20" + 9-digit student number)
-        # If query is 11 digits starting with "20", check stripped 9-digit student number or barcode
-        if len(query) == 11 and query.startswith('20'):
-            stripped = query[2:]
+        # If query or extracted digits is 11 digits starting with "20", extract stripped 9-digit student number
+        if len(clean_digits) == 11 and clean_digits.startswith('20'):
+            stripped = clean_digits[2:]
             prefix_match = StudentProfile.objects.filter(
-                Q(student_number__iexact=stripped) | Q(barcode_value__iexact=stripped)
+                Q(student_number__iexact=stripped) |
+                Q(barcode_value__iexact=stripped) |
+                Q(barcode_value__iexact=clean_digits) |
+                Q(barcode_value__iexact=clean_q)
             )
             if prefix_match.exists():
                 return Response(StudentProfileSerializer(prefix_match, many=True).data)
 
-        # Conversely, if query is 9 digits, check if barcode is "20" + query
-        if len(query) == 9 and query.isdigit():
-            prepended = f"20{query}"
-            prepended_match = StudentProfile.objects.filter(barcode_value__iexact=prepended)
+        # Conversely, if query is 9 digits, check if barcode is "20" + query or exact student number
+        if len(clean_digits) == 9:
+            prepended = f"20{clean_digits}"
+            prepended_match = StudentProfile.objects.filter(
+                Q(student_number__iexact=clean_digits) |
+                Q(barcode_value__iexact=prepended) |
+                Q(barcode_value__iexact=clean_digits) |
+                Q(barcode_value__iexact=clean_q)
+            )
             if prepended_match.exists():
                 return Response(StudentProfileSerializer(prepended_match, many=True).data)
 
-        # Priority 4: Fuzzy search across barcode, student_number, full_name, and email
+        # Priority 4: Regex search for "20" followed by 9 digits embedded in raw scanner output
+        embedded_match = re.search(r'20(\d{9})', clean_q)
+        if embedded_match:
+            extracted_sn = embedded_match.group(1)
+            raw_barcode = embedded_match.group(0)
+            embedded_res = StudentProfile.objects.filter(
+                Q(student_number__iexact=extracted_sn) |
+                Q(barcode_value__iexact=raw_barcode) |
+                Q(barcode_value__iexact=extracted_sn)
+            )
+            if embedded_res.exists():
+                return Response(StudentProfileSerializer(embedded_res, many=True).data)
+
+        # Priority 5: Fuzzy search across barcode, student_number, full_name, and email
         students = StudentProfile.objects.filter(
-            Q(barcode_value__icontains=query) |
-            Q(student_number__icontains=query) |
-            Q(user__full_name__icontains=query) |
-            Q(user__email__icontains=query)
+            Q(barcode_value__icontains=clean_q) |
+            Q(student_number__icontains=clean_q) |
+            Q(user__full_name__icontains=clean_q) |
+            Q(user__email__icontains=clean_q)
         ).distinct()[:10]
         
         serializer = StudentProfileSerializer(students, many=True)
@@ -233,24 +257,64 @@ class UpdateBarcodeView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        student_number = request.data.get('student_number', '').strip()
-        email = request.data.get('email', '').strip()
+        raw_student_number = (request.data.get('student_number') or '').strip()
+        email = (request.data.get('email') or '').strip()
         barcode_value = request.data.get('barcode_value')
+        extracted_sn = (request.data.get('extracted_student_number') or '').strip()
+
         if barcode_value is None:
             return Response({"error": "barcode_value parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
         
-        barcode_value = barcode_value.strip()
+        barcode_value = str(barcode_value).strip()
+
+        # Extract 9-digit student number from barcode if it has the "20" prefix (11 digits: 20 + 9 digits)
+        clean_barcode_digits = re.sub(r'\D', '', barcode_value)
+        extracted_from_barcode = None
+        if len(clean_barcode_digits) == 11 and clean_barcode_digits.startswith('20'):
+            extracted_from_barcode = clean_barcode_digits[2:]
+        elif len(clean_barcode_digits) == 9:
+            extracted_from_barcode = clean_barcode_digits
+
+        sn_candidate = extracted_sn or extracted_from_barcode or raw_student_number
+        clean_sn_candidate = re.sub(r'\D', '', sn_candidate)
+        if len(clean_sn_candidate) == 11 and clean_sn_candidate.startswith('20'):
+            clean_sn_candidate = clean_sn_candidate[2:]
 
         student = None
-        if student_number:
-            student = StudentProfile.objects.filter(student_number=student_number).first()
-        elif email:
+        # Try candidate student numbers in order of specificity
+        candidates = [c for c in [clean_sn_candidate, raw_student_number, extracted_from_barcode, extracted_sn] if c]
+        for cand in candidates:
+            student = StudentProfile.objects.filter(
+                Q(student_number__iexact=cand) | Q(barcode_value__iexact=cand)
+            ).first()
+            if student:
+                break
+
+        if not student and email:
             student = StudentProfile.objects.filter(user__email__iexact=email).first()
 
+        # If student record is not found in database, auto-provision official student account
         if not student:
-            return Response({"error": "Student record not found"}, status=status.HTTP_404_NOT_FOUND)
+            if email or (clean_sn_candidate and len(clean_sn_candidate) == 9):
+                target_email = email or f"s{clean_sn_candidate}@dlsud.edu.ph"
+                student = get_or_create_student_profile(
+                    email=target_email,
+                    student_number=clean_sn_candidate if len(clean_sn_candidate) == 9 else None
+                )
+
+        if not student:
+            return Response({"error": "Student record not found. Please verify your student number or institutional email."}, status=status.HTTP_404_NOT_FOUND)
 
         student.barcode_value = barcode_value
+
+        # If we extracted a valid 9-digit student number from the barcode, verify and update student_number if unconfirmed or temporary
+        if clean_sn_candidate and len(clean_sn_candidate) == 9:
+            conflict = StudentProfile.objects.filter(student_number=clean_sn_candidate).exclude(id=student.id).first()
+            if not conflict:
+                if not student.is_id_confirmed or student.student_number != clean_sn_candidate:
+                    student.student_number = clean_sn_candidate
+                    student.is_id_confirmed = True
+
         student.save()
 
         return Response({
@@ -360,6 +424,13 @@ class UpdateStudentNumberView(APIView):
 
         if not email:
             return Response({"error": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Allow 11-digit barcode starting with 20 by extracting the 9-digit student number
+        clean_sn = re.sub(r'\D', '', new_student_number)
+        if len(clean_sn) == 11 and clean_sn.startswith('20'):
+            new_student_number = clean_sn[2:]
+        elif len(clean_sn) == 9:
+            new_student_number = clean_sn
 
         if not re.match(r'^\d{9}$', new_student_number):
             return Response({"error": "Student number must be exactly 9 digits (e.g. 202330395)."}, status=status.HTTP_400_BAD_REQUEST)
@@ -526,15 +597,27 @@ class DecodeBarcodeImageView(APIView):
                         return res[0]
                 return None
 
+            def build_decode_response(decoded_res, method_name):
+                raw_text = (decoded_res.text or '').strip()
+                clean_digits = re.sub(r'\D', '', raw_text)
+                extracted_sn = None
+                if len(clean_digits) == 11 and clean_digits.startswith('20'):
+                    extracted_sn = clean_digits[2:]
+                elif len(clean_digits) == 9:
+                    extracted_sn = clean_digits
+
+                return Response({
+                    "success": True,
+                    "barcode": raw_text,
+                    "student_number": extracted_sn,
+                    "format": str(decoded_res.format),
+                    "method": method_name
+                })
+
             # Pass 1: Direct scan
             res = try_decode(pil_image)
             if res:
-                return Response({
-                    "success": True,
-                    "barcode": res.text,
-                    "format": str(res.format),
-                    "method": "direct"
-                })
+                return build_decode_response(res, "direct")
 
             # Pass 2: Synthetic Quiet Zone (white padding around tight crops)
             pad_x = max(35, int(w * 0.12))
@@ -542,12 +625,7 @@ class DecodeBarcodeImageView(APIView):
             padded = ImageOps.expand(pil_image, border=(pad_x, pad_y), fill='white')
             res = try_decode(padded)
             if res:
-                return Response({
-                    "success": True,
-                    "barcode": res.text,
-                    "format": str(res.format),
-                    "method": "padded_quiet_zone"
-                })
+                return build_decode_response(res, "padded_quiet_zone")
 
             # Pass 3: Multi-Orientation Student ID Card Sub-Region Extraction
             for rot_angle in [0, 90, 180, 270]:
@@ -570,23 +648,13 @@ class DecodeBarcodeImageView(APIView):
                         crot = cpadded.rotate(deg, expand=True, resample=Image.Resampling.BICUBIC, fillcolor='white')
                         res = try_decode(crot)
                         if res:
-                            return Response({
-                                "success": True,
-                                "barcode": res.text,
-                                "format": str(res.format),
-                                "method": f"rot_{rot_angle}_strip_{idx}_deg_{deg}"
-                            })
+                            return build_decode_response(res, f"rot_{rot_angle}_strip_{idx}_deg_{deg}")
                         cgray = ImageOps.grayscale(crot)
                         for c in [1.5, 2.2]:
                             cenh = ImageEnhance.Contrast(cgray).enhance(c)
                             res = try_decode(cenh)
                             if res:
-                                return Response({
-                                    "success": True,
-                                    "barcode": res.text,
-                                    "format": str(res.format),
-                                    "method": f"rot_{rot_angle}_strip_{idx}_deg_{deg}_c_{c}"
-                                })
+                                return build_decode_response(res, f"rot_{rot_angle}_strip_{idx}_deg_{deg}_c_{c}")
 
             # Pass 4: Center vertical strip (removes 'DATE ISSUED' text & card edge interference)
             if h > 30:
@@ -594,12 +662,7 @@ class DecodeBarcodeImageView(APIView):
                 center_padded = ImageOps.expand(center_strip, border=(pad_x, pad_y), fill='white')
                 res = try_decode(center_padded)
                 if res:
-                    return Response({
-                        "success": True,
-                        "barcode": res.text,
-                        "format": str(res.format),
-                        "method": "center_vertical_strip"
-                    })
+                    return build_decode_response(res, "center_vertical_strip")
 
             # Pass 4: Horizontal edge trimming + Quiet Zone (removes dark desk/finger shadows at border)
             for trim_pct in [0.03, 0.06, 0.10]:
@@ -609,12 +672,7 @@ class DecodeBarcodeImageView(APIView):
                     trimmed_padded = ImageOps.expand(trimmed, border=(pad_x, pad_y), fill='white')
                     res = try_decode(trimmed_padded)
                     if res:
-                        return Response({
-                            "success": True,
-                            "barcode": res.text,
-                            "format": str(res.format),
-                            "method": f"trimmed_{round(trim_pct*100)}pct"
-                        })
+                        return build_decode_response(res, f"trimmed_{round(trim_pct*100)}pct")
 
             # Pass 5: Multi-scale downscale / upscale
             max_dim = max(w, h)
@@ -631,12 +689,7 @@ class DecodeBarcodeImageView(APIView):
                 resized_padded = ImageOps.expand(resized, border=(pad_x, pad_y), fill='white')
                 res = try_decode(resized_padded)
                 if res:
-                    return Response({
-                        "success": True,
-                        "barcode": res.text,
-                        "format": str(res.format),
-                        "method": f"scale_{round(s, 2)}"
-                    })
+                    return build_decode_response(res, f"scale_{round(s, 2)}")
 
             # Pass 6: Grayscale + Multi-Contrast Enhancement
             gray = ImageOps.grayscale(pil_image)
@@ -645,12 +698,7 @@ class DecodeBarcodeImageView(APIView):
                 enhanced = ImageEnhance.Contrast(gray_padded).enhance(factor)
                 res = try_decode(enhanced)
                 if res:
-                    return Response({
-                        "success": True,
-                        "barcode": res.text,
-                        "format": str(res.format),
-                        "method": f"contrast_{factor}"
-                    })
+                    return build_decode_response(res, f"contrast_{factor}")
 
             # Pass 7: Multi-Angle Rotations (90, 180, 270)
             for angle in [90, 180, 270]:
@@ -658,12 +706,7 @@ class DecodeBarcodeImageView(APIView):
                 rot_padded = ImageOps.expand(rotated, border=(pad_y, pad_x), fill='white')
                 res = try_decode(rot_padded)
                 if res:
-                    return Response({
-                        "success": True,
-                        "barcode": res.text,
-                        "format": str(res.format),
-                        "method": f"rotation_{angle}"
-                    })
+                    return build_decode_response(res, f"rotation_{angle}")
 
             # Pass 8: Subtle Deskew (±4, ±8 degrees)
             for angle in [-8, -4, 4, 8]:
@@ -671,12 +714,7 @@ class DecodeBarcodeImageView(APIView):
                 desk_padded = ImageOps.expand(deskewed, border=(pad_x, pad_y), fill='white')
                 res = try_decode(desk_padded)
                 if res:
-                    return Response({
-                        "success": True,
-                        "barcode": res.text,
-                        "format": str(res.format),
-                        "method": f"deskew_{angle}"
-                    })
+                    return build_decode_response(res, f"deskew_{angle}")
 
             return Response({
                 "success": False,
