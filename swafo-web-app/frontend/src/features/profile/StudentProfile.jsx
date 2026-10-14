@@ -547,9 +547,14 @@ export default function StudentProfile() {
       <BarcodeRegistrationModal
         isOpen={showBarcodeModal}
         onClose={() => setShowBarcodeModal(false)}
+        profile={profile}
         studentNumber={studentId}
-        onSuccess={(newBarcode) => {
-          setProfile(prev => ({ ...prev, barcode_value: newBarcode }));
+        onSuccess={(newBarcode, updatedSn) => {
+          setProfile(prev => ({ 
+            ...prev, 
+            barcode_value: newBarcode,
+            ...(updatedSn ? { student_number: updatedSn, is_id_confirmed: true } : {})
+          }));
         }}
       />
 

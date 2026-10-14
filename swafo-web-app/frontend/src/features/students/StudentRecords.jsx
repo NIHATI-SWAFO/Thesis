@@ -42,9 +42,16 @@ export default function StudentRecords({ role = 'officer' }) {
       const hasUnresolved = (student.violation_count || 0) > 0 && student.has_pending_violations;
       const complianceStatus = student.is_repeat_offender ? 'NON_COMPLIANT' : hasUnresolved ? 'UNDER_REVIEW' : 'COMPLIANT';
 
-      const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           id.includes(searchQuery) ||
-                           course.toLowerCase().includes(searchQuery.toLowerCase());
+      const rawQ = searchQuery.trim();
+      const cleanDigits = rawQ.replace(/\D/g, '');
+      const strippedQ = (cleanDigits.length === 11 && cleanDigits.startsWith('20')) ? cleanDigits.slice(2) : cleanDigits;
+      const barcode = student.barcode_value || '';
+
+      const matchesSearch = name.toLowerCase().includes(rawQ.toLowerCase()) ||
+                           id.includes(rawQ) ||
+                           (strippedQ && id.includes(strippedQ)) ||
+                           barcode.toLowerCase().includes(rawQ.toLowerCase()) ||
+                           course.toLowerCase().includes(rawQ.toLowerCase());
 
       const matchesTab = activeTab === 'ALL' || complianceStatus === activeTab;
 

@@ -523,8 +523,12 @@ export default function StudentDashboard() {
         isOpen={showBarcodeModal}
         onClose={() => setShowBarcodeModal(false)}
         profile={profile}
-        onSuccess={(newBarcode) => {
-          setProfile(prev => ({ ...prev, barcode_value: newBarcode }));
+        onSuccess={(newBarcode, updatedSn) => {
+          setProfile(prev => ({ 
+            ...prev, 
+            barcode_value: newBarcode,
+            ...(updatedSn ? { student_number: updatedSn, is_id_confirmed: true } : {})
+          }));
         }}
       />
     </div>

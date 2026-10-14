@@ -65,10 +65,29 @@ function VisualBarcode({ value, height = 55 }) {
   );
 }
 
+/**
+ * Normalizes a raw barcode value.
+ * In DLSU-D, physical ID barcodes contain an extra "20" prefix (11 digits: "20" + 9-digit student number).
+ * Extracts the 9-digit student number while preserving the raw barcode.
+ */
+export function normalizeStudentBarcode(rawBarcode) {
+  if (!rawBarcode) return { raw: '', extractedId: null };
+  const raw = String(rawBarcode).trim();
+  const digits = raw.replace(/\D/g, '');
+  let extractedId = null;
+  if (digits.length === 11 && digits.startsWith('20')) {
+    extractedId = digits.slice(2);
+  } else if (digits.length === 9) {
+    extractedId = digits;
+  }
+  return { raw, extractedId };
+}
+
 export default function BarcodeRegistrationModal({
   isOpen,
   onClose,
   profile,
+  studentNumber: propStudentNumber,
   onSuccess,
 }) {
   const [activeTab, setActiveTab] = useState('upload'); // 'upload' | 'camera' | 'manual'
@@ -97,7 +116,7 @@ export default function BarcodeRegistrationModal({
 
   if (!isOpen) return null;
 
-  const studentNumber = profile?.student_number;
+  const studentNumber = profile?.student_number || propStudentNumber || '';
   const fullName = profile?.user_details?.full_name || 'Student';
 
   // ── Handle ID / Barcode Image Upload (Multi-Engine Pipeline) ──
@@ -179,8 +198,13 @@ export default function BarcodeRegistrationModal({
     }
 
     if (detectedCode) {
-      setBarcodeInput(detectedCode);
-      setFileSuccess(`Barcode decoded: "${detectedCode}"`);
+      const { raw, extractedId } = normalizeStudentBarcode(detectedCode);
+      setBarcodeInput(raw);
+      if (extractedId) {
+        setFileSuccess(`Barcode decoded: "${raw}" — Extracted Student ID: ${extractedId}`);
+      } else {
+        setFileSuccess(`Barcode decoded: "${raw}"`);
+      }
     } else {
       setFileError('Could not auto-detect barcode from this photo. Barcode scanners require white margins (quiet zone) around the bars. You can type or edit your barcode value below.');
     }
@@ -192,19 +216,27 @@ export default function BarcodeRegistrationModal({
   const handleCameraScan = (scannedText) => {
     setShowLiveScanner(false);
     if (scannedText) {
-      setBarcodeInput(scannedText);
-      setFileSuccess(`Barcode scanned: "${scannedText}"`);
+      const { raw, extractedId } = normalizeStudentBarcode(scannedText);
+      setBarcodeInput(raw);
+      if (extractedId) {
+        setFileSuccess(`Barcode scanned: "${raw}" — Extracted Student ID: ${extractedId}`);
+      } else {
+        setFileSuccess(`Barcode scanned: "${raw}"`);
+      }
     }
   };
 
   // ── Submit / Save Barcode to Backend ──
   const handleSave = async () => {
-    if (!studentNumber) {
-      setSubmitError('Missing student profile number.');
+    const { raw, extractedId } = normalizeStudentBarcode(barcodeInput);
+    const targetStudentNumber = studentNumber || extractedId;
+
+    if (!targetStudentNumber) {
+      setSubmitError('Missing student profile number. Please enter or confirm your 9-digit student number.');
       return;
     }
 
-    if (!barcodeInput.trim()) {
+    if (!raw) {
       setSubmitError('Please scan, upload, or enter a barcode value.');
       return;
     }
@@ -217,8 +249,10 @@ export default function BarcodeRegistrationModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          student_number: studentNumber,
-          barcode_value: barcodeInput.trim(),
+          student_number: targetStudentNumber,
+          barcode_value: raw,
+          extracted_student_number: extractedId,
+          email: profile?.user_details?.email,
         }),
       });
 
@@ -227,7 +261,7 @@ export default function BarcodeRegistrationModal({
       if (response.ok) {
         setSubmitSuccess(true);
         if (onSuccess) {
-          onSuccess(data.barcode_value);
+          onSuccess(data.barcode_value, data.student_number);
         }
         setTimeout(() => {
           setSubmitSuccess(false);
@@ -503,6 +537,23 @@ export default function BarcodeRegistrationModal({
                   className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border-2 border-slate-200 focus:border-[#006b5d] focus:bg-white rounded-2xl font-mono text-[15px] font-bold text-slate-800 outline-none transition-all shadow-inner"
                 />
               </div>
+
+              {/* Extracted Student ID Verified Badge */}
+              {normalizeStudentBarcode(barcodeInput).extractedId && (
+                <div className="flex items-center gap-2.5 p-3 bg-emerald-50 border border-emerald-200/90 rounded-2xl animate-in fade-in">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <span className="material-symbols-outlined text-[16px]">verified</span>
+                  </div>
+                  <div>
+                    <p className="text-[12px] font-pjs font-bold text-emerald-950 leading-tight">
+                      Extracted Student Number: <span className="font-mono text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded font-black">{normalizeStudentBarcode(barcodeInput).extractedId}</span>
+                    </p>
+                    <p className="text-[10.5px] font-manrope text-emerald-800/80 mt-0.5">
+                      Leading &quot;20&quot; barcode prefix recognized. Student record will link to this ID.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* DLSU-D Standard ID Pattern Quick-Fill Helper */}
               {studentNumber && (

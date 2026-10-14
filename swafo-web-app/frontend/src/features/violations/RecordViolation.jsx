@@ -43,25 +43,57 @@ export default function RecordViolation() {
 
   /**
    * Called by BarcodeScanner once a barcode is decoded.
-   * The scanned value is the student number encoded in the barcode.
-   * We search the API with it — exact-match style.
+   * DLSU-D student barcodes physically contain an extra leading "20" prefix
+   * (e.g. 11 digits: "20202330395"), where the actual student number is 9 digits ("202330395").
+   * We normalize by extracting the true 9-digit ID, set the input, and resolve the student.
    */
   const handleBarcodeScan = async (scannedValue) => {
     setShowScannerModal(false);
     setIsSearching(true);
+
+    const rawVal = String(scannedValue || '').trim();
+    const cleanDigits = rawVal.replace(/\D/g, '');
+    let extractedStudentId = rawVal;
+
+    // Normalization: 11-digit barcode starting with "20" -> extract 9-digit student number
+    if (cleanDigits.length === 11 && cleanDigits.startsWith('20')) {
+      extractedStudentId = cleanDigits.slice(2);
+    } else if (cleanDigits.length === 9) {
+      extractedStudentId = cleanDigits;
+    }
+
+    // Populate search query so officer visibly sees the extracted student ID
+    setSearchQuery(extractedStudentId);
+
     try {
-      const response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(scannedValue)}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data) && data.length > 0) {
-          // Prefer exact barcode_value or student_number match, else take first result
-          const exact = data.find(s => s.barcode_value === scannedValue || s.student_number === scannedValue) || data[0];
-          setFoundStudent(exact);
-          fetchStudentHistory(exact.user_details?.email);
-          setMobileStep('student');
-        } else {
-          alert(`No student found for barcode: "${scannedValue}". Try searching by name or number.`);
+      // 1. Primary query with raw scanned barcode
+      let response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(rawVal)}`);
+      let data = response.ok ? await response.json() : [];
+
+      // 2. Fallback query with extracted 9-digit student ID if distinct
+      if ((!Array.isArray(data) || data.length === 0) && extractedStudentId !== rawVal) {
+        response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(extractedStudentId)}`);
+        if (response.ok) {
+          data = await response.json();
         }
+      }
+
+      if (Array.isArray(data) && data.length > 0) {
+        // Match exact student by extracted ID, raw barcode, or prepended barcode
+        const exact = data.find(s => 
+          s.student_number === extractedStudentId ||
+          s.student_number === rawVal ||
+          s.barcode_value === rawVal ||
+          s.barcode_value === extractedStudentId ||
+          s.barcode_value === `20${extractedStudentId}`
+        ) || data[0];
+
+        setFoundStudent(exact);
+        fetchStudentHistory(exact.user_details?.email);
+        setMobileStep('student');
+        setSearchResults([]);
+      } else {
+        alert(`No student found for barcode: "${rawVal}" (Extracted Student ID: ${extractedStudentId}). Please search by name or enter student number manually.`);
       }
     } catch (e) {
       console.error('Barcode lookup failed:', e);
@@ -129,12 +161,44 @@ export default function RecordViolation() {
     if (!searchQuery) return;
     setIsSearching(true);
 
+    const query = searchQuery.trim();
+    const cleanDigits = query.replace(/\D/g, '');
+    let extractedId = query;
+    if (cleanDigits.length === 11 && cleanDigits.startsWith('20')) {
+      extractedId = cleanDigits.slice(2);
+    } else if (cleanDigits.length === 9) {
+      extractedId = cleanDigits;
+    }
+
     try {
-      const response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${searchQuery}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data)) {
-          setSearchResults(data);
+      let response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(query)}`);
+      let data = response.ok ? await response.json() : [];
+
+      if ((!Array.isArray(data) || data.length === 0) && extractedId !== query) {
+        response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(extractedId)}`);
+        if (response.ok) {
+          data = await response.json();
+        }
+      }
+
+      if (Array.isArray(data)) {
+        setSearchResults(data);
+
+        // If an exact barcode or student number match is found (e.g. from scanner or typing), auto-select!
+        const exactMatch = data.find(s => 
+          s.student_number === extractedId || 
+          s.student_number === query || 
+          s.barcode_value === query ||
+          s.barcode_value === `20${extractedId}` ||
+          s.barcode_value === extractedId
+        );
+        if (exactMatch && (cleanDigits.length === 9 || cleanDigits.length === 11)) {
+          setFoundStudent(exactMatch);
+          fetchStudentHistory(exactMatch.user_details?.email);
+          setSearchResults([]);
+          if (extractedId !== query) {
+            setSearchQuery(extractedId);
+          }
         }
       }
     } catch (error) {

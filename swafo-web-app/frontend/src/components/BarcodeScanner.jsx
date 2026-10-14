@@ -66,8 +66,13 @@ export default function BarcodeScanner({ onScan, onClose }) {
             cameraId,
             config,
             (decodedText) => {
+              if (navigator.vibrate) {
+                try { navigator.vibrate(120); } catch (e) {}
+              }
               // Stop scanning once we have a result
               html5QrCode.stop().then(() => {
+                onScan(decodedText.trim());
+              }).catch(() => {
                 onScan(decodedText.trim());
               });
             },
