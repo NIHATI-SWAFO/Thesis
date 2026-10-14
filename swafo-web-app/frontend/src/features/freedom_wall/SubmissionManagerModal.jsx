@@ -8,13 +8,13 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
   const { user } = useAuth();
   const [sub, setSub] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Status & Priority Edits
   const [status, setStatus] = useState('');
   const [priority, setPriority] = useState('');
   const [visibility, setVisibility] = useState('');
   const [resolutionFile, setResolutionFile] = useState(null);
-  
+
   // Response/Note
   const [replyContent, setReplyContent] = useState('');
   const [isInternalNote, setIsInternalNote] = useState(false);
@@ -24,6 +24,7 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
   const [showReferral, setShowReferral] = useState(false);
   const [referTo, setReferTo] = useState('');
   const [referReason, setReferReason] = useState('');
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     fetchDetail();
@@ -49,15 +50,15 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
   };
 
   const getIntentLabel = (type) => {
-      switch(type) {
-          case 'report_something': return 'Report Something';
-          case 'get_help': return 'Get Help';
-          case 'resolve_conflict': return 'Resolve a Conflict';
-          case 'suggest_improvement': return 'Suggest an Improvement';
-          case 'share_experience': return 'Share Your Experience';
-          case 'give_appreciation': return 'Give Appreciation';
-          default: return type;
-      }
+    switch (type) {
+      case 'report_something': return 'Report Something';
+      case 'get_help': return 'Get Help';
+      case 'resolve_conflict': return 'Resolve a Conflict';
+      case 'suggest_improvement': return 'Suggest an Improvement';
+      case 'share_experience': return 'Share Your Experience';
+      case 'give_appreciation': return 'Give Appreciation';
+      default: return type;
+    }
   };
 
   const handleUpdateMeta = async () => {
@@ -66,7 +67,7 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
       formData.append('status', status);
       formData.append('official_priority', priority);
       formData.append('visibility', visibility);
-      
+
       if (status === 'Resolved' && resolutionFile) {
         formData.append('resolution_file', resolutionFile);
       }
@@ -112,22 +113,60 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
 
   const handleSendReferral = async () => {
     if (!referTo || !referReason) return;
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(referTo)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
+    setIsRedirecting(true);
+
     try {
+      // API call to update status and track referral
       const res = await fetch(API_ENDPOINTS.FW_MANAGE_REFER(submissionId), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user.token}`
         },
-        body: JSON.stringify({ referred_to: referTo, reason: referReason })
+        body: JSON.stringify({
+          referred_to: referTo,
+          reason: referReason
+        })
       });
+
       if (res.ok) {
-        setShowReferral(false);
         fetchDetail();
         onUpdated();
+
+        // Construct mailto link
+        const emailSubject = `SWAFO Case Referral: ${sub?.reference_number}`;
+        const emailBody = `Dear Department,\n\nI am referring the following SWAFO case to your office for further action.\n\nCase Details:\nReference: ${sub?.reference_number}\nTitle: ${sub?.title}\nDescription: ${sub?.description}\n\nOfficer's Reason for Referral:\n${referReason}\n\nPlease let us know if you require further information.\n\nRegards,\nSWAFO Office`;
+
+        const encodedSubject = encodeURIComponent(emailSubject);
+        const encodedBody = encodeURIComponent(emailBody);
+
+        const mailtoLink = `mailto:${referTo}?subject=${encodedSubject}&body=${encodedBody}`;
+
+        // Trigger OS default email client (Outlook)
+        window.location.href = mailtoLink;
+
+        // Timeout-buffered cleanup
+        setTimeout(() => {
+          setIsRedirecting(false);
+          setShowReferral(false);
+          onClose(); // Close the modal for a seamless reset
+        }, 1200);
+      } else {
+        alert('Failed to send referral update.');
+        setIsRedirecting(false);
       }
     } catch (err) {
       console.error(err);
+      alert('An error occurred while tracking the referral.');
+      setIsRedirecting(false);
     }
   };
 
@@ -136,7 +175,7 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
   return createPortal(
     <div className="fixed inset-0 z-[99999] bg-[#003624]/40 backdrop-blur-sm flex justify-end animate-in fade-in duration-300">
       <div className="w-full max-w-2xl bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-emerald-50">
-        
+
         {/* Header */}
         <div className="h-[70px] sm:h-[80px] px-4 sm:px-8 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
           <div>
@@ -152,7 +191,7 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
           <div className="flex-1 flex items-center justify-center"><Loader2 size={32} className="animate-spin text-emerald-600" /></div>
         ) : (
           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-8">
-            
+
             {/* Quick Actions / Status Strip */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 sm:mb-8 bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
               <div className="col-span-1">
@@ -167,12 +206,12 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
                     <option value="Resolved">Resolved</option>
                     <option value="Dismissed">Dismissed</option>
                   </select>
-                  
+
                   {status === 'Resolved' && (
                     <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 block mb-1.5 flex items-center gap-1"><UploadCloud size={12}/> Attach Resolution Report</label>
-                      <input 
-                        type="file" 
+                      <label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 block mb-1.5 flex items-center gap-1"><UploadCloud size={12} /> Attach Resolution Report</label>
+                      <input
+                        type="file"
                         onChange={(e) => {
                           setResolutionFile(e.target.files[0]);
                         }}
@@ -180,7 +219,7 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
                         className="block w-full text-xs text-slate-500 file:mr-2 sm:file:mr-4 file:py-1.5 file:px-3 sm:file:py-2 sm:file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all cursor-pointer"
                       />
                       {sub?.resolution_file && !resolutionFile && (
-                        <p className="text-[10px] text-emerald-600 font-bold mt-1.5 flex items-center gap-1"><FileText size={10}/> Report already uploaded</p>
+                        <p className="text-[10px] text-emerald-600 font-bold mt-1.5 flex items-center gap-1"><FileText size={10} /> Report already uploaded</p>
                       )}
                     </div>
                   )}
@@ -213,20 +252,22 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
 
             {/* Referral Form */}
             {showReferral && (
-              <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-blue-50 border border-blue-100 rounded-2xl animate-in fade-in zoom-in-95">
-                <h4 className="text-sm font-bold text-blue-900 mb-3 sm:mb-4 flex items-center gap-2"><Share2 size={16} /> External Referral</h4>
-                <div className="space-y-3 sm:space-y-4">
-                  <select value={referTo || ""} onChange={e=>setReferTo(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border-none ring-1 ring-blue-200 text-xs sm:text-sm outline-none">
-                    <option value="">Select Destination...</option>
-                    <option value="Guidance Office">Guidance Office</option>
-                    <option value="Campus Security">Campus Security</option>
-                    <option value="College Dean">College Dean</option>
-                    <option value="Facilities Management">Facilities Management</option>
-                  </select>
-                  <textarea value={referReason || ""} onChange={e=>setReferReason(e.target.value)} placeholder="Reason for referral..." className="w-full px-4 py-2.5 rounded-xl border-none ring-1 ring-blue-200 text-xs sm:text-sm outline-none resize-none h-20"></textarea>
+              <div className="mb-8 p-6 bg-blue-50 border border-blue-100 rounded-2xl animate-in fade-in zoom-in-95">
+                <h4 className="text-sm font-bold text-blue-900 mb-4 flex items-center gap-2"><Share2 size={16} /> External Referral</h4>
+                <div className="space-y-4">
+                  <input
+                    type="email"
+                    value={referTo}
+                    onChange={e => setReferTo(e.target.value)}
+                    placeholder="Enter department email (e.g., guidance@dlsud.edu.ph)"
+                    className="w-full px-4 py-2.5 rounded-xl border-none ring-1 ring-blue-200 text-sm outline-none"
+                  />
+                  <textarea value={referReason} onChange={e => setReferReason(e.target.value)} placeholder="Reason for referral..." className="w-full px-4 py-2.5 rounded-xl border-none ring-1 ring-blue-200 text-sm outline-none resize-none h-20"></textarea>
                   <div className="flex justify-end gap-2">
-                    <button onClick={() => setShowReferral(false)} className="px-4 py-2 text-xs font-bold text-blue-600">Cancel</button>
-                    <button onClick={handleSendReferral} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-blue-700">Submit Referral</button>
+                    <button onClick={() => setShowReferral(false)} disabled={isRedirecting} className="px-4 py-2 text-xs font-bold text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed">Cancel</button>
+                    <button onClick={handleSendReferral} disabled={isRedirecting} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                      {isRedirecting ? <><Loader2 size={12} className="animate-spin" /> Opening Client...</> : 'Submit Referral via Email'}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -237,11 +278,11 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-1 rounded-md uppercase">{getIntentLabel(sub.submission_type)}</span>
                 <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2 py-1 rounded-md uppercase">{sub.category}</span>
-                {sub.is_anonymous && <span className="bg-purple-100 text-purple-700 text-[10px] font-black px-2 py-1 rounded-md uppercase flex items-center gap-1"><ShieldCheck size={12}/> Anonymous</span>}
+                {sub.is_anonymous && <span className="bg-purple-100 text-purple-700 text-[10px] font-black px-2 py-1 rounded-md uppercase flex items-center gap-1"><ShieldCheck size={12} /> Anonymous</span>}
               </div>
-              
+
               <h2 className="text-xl sm:text-2xl font-bold font-pjs text-[#003624] mb-3 sm:mb-4">{sub.title}</h2>
-              
+
               <div className="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-100">
                 <p className="text-slate-700 font-manrope text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">{sub.description}</p>
               </div>
@@ -271,7 +312,7 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
             {/* Response Timeline */}
             <div className="mb-6 sm:mb-8">
               <h4 className="text-[11px] sm:text-[12px] font-black uppercase tracking-widest text-slate-400 mb-4 sm:mb-6">Discussion & Notes</h4>
-              
+
               <div className="space-y-4 sm:space-y-6">
                 {(sub.responses || []).map(resp => (
                   <div key={resp.id} className={`p-4 sm:p-5 rounded-2xl relative ${resp.is_internal_note ? 'bg-amber-50 border border-amber-100' : 'bg-emerald-50 border border-emerald-100'}`}>
@@ -287,16 +328,16 @@ export default function SubmissionManagerModal({ submissionId, onClose, onUpdate
 
             {/* Reply Box */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
-              <textarea 
-                value={replyContent || ""} 
-                onChange={e=>setReplyContent(e.target.value)}
-                placeholder="Type a response or internal note..." 
+              <textarea
+                value={replyContent || ""}
+                onChange={e => setReplyContent(e.target.value)}
+                placeholder="Type a response or internal note..."
                 className="w-full p-3 sm:p-4 text-xs sm:text-sm font-manrope outline-none resize-none h-24"
               ></textarea>
               <div className="bg-slate-50 px-3 sm:px-4 py-3 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input type="checkbox" checked={isInternalNote} onChange={e=>setIsInternalNote(e.target.checked)} className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 shrink-0" />
-                  <span className="text-xs font-bold text-slate-600 flex items-center gap-1"><Lock size={12}/> Internal Note (Hidden from Student)</span>
+                  <input type="checkbox" checked={isInternalNote} onChange={e => setIsInternalNote(e.target.checked)} className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 shrink-0" />
+                  <span className="text-xs font-bold text-slate-600 flex items-center gap-1"><Lock size={12} /> Internal Note (Hidden from Student)</span>
                 </label>
                 <button onClick={handleSendReply} disabled={isReplying || !replyContent.trim()} className="bg-[#003624] text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-900 active:scale-95 disabled:opacity-50 transition-all shrink-0">
                   {isReplying ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}

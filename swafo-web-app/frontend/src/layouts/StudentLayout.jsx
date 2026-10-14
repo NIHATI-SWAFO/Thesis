@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useMsal } from "@azure/msal-react";
 import { useAuth } from '../context/AuthContext';
+import { API_ENDPOINTS } from '../api/config';
 import NotificationBell from '../components/common/NotificationBell';
+import StudentNumberPromptModal from '../components/StudentNumberPromptModal';
+import ErrorBoundary from '../components/common/ErrorBoundary';
 
 const navItems = [
   { name: 'Dashboard', path: '/student/dashboard', icon: 'dashboard' },
@@ -15,7 +17,6 @@ const navItems = [
 ];
 
 export default function StudentLayout() {
-  const { instance } = useMsal();
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -23,14 +24,80 @@ export default function StudentLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [topSearch, setTopSearch] = useState('');
+  const [showIdPrompt, setShowIdPrompt] = useState(false);
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [avatarUrl, setAvatarUrl] = useState(() => {
+    return user?.avatar || (user?.email ? localStorage.getItem(`swafo_student_avatar_${user.email}`) : null) || localStorage.getItem('swafo_student_avatar_current') || null;
+  });
+
+  useEffect(() => {
+    if (user?.email) {
+      const cached = localStorage.getItem(`swafo_student_avatar_${user.email}`) || localStorage.getItem('swafo_student_avatar_current');
+      if (cached) setAvatarUrl(cached);
+
+      const dismissed = sessionStorage.getItem(`swafo_id_prompt_dismissed_${user.email}`);
+      fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name || '')}`)
+        .then(res => {
+          if (!res.ok) return null;
+          return res.json();
+        })
+        .then(data => {
+          if (data && !data.error) {
+            setStudentProfile(data);
+            if (data?.user_details?.full_name || data?.user?.full_name) {
+              localStorage.setItem(`swafo_student_name_${user.email}`, data.user_details?.full_name || data.user?.full_name);
+            }
+            if (data.needs_id_confirmation && !dismissed) {
+              setShowIdPrompt(true);
+            }
+            if (data.profile_picture) {
+              setAvatarUrl(data.profile_picture);
+              localStorage.setItem(`swafo_student_avatar_${user.email}`, data.profile_picture);
+              localStorage.setItem('swafo_student_avatar_current', data.profile_picture);
+            }
+          }
+        })
+        .catch(err => console.error("Profile check error:", err));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const handleAvatarUpdate = (e) => {
+      setAvatarUrl(e.detail || null);
+    };
+    window.addEventListener('swafo-avatar-updated', handleAvatarUpdate);
+    return () => window.removeEventListener('swafo-avatar-updated', handleAvatarUpdate);
+  }, []);
+
+  const handleIdConfirmed = (updatedProfile) => {
+    setStudentProfile(updatedProfile);
+    setShowIdPrompt(false);
+  };
+
+  const handleDismissPrompt = () => {
+    if (user?.email) {
+      sessionStorage.setItem(`swafo_id_prompt_dismissed_${user.email}`, 'true');
+    }
+    setShowIdPrompt(false);
+  };
 
   const handleLogout = () => {
     logout();
   };
 
-  const fullName = user?.name || user?.email?.split('@')[0] || 'Student';
+  const cachedName = user?.email ? localStorage.getItem(`swafo_student_name_${user.email}`) : null;
+  const fullName =
+    studentProfile?.user_details?.full_name ||
+    studentProfile?.user?.full_name ||
+    cachedName ||
+    (user?.name && user.name.toLowerCase() !== 'student' ? user.name : null) ||
+    user?.full_name ||
+    (user?.email ? user.email.split('@')[0].replace(/[._]/g, ' ') : null) ||
+    'Student';
+
   const initials = fullName
     .split(' ')
+    .filter(Boolean)
     .map(n => n[0])
     .slice(0, 2)
     .join('')
@@ -38,10 +105,10 @@ export default function StudentLayout() {
 
   return (
     <div className="flex h-screen bg-portal-bg font-manrope selection:bg-portal-primary selection:text-white">
-      
+
       {/* ══════════════════════════════ DESKTOP SIDEBAR ══════════════════════════════ */}
       <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-[270px] z-50 bg-[#F7F9FB] flex-col py-8 shadow-[20px_0_60px_rgba(0,0,0,0.03)] border-r border-emerald-50/50 rounded-r-[3.5rem]">
-        
+
         {/* Brand */}
         <div className="px-8 mb-8 flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-[#003624] flex items-center justify-center text-white shadow-lg">
@@ -61,11 +128,10 @@ export default function StudentLayout() {
               <Link
                 key={item.name}
                 to={item.path}
-                className={`flex items-center gap-4 px-6 py-3.5 rounded-full transition-all duration-300 group ${
-                  isActive 
-                    ? 'bg-[#009b69] text-white shadow-md shadow-emerald-900/10' 
+                className={`flex items-center gap-4 px-6 py-3.5 rounded-full transition-all duration-300 group ${isActive
+                    ? 'bg-[#009b69] text-white shadow-md shadow-emerald-900/10'
                     : 'text-[#004d33] hover:bg-emerald-50'
-                }`}
+                  }`}
               >
                 <span className={`material-symbols-outlined text-[20px] ${isActive ? 'fill-1 font-bold' : 'font-medium opacity-80'}`}>
                   {item.icon}
@@ -78,15 +144,19 @@ export default function StudentLayout() {
 
         {/* Profile Card & Action */}
         <div className="px-5 mt-auto flex flex-col gap-2 pt-6 border-t border-emerald-50/60">
-          <div className="flex items-center gap-3 px-3 py-2 rounded-2xl bg-white border border-emerald-100/60 shadow-sm">
-            <div className="w-8 h-8 rounded-full bg-[#003624] text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
-              {initials}
+          <Link to="/student/profile" className="flex items-center gap-3 px-3 py-2 rounded-2xl bg-white border border-emerald-100/60 shadow-sm hover:border-emerald-300 transition-colors group">
+            <div className="w-8 h-8 rounded-full bg-[#003624] text-white flex items-center justify-center font-bold text-xs uppercase shrink-0 overflow-hidden">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
             </div>
             <div className="flex flex-col overflow-hidden min-w-0">
-              <span className="text-[12px] font-pjs font-bold text-[#003624] truncate leading-tight">{fullName}</span>
-              <span className="text-[9px] font-bold text-emerald-700/80 uppercase tracking-wider">SWAFO Student</span>
+              <span className="text-[12px] font-pjs font-bold text-[#003624] truncate leading-tight group-hover:text-emerald-700 transition-colors" title={fullName}>{fullName}</span>
+              <span className="text-[9px] font-bold text-emerald-700/80 uppercase tracking-wider">Student</span>
             </div>
-          </div>
+          </Link>
           <button 
             onClick={() => setShowHelp(!showHelp)}
             className="flex items-center gap-4 px-6 py-2.5 rounded-full text-slate-500 hover:text-[#003624] hover:bg-emerald-50 transition-all w-full text-left cursor-pointer"
@@ -94,8 +164,8 @@ export default function StudentLayout() {
             <span className="material-symbols-outlined text-[20px]">help_outline</span>
             <span className="text-[13px] font-pjs font-semibold">Help Center</span>
           </button>
-          <button 
-            onClick={handleLogout} 
+          <button
+            onClick={handleLogout}
             className="flex items-center gap-4 px-6 py-2.5 rounded-full text-red-500 hover:bg-red-50 transition-all w-full text-left cursor-pointer"
           >
             <span className="material-symbols-outlined text-[20px]">logout</span>
@@ -105,22 +175,20 @@ export default function StudentLayout() {
       </aside>
 
       {/* ══════════════════════════════ MOBILE SLIDE-OVER DRAWER ══════════════════════════════ */}
-      <div 
-        className={`lg:hidden fixed inset-0 z-[6000] transition-opacity duration-300 ${
-          isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
+      <div
+        className={`lg:hidden fixed inset-0 z-[6000] transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
       >
         {/* Backdrop */}
-        <div 
+        <div
           onClick={() => setIsMobileMenuOpen(false)}
           className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         />
 
         {/* Drawer Panel */}
-        <div 
-          className={`relative w-[300px] max-w-[85vw] h-full bg-[#003624] text-white flex flex-col py-6 shadow-2xl transition-transform duration-300 ease-out border-r border-emerald-900/50 ${
-            isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
+        <div
+          className={`relative w-[300px] max-w-[85vw] h-full bg-[#003624] text-white flex flex-col py-6 shadow-2xl transition-transform duration-300 ease-out border-r border-emerald-900/50 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
         >
           {/* Drawer Header */}
           <div className="px-6 mb-6 flex items-center justify-between shrink-0">
@@ -133,7 +201,7 @@ export default function StudentLayout() {
                 <span className="font-manrope text-[9px] uppercase tracking-[0.2em] text-emerald-400/80 font-black leading-none">Student Portal</span>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setIsMobileMenuOpen(false)}
               className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/80 hover:text-white active:scale-90 transition-transform cursor-pointer"
               aria-label="Close menu"
@@ -151,11 +219,10 @@ export default function StudentLayout() {
                   key={item.name}
                   to={item.path}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 font-bold' 
+                  className={`flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-200 ${isActive
+                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 font-bold'
                       : 'text-emerald-100/70 hover:text-white hover:bg-white/5 font-semibold'
-                  }`}
+                    }`}
                 >
                   <span className={`material-symbols-outlined text-[22px] ${isActive ? 'fill-1' : ''}`}>
                     {item.icon}
@@ -169,20 +236,20 @@ export default function StudentLayout() {
           {/* Student Info & Actions in Drawer Footer */}
           <div className="px-4 mt-auto pt-4 border-t border-white/10 flex flex-col gap-2 shrink-0">
             <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/5 border border-white/10">
-              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xs shrink-0">
-                {user?.avatar ? (
-                  <img src={user.avatar} className="w-full h-full object-cover rounded-full" alt={fullName} />
+              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xs shrink-0 overflow-hidden">
+                {avatarUrl || user?.avatar ? (
+                  <img src={avatarUrl || user.avatar} className="w-full h-full object-cover rounded-full" alt={fullName} />
                 ) : (
                   <span>{initials}</span>
                 )}
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-[13px] font-bold text-white truncate leading-tight">{fullName}</span>
-                <span className="text-[9px] text-emerald-400/80 font-black uppercase tracking-wider">SWAFO Student</span>
+                <span className="text-[9px] text-emerald-400/80 font-black uppercase tracking-wider">Student</span>
               </div>
             </div>
 
-            <button 
+            <button
               onClick={handleLogout}
               className="flex items-center gap-3 px-4 py-3 rounded-2xl text-rose-400 hover:bg-rose-500/10 active:scale-95 transition-all w-full text-left cursor-pointer"
             >
@@ -195,11 +262,11 @@ export default function StudentLayout() {
 
       {/* ══════════════════════════════ CONTENT AREA ══════════════════════════════ */}
       <div className="flex-1 lg:ml-[270px] flex flex-col h-full overflow-hidden shrink-0">
-        
+
         {/* MOBILE HEADER (Cohesive Dark Green Theme) */}
         <header className="lg:hidden h-[70px] bg-[#003624] flex items-center justify-between px-5 shrink-0 z-40 border-b border-emerald-900/40">
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => setIsMobileMenuOpen(true)}
               className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white border border-white/15 active:scale-90 transition-transform cursor-pointer"
               aria-label="Open menu"
@@ -212,28 +279,8 @@ export default function StudentLayout() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center">
             <NotificationBell isDarkBg={true} role="student" />
-            <div 
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform"
-            >
-              <div className="flex flex-col text-right">
-                <span className="text-[12px] font-bold text-white leading-tight truncate max-w-[110px]">
-                  {fullName}
-                </span>
-                <span className="text-[8.5px] text-emerald-400/80 font-black uppercase tracking-wider leading-none">
-                  Student
-                </span>
-              </div>
-              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 font-bold text-xs">
-                {user?.avatar ? (
-                  <img src={user.avatar} className="w-full h-full object-cover rounded-full" alt={fullName} />
-                ) : (
-                  <span>{initials}</span>
-                )}
-              </div>
-            </div>
           </div>
         </header>
 
@@ -253,9 +300,7 @@ export default function StudentLayout() {
 
           {/* Right Actions */}
           <div className="flex items-center gap-4 relative">
-            <NotificationBell isDarkBg={false} role="student" />
-
-            <button 
+            <button
               onClick={() => setShowHelp(!showHelp)}
               className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all active:scale-95 group relative ${showHelp ? 'bg-[#003624] text-white shadow-lg' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}
               aria-label="Help Center"
@@ -283,81 +328,29 @@ export default function StudentLayout() {
                 </div>
               </div>
             )}
-            
-            <div className="flex items-center gap-4 ml-2 pl-6 border-l border-emerald-50/50">
-              <div className="text-right hidden md:block">
-                <p className="text-[14px] font-pjs font-bold text-[#1a1a1a] leading-tight">{fullName}</p>
-                <p className="text-[10px] font-manrope text-emerald-600 font-bold uppercase tracking-wider">Authenticated Student</p>
-              </div>
-              <div 
-                onClick={() => navigate('/student/profile')}
-                className="w-10 h-10 rounded-xl bg-emerald-50 text-[#003624] flex items-center justify-center ring-1 ring-emerald-100/50 shadow-sm overflow-hidden group cursor-pointer hover:bg-[#003624] hover:text-white transition-all duration-300"
-              >
-                <span className="material-symbols-outlined text-[24px]">account_circle</span>
-              </div>
-            </div>
+
+            <NotificationBell isDarkBg={false} role="student" />
           </div>
         </header>
 
         {/* Scrollable Page Content */}
-        <main className="flex-1 overflow-y-auto px-4 py-5 lg:px-8 lg:py-8 custom-scrollbar pb-24 lg:pb-8">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto px-4 py-5 lg:px-8 lg:py-8 custom-scrollbar">
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
-
-        {/* MOBILE BOTTOM NAVIGATION (Sleek Native Tab Bar) */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 h-[68px] bg-white/95 backdrop-blur-md border-t border-gray-200/80 flex items-center justify-around px-2 z-40 shadow-[0_-8px_30px_rgba(0,0,0,0.06)]">
-          <NavButton 
-            active={location.pathname === '/student/dashboard' || location.pathname === '/student'} 
-            onClick={() => navigate('/student/dashboard')}
-            icon="dashboard"
-            label="Home"
-          />
-          <NavButton 
-            active={location.pathname.startsWith('/student/violations')} 
-            onClick={() => navigate('/student/violations')}
-            icon="gavel"
-            label="Records"
-          />
-          <NavButton 
-            active={location.pathname.startsWith('/student/freedom-wall')} 
-            onClick={() => navigate('/student/freedom-wall')}
-            icon="campaign"
-            label="Connect"
-          />
-          <NavButton 
-            active={location.pathname.startsWith('/student/chatbot')} 
-            onClick={() => navigate('/student/chatbot')}
-            icon="chat_bubble"
-            label="AI Help"
-          />
-          <NavButton 
-            active={location.pathname.startsWith('/student/profile')} 
-            onClick={() => navigate('/student/profile')}
-            icon="person"
-            label="Profile"
-          />
-        </div>
       </div>
+
+      {/* ══════════════════════════════ FIRST-TIME STUDENT NUMBER PROMPT ══════════════════════════════ */}
+      <StudentNumberPromptModal
+        isOpen={showIdPrompt}
+        onClose={handleDismissPrompt}
+        user={user}
+        profile={studentProfile}
+        onSuccess={handleIdConfirmed}
+      />
     </div>
   );
 }
 
-function NavButton({ active, onClick, icon, label }) {
-  return (
-    <button 
-      type="button"
-      onClick={onClick} 
-      className={`flex flex-col items-center justify-center flex-1 py-1 transition-all active:scale-95 cursor-pointer ${
-        active ? 'text-[#003624]' : 'text-slate-400 hover:text-slate-600'
-      }`}
-    >
-      <div className={`w-10 h-7 rounded-xl flex items-center justify-center transition-all ${active ? 'bg-emerald-100 text-[#003624]' : ''}`}>
-        <span className={`material-symbols-outlined text-[21px] ${active ? 'fill-1' : ''}`}>{icon}</span>
-      </div>
-      <span className={`text-[9px] mt-0.5 tracking-tight uppercase ${active ? 'font-black text-[#003624]' : 'font-bold'}`}>
-        {label}
-      </span>
-    </button>
-  );
-}
 

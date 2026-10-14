@@ -1,32 +1,55 @@
 import { useAuth } from "../../context/AuthContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { API_ENDPOINTS } from "../../api/config";
 import BarcodeRegistrationModal from "../../components/BarcodeRegistrationModal";
+import StudentNumberPromptModal from "../../components/StudentNumberPromptModal";
 
 export default function StudentProfile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showBarcodeModal, setShowBarcodeModal] = useState(false);
+  const [showStudentIdModal, setShowStudentIdModal] = useState(false);
   const [showIdModal, setShowIdModal] = useState(false);
   const [showDocNotice, setShowDocNotice] = useState(null);
-  const [showBarcodeModal, setShowBarcodeModal] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [profilePicture, setProfilePicture] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoToast, setPhotoToast] = useState(null);
+  const fileInputRef = useRef(null);
 
   const email = user?.email;
 
-
   const fetchProfile = () => {
     if (email) {
-      fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${email}`)
-        .then(res => res.json())
+      // Check cached avatar immediately for instant rendering
+      const cached = localStorage.getItem(`swafo_student_avatar_${email}`) || localStorage.getItem('swafo_student_avatar_current');
+      if (cached) setProfilePicture(cached);
+
+      fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${encodeURIComponent(email)}&name=${encodeURIComponent(user?.name || '')}`)
+        .then(res => {
+          if (!res.ok) return null;
+          return res.json();
+        })
         .then(data => {
-          if (!data.error) {
+          if (data && !data.error) {
             setProfile(data);
+            if (data.profile_picture) {
+              setProfilePicture(data.profile_picture);
+              localStorage.setItem(`swafo_student_avatar_${email}`, data.profile_picture);
+              localStorage.setItem('swafo_student_avatar_current', data.profile_picture);
+              if (data.student_number) {
+                localStorage.setItem(`swafo_student_avatar_${data.student_number}`, data.profile_picture);
+              }
+            }
           }
         })
         .catch(err => console.error("Profile fetch error:", err))
         .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
   };
 
@@ -34,369 +57,512 @@ export default function StudentProfile() {
     fetchProfile();
   }, [email]);
 
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert("Please select a valid image file (PNG, JPG, or WebP).");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image file is too large. Please select an image under 10MB.");
+      return;
+    }
+
+    setUploadingPhoto(true);
+
+    try {
+      // Compress to crisp square portrait using HTML5 Canvas
+      const compressedDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxDimension = 512;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > maxDimension) {
+                height = Math.round((height * maxDimension) / width);
+                width = maxDimension;
+              }
+            } else {
+              if (height > maxDimension) {
+                width = Math.round((width * maxDimension) / height);
+                height = maxDimension;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+            resolve(dataUrl);
+          };
+          img.onerror = () => reject(new Error("Failed to load image"));
+          img.src = event.target.result;
+        };
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(file);
+      });
+
+      // 1. Immediately update local UI & cache
+      setProfilePicture(compressedDataUrl);
+      if (email) localStorage.setItem(`swafo_student_avatar_${email}`, compressedDataUrl);
+      if (profile?.student_number) localStorage.setItem(`swafo_student_avatar_${profile.student_number}`, compressedDataUrl);
+      localStorage.setItem('swafo_student_avatar_current', compressedDataUrl);
+
+      // 2. Dispatch custom event for real-time header/sidebar sync across the portal
+      window.dispatchEvent(new CustomEvent('swafo-avatar-updated', { detail: compressedDataUrl }));
+
+      // 3. Persist to Backend API
+      await fetch(API_ENDPOINTS.UPDATE_PROFILE_PICTURE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email || profile?.user_details?.email,
+          student_number: profile?.student_number,
+          profile_picture: compressedDataUrl
+        })
+      }).catch(err => console.warn("Backend sync notice:", err));
+
+      setPhotoToast("Profile picture updated successfully!");
+      setShowPhotoModal(false);
+      setTimeout(() => setPhotoToast(null), 3500);
+    } catch (err) {
+      console.error("Error processing photo:", err);
+      alert("Failed to process photo. Please try another image.");
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setUploadingPhoto(true);
+    try {
+      setProfilePicture(null);
+      if (email) localStorage.removeItem(`swafo_student_avatar_${email}`);
+      if (profile?.student_number) localStorage.removeItem(`swafo_student_avatar_${profile.student_number}`);
+      localStorage.removeItem('swafo_student_avatar_current');
+
+      window.dispatchEvent(new CustomEvent('swafo-avatar-updated', { detail: null }));
+
+      await fetch(API_ENDPOINTS.UPDATE_PROFILE_PICTURE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email || profile?.user_details?.email,
+          student_number: profile?.student_number,
+          profile_picture: null
+        })
+      }).catch(err => console.warn("Backend sync notice:", err));
+
+      setPhotoToast("Profile picture removed. Reverted to initials.");
+      setShowPhotoModal(false);
+      setTimeout(() => setPhotoToast(null), 3500);
+    } catch (err) {
+      console.error("Error removing photo:", err);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 text-center">
-        <div className="w-12 h-12 border-4 border-emerald-100 border-t-[#003624] rounded-full animate-spin mb-4" />
-        <p className="font-pjs font-bold text-sm text-[#003624]">Loading Academic Profile...</p>
-        <p className="text-xs text-slate-400 mt-1">Retrieving institutional student records</p>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-12 h-12 border-4 border-emerald-100 border-t-[#003624] rounded-full animate-spin"></div>
       </div>
     );
   }
 
   const fullName = profile?.user_details?.full_name || profile?.user?.full_name || user?.name || user?.email?.split('@')[0] || "Student Name";
   const studentId = profile?.student_number || "---";
-  const course = profile?.course || "Academic Program";
-  const yearLevel = profile?.year_level || "1";
-  const initials = fullName.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || "ST";
-  const violationCount = profile?.violation_count || 0;
-  const isCleared = profile?.clearance_status !== 'HOLD';
+  const course = profile?.course || "---";
+  const yearLevel = profile?.year_level || "-";
+
+  // Backend Algorithmic Standing data with fallback
+  const standingData = profile?.risk_standing || {
+    tier: 'LOW',
+    standing: 'Good Standing',
+    score: 0.0,
+    clearance_impact: 'CLEARED',
+    honors_eligibility: 'ELIGIBLE',
+    gmc_status: 'AVAILABLE',
+    handbook_citation: 'Section 14',
+    consequence_summary: "Unrestricted institutional clearance (§14). Eligible for Dean's List and Latin Honors; unconditional Good Moral Certificate (GMC) issuance.",
+    color: 'emerald',
+  };
 
   const handleExportProfile = () => {
     window.print();
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-6 sm:space-y-8 animate-fade-in-up pb-12">
+    <div className="max-w-[1400px] mx-auto space-y-6 max-md:space-y-4 animate-fade-in-up max-md:pb-32">
       
-      {/* ══════════════════════════ PROFILE HERO HEADER ══════════════════════════ */}
-      <section className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-emerald-100/60 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative">
-        <div className="flex flex-col sm:flex-row items-center sm:items-center gap-5 text-center sm:text-left w-full md:w-auto">
-          {/* Avatar with Initials */}
-          <div className="relative shrink-0">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl bg-[#003624] flex items-center justify-center ring-4 ring-emerald-50 shadow-lg text-white font-pjs font-extrabold text-2xl sm:text-3xl">
-              {initials}
-            </div>
-            {/* Verified Academic Badge */}
-            <div className="absolute -bottom-1 -right-1 w-7 h-7 sm:w-8 sm:h-8 bg-emerald-600 rounded-full border-2 border-white flex items-center justify-center shadow text-white" title="Verified University Student">
-              <span className="material-symbols-outlined text-[15px] sm:text-[17px] fill-1">verified</span>
+      {/* ══════════════════════════ PROFILE HEADER ══════════════════════════ */}
+      <section className="flex flex-col md:flex-row items-center md:items-end gap-6 max-md:gap-3 px-4 relative">
+        {/* Profile Image Container */}
+        <div className="relative shrink-0 group">
+          <div 
+            onClick={() => setShowPhotoModal(true)}
+            className="w-[110px] h-[110px] max-md:w-20 max-md:h-20 rounded-3xl bg-[#003624] flex items-center justify-center ring-4 ring-white shadow-xl relative overflow-hidden text-white cursor-pointer"
+            title="Click to update profile photo"
+          >
+            {profilePicture ? (
+              <img 
+                src={profilePicture} 
+                alt={fullName} 
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+              />
+            ) : (
+              <span className="material-symbols-outlined text-[70px] max-md:text-[48px] opacity-90">account_circle</span>
+            )}
+
+            {/* Hover overlay indicator */}
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold">
+              <span className="material-symbols-outlined text-[20px] mb-0.5">photo_camera</span>
+              <span>Change</span>
             </div>
           </div>
 
-          {/* Info Details */}
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1.5">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100/70 text-emerald-800">
-                Official Student Record
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600">
-                Regular Enrolled
-              </span>
-            </div>
-            
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-pjs font-bold text-slate-900 tracking-tight leading-tight">
-              {fullName}
-            </h1>
+          {/* Quick Camera Action Badge */}
+          <button
+            type="button"
+            onClick={() => setShowPhotoModal(true)}
+            className="absolute -bottom-1 -left-1 w-7 h-7 max-md:w-6 max-md:h-6 rounded-full bg-white hover:bg-emerald-50 text-[#003624] border-2 border-emerald-100 flex items-center justify-center shadow-md active:scale-95 transition-all cursor-pointer z-10"
+            title="Add / Change Profile Picture"
+          >
+            <span className="material-symbols-outlined text-[15px] max-md:text-[13px]">photo_camera</span>
+          </button>
 
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1 mt-1 text-xs text-slate-500 font-manrope font-medium">
-              <span className="flex items-center gap-1 font-semibold text-slate-700">
-                <span className="material-symbols-outlined text-[16px] text-emerald-600">badge</span>
-                ID: {studentId}
-              </span>
-              <span className="text-slate-300">•</span>
-              <span className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px] text-emerald-600">school</span>
-                Year {yearLevel}
-              </span>
-              <span className="text-slate-300">•</span>
-              <span className="truncate max-w-[240px] sm:max-w-none">{course}</span>
-            </div>
+          {/* Verified Badge */}
+          <div className="absolute -bottom-1 -right-1 max-md:-bottom-0.5 max-md:-right-0.5 w-8 h-8 max-md:w-6 max-md:h-6 bg-portal-primary rounded-full border-[3px] max-md:border-2 border-white flex items-center justify-center shadow-lg text-white z-10" title="Verified University Student">
+            <span className="material-symbols-outlined text-[16px] max-md:text-[12px] fill-1">verified</span>
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full md:w-auto shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
-          <button 
-            onClick={() => setShowIdModal(true)}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/80 text-[#003624] font-pjs font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer shadow-xs"
-          >
-            <span className="material-symbols-outlined text-[18px]">badge</span>
-            Digital Student ID
-          </button>
+        {/* Info Content */}
+        <div className="flex-grow pb-2 text-center md:text-left">
+          <h1 className="text-[28px] md:text-[2.25rem] max-md:text-[22px] font-pjs font-bold text-[#1a1a1a] leading-tight mb-2 max-md:mb-1 tracking-tight">
+            {fullName}
+          </h1>
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-portal-text-muted font-manrope font-semibold text-sm md:text-lg max-md:text-xs">
+            <span className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-portal-primary/60 text-[16px] md:text-[20px]">school</span>
+              Year {yearLevel}
+            </span>
+            <span className="hidden md:block w-1.5 h-1.5 rounded-full bg-emerald-200" />
+            <span>{course}</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-200" />
+            <button
+              onClick={() => setShowStudentIdModal(true)}
+              className="text-portal-primary/70 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+              title="Click to update or confirm student ID"
+            >
+              <span>ID: {studentId}</span>
+              <span className="material-symbols-outlined text-[14px]">edit</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div className="shrink-0 pb-4 max-md:pb-0 max-md:w-full max-md:mt-2">
           <button 
             onClick={handleExportProfile}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#003624] hover:bg-[#004d33] text-white font-pjs font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md shadow-emerald-950/20 cursor-pointer"
+            className="bg-[#006b5d] text-white px-6 py-2.5 rounded-xl font-pjs font-bold text-[13px] flex items-center justify-center max-md:w-full gap-2 hover:bg-[#004d33] transition-all transform active:scale-95 shadow-md shadow-emerald-900/10 cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[18px]">print</span>
-            Print Record
+            <span className="material-symbols-outlined text-[18px]">upload_file</span>
+            Export Profile
           </button>
         </div>
       </section>
 
-      {/* ══════════════════════════ METRICS OVERVIEW ══════════════════════════ */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
-        <StatusCard 
-          label="Enrollment Status"
-          value="Enrolled (Regular)"
-          badge="Active SY 2025-2026"
-          icon="check_circle"
-          color="text-emerald-700"
-          bg="bg-emerald-50"
-        />
-        <StatusCard 
-          label="Conduct Standing"
-          value={violationCount >= 5 ? "Disciplinary Probation" : violationCount >= 2 ? "Under Review" : "Good Standing"}
-          badge={violationCount === 0 ? "Clean Record" : `${violationCount} Infractions`}
-          icon="gavel"
-          color={violationCount >= 5 ? "text-rose-700" : violationCount >= 2 ? "text-amber-700" : "text-[#006b5d]"}
-          bg={violationCount >= 5 ? "bg-rose-50" : violationCount >= 2 ? "bg-amber-50" : "bg-emerald-50"}
-        />
-        <StatusCard 
-          label="SWAFO Clearance"
-          value={isCleared ? "Clearance Cleared" : "Clearance On Hold"}
-          badge={isCleared ? "Eligible" : "Pending Office Action"}
-          icon="verified_user"
-          color={isCleared ? "text-emerald-700" : "text-rose-700"}
-          bg={isCleared ? "bg-emerald-50" : "bg-rose-50"}
-        />
-        <StatusCard 
-          label="Academic Year"
-          value={`Year ${yearLevel} - 2nd Sem`}
-          badge="Graduation Track"
-          icon="calendar_month"
-          color="text-slate-700"
-          bg="bg-slate-100"
-        />
-      </section>
-
-      {/* ══════════════════════════ MAIN CONTENT TWO-COLUMN ══════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 items-start">
+      {/* ══════════════════════════ GRID LAYOUT ══════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 px-4">
         
-        {/* LEFT COLUMN: Institutional Profile Details */}
-        <div className="lg:col-span-7 space-y-6">
-          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-5 sm:p-7">
-            <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#003624] flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[20px]">account_circle</span>
+        {/* Academic Status Card */}
+        <div className="lg:col-span-5">
+          <SectionCard bgColor="bg-[#e9eded]">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="font-manrope font-semibold text-portal-text text-base sm:text-lg">Standing</span>
+                <span className={`px-4 py-1.5 rounded-2xl text-[12px] font-bold font-pjs uppercase tracking-tight shadow-sm ${
+                  standingData.tier === 'LOW' ? 'bg-[#d1fadf] text-[#006b5d]' :
+                  standingData.tier === 'CRITICAL' ? 'bg-red-100 text-red-700' :
+                  'bg-amber-100 text-amber-800'
+                }`}>
+                  {standingData.standing}
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="font-manrope font-semibold text-portal-text text-base sm:text-lg">Clearance</span>
+                <span className={`px-4 py-1.5 rounded-2xl text-[12px] font-bold font-pjs uppercase tracking-tight shadow-sm ${
+                  standingData.clearance_impact === 'CLEARED' ? 'bg-[#d1fadf] text-[#006b5d]' :
+                  standingData.clearance_impact === 'HOLD' ? 'bg-red-100 text-red-700' :
+                  'bg-amber-100 text-amber-800'
+                }`}>
+                  {standingData.clearance_impact === 'CLEARED' ? 'Cleared' : standingData.clearance_impact === 'HOLD' ? 'On Hold' : 'Conditional'}
+                </span>
+              </div>
+
+              <div className="mt-5 pt-5 border-t border-emerald-50/50">
+                <p className="text-[9px] uppercase font-pjs font-bold text-portal-text-muted/50 tracking-widest mb-1.5">Current Semester</p>
+                <h4 className="text-base sm:text-lg font-pjs font-bold text-[#003624] tracking-tight">2ND SEMESTER SY 2025 - 2026</h4>
+              </div>
+            </div>
+          </SectionCard>
+        </div>
+
+        {/* Account Details */}
+        <div className="lg:col-span-7">
+          <SectionCard bgColor="bg-[#e9eded]">
+            <div className="flex flex-col justify-center h-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 max-md:grid-cols-2 max-md:gap-4 gap-x-8 gap-y-6">
+                <DetailItem 
+                  icon="alternate_email" 
+                  label="School Email" 
+                  value={profile?.user_details?.email || email || "---"} 
+                  iconBg="bg-white" 
+                  iconColor="text-emerald-600" 
+                />
+                <DetailItem 
+                  icon="account_balance" 
+                  label="College" 
+                  value={profile?.course?.includes('Computer') ? 'College of Information and Computer Studies' : (profile?.course || '---')} 
+                  iconBg="bg-white" 
+                  iconColor="text-emerald-600" 
+                />
+                <DetailItem 
+                  icon="account_tree" 
+                  label="Department & Level" 
+                  value={`${profile?.course || '---'} (Year ${profile?.year_level || '-'})`} 
+                  iconBg="bg-white" 
+                  iconColor="text-emerald-600" 
+                />
+                <DetailItem 
+                  icon="call" 
+                  label="Contact Number" 
+                  value="0917-XXX-XXXX (Verified)" 
+                  iconBg="bg-white" 
+                  iconColor="text-emerald-600" 
+                />
+              </div>
+            </div>
+          </SectionCard>
+        </div>
+
+        {/* ══════════════════════════ INSTITUTIONAL STANDING & PRIVILEGES (FULL BREAKDOWN) ══════════════════════════ */}
+        <div className="lg:col-span-12">
+          <div className="bg-white p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-emerald-100/60 space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              <div className="flex items-center gap-3.5">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                  standingData.tier === 'LOW' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' :
+                  standingData.tier === 'CRITICAL' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                  standingData.tier === 'HIGH' ? 'bg-orange-50 text-orange-700 border border-orange-200' :
+                  'bg-amber-50 text-amber-700 border border-amber-200'
+                }`}>
+                  <span className="material-symbols-outlined text-[24px]">
+                    {standingData.tier === 'LOW' ? 'verified' : standingData.tier === 'CRITICAL' ? 'gavel' : standingData.tier === 'HIGH' ? 'warning' : 'info'}
+                  </span>
                 </div>
                 <div>
-                  <h3 className="font-pjs font-bold text-base text-slate-900 leading-tight">Institutional Enrollment Data</h3>
-                  <p className="text-xs text-slate-400 font-manrope">Verified records from Registrar &amp; SWAFO office</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg sm:text-xl font-pjs font-bold text-[#003624]">
+                      Institutional Standing &amp; Privileges
+                    </h3>
+                    <span className="text-[11px] font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
+                      {standingData.handbook_citation}
+                    </span>
+                  </div>
+                  <p className="text-[12px] font-manrope text-slate-500 mt-0.5">
+                    Comprehensive evaluation of academic honors, privileges, and clearance under the DLSU-D Student Handbook 2022–2027.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Recency Risk Score</span>
+                  <span className={`text-lg font-black font-mono ${
+                    standingData.tier === 'LOW' ? 'text-emerald-700' :
+                    standingData.tier === 'CRITICAL' ? 'text-rose-600' :
+                    standingData.tier === 'HIGH' ? 'text-orange-600' : 'text-amber-600'
+                  }`}>
+                    {standingData.score} pts
+                  </span>
+                </div>
+                <span className={`px-3.5 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider border ${
+                  standingData.tier === 'LOW' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                  standingData.tier === 'CRITICAL' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                  standingData.tier === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                  'bg-amber-50 text-amber-800 border-amber-200'
+                }`}>
+                  {standingData.standing}
+                </span>
+              </div>
+            </div>
+
+            {/* Executive Consequence Statement */}
+            <div className={`p-4 md:p-5 rounded-2xl border text-[13px] font-manrope leading-relaxed flex items-start gap-3.5 ${
+              standingData.tier === 'LOW' ? 'bg-emerald-50/60 border-emerald-100 text-emerald-950' :
+              standingData.tier === 'CRITICAL' ? 'bg-rose-50/70 border-rose-200 text-rose-950' :
+              standingData.tier === 'HIGH' ? 'bg-orange-50/70 border-orange-200 text-orange-950' :
+              'bg-amber-50/70 border-amber-200 text-amber-950'
+            }`}>
+              <span className="material-symbols-outlined text-[20px] shrink-0 mt-0.5 opacity-80">info</span>
+              <div>
+                <strong className="font-pjs font-bold uppercase tracking-wider text-[11px] block mb-0.5">Student Consequence Summary:</strong>
+                {standingData.consequence_summary}
+              </div>
+            </div>
+
+            {/* 3 Privileges Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="material-symbols-outlined text-slate-500 text-[20px]">military_tech</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      standingData.honors_eligibility === 'ELIGIBLE' ? 'bg-emerald-100 text-emerald-800' :
+                      standingData.honors_eligibility === 'UNDER_REVIEW' ? 'bg-amber-100 text-amber-800' :
+                      'bg-rose-100 text-rose-800'
+                    }`}>
+                      {(standingData.honors_eligibility || 'ELIGIBLE').replace('_', ' ')}
+                    </span>
+                  </div>
+                  <h4 className="font-pjs font-bold text-[14px] text-[#003624]">Dean's List &amp; Latin Honors</h4>
+                  <p className="font-manrope text-[11px] text-slate-500 mt-1 leading-snug">
+                    Academic award qualification contingent on clear disciplinary conduct records.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="material-symbols-outlined text-slate-500 text-[20px]">account_balance</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      standingData.clearance_impact === 'CLEARED' ? 'bg-emerald-100 text-emerald-800' :
+                      standingData.clearance_impact === 'CONDITIONAL' ? 'bg-amber-100 text-amber-800' :
+                      standingData.clearance_impact === 'RESTRICTED' ? 'bg-orange-100 text-orange-800' :
+                      'bg-rose-100 text-rose-800'
+                    }`}>
+                      {standingData.clearance_impact}
+                    </span>
+                  </div>
+                  <h4 className="font-pjs font-bold text-[14px] text-[#003624]">Institutional Clearance (§14)</h4>
+                  <p className="font-manrope text-[11px] text-slate-500 mt-1 leading-snug">
+                    Clearance status required for semester enrollment, graduation, and transcript release.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="material-symbols-outlined text-slate-500 text-[20px]">verified</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      standingData.gmc_status === 'AVAILABLE' ? 'bg-emerald-100 text-emerald-800' :
+                      standingData.gmc_status === 'DEFERRED' ? 'bg-amber-100 text-amber-800' :
+                      'bg-rose-100 text-rose-800'
+                    }`}>
+                      {standingData.gmc_status}
+                    </span>
+                  </div>
+                  <h4 className="font-pjs font-bold text-[14px] text-[#003624]">Good Moral Certificate (GMC)</h4>
+                  <p className="font-manrope text-[11px] text-slate-500 mt-1 leading-snug">
+                    Certification of moral character required for scholarship renewals, transfer, or employment.
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              <ProfileItem 
-                icon="badge" 
-                label="Student Number" 
-                value={studentId} 
-              />
-              <ProfileItem 
-                icon="alternate_email" 
-                label="Institutional Email" 
-                value={profile?.user_details?.email || email || "---"} 
-              />
-              <ProfileItem 
-                icon="account_balance" 
-                label="College / Department" 
-                value={course} 
-              />
-              <ProfileItem 
-                icon="school" 
-                label="Academic Degree" 
-                value={course} 
-              />
-              <ProfileItem 
-                icon="history_edu" 
-                label="Semester Term" 
-                value="2nd Semester SY 2025 - 2026" 
-              />
-              <ProfileItem 
-                icon="verified" 
-                label="SSO Identity" 
-                value="Verified Microsoft Entra (Azure AD)" 
-              />
+            {/* Restorative Justice Principle */}
+            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 text-[11px] font-manrope text-slate-500">
+              <span className="material-symbols-outlined text-emerald-700 text-[18px] shrink-0">hourglass_top</span>
+              <span>
+                <strong className="text-[#003624] font-semibold">Restorative Discipline Principle:</strong> Incident risk weights decay by 50% every 30 days without re-offense. Continued good conduct restores full academic privileges and clearance standing.
+              </span>
             </div>
-          </div>
-
-          {/* Quick Access to Violations */}
-          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-5 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[22px]">gavel</span>
-              </div>
-              <div>
-                <h4 className="text-sm font-pjs font-bold text-slate-900 leading-tight">Conduct Records Log</h4>
-                <p className="text-xs text-slate-400 font-manrope mt-0.5">
-                  {violationCount === 0 
-                    ? "Your record is completely clear with no active sanctions." 
-                    : `You have ${violationCount} recorded disciplinary infraction(s).`}
-                </p>
-              </div>
-            </div>
-            <Link 
-              to="/student/violations" 
-              className="w-full sm:w-auto px-5 py-2.5 bg-[#003624] hover:bg-[#004d33] text-white rounded-xl font-pjs font-bold text-xs uppercase tracking-wider transition-all text-center shrink-0 cursor-pointer shadow-sm"
-            >
-              View Disciplinary File
-            </Link>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Official Documents & Security */}
-        <div className="lg:col-span-5 space-y-6">
-          
-          {/* Academic Standing & Privileges Card */}
-          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-5 sm:p-7">
-            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#003624] flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[20px]">analytics</span>
-                </div>
-                <div>
-                  <h3 className="font-pjs font-bold text-base text-slate-900 leading-tight">Academic Standing &amp; Privileges</h3>
-                  <p className="text-xs text-slate-400 font-manrope">DLSU-D Student Handbook 2022–2027</p>
-                </div>
-              </div>
-            </div>
-
+        {/* Privacy & Security */}
+        <div className="lg:col-span-6">
+          <SectionCard title="Privacy & Security" icon="policy" subtitle="Manage your account access and credentials" bgColor="bg-[#e9eded]">
             <div className="space-y-3">
-              <StatusRow label="Enrollment" status="Active" type="success" />
-              {(() => {
-                const rs = profile?.risk_standing || {
-                  standing: 'Good Standing',
-                  tier: 'LOW',
-                  clearance_impact: 'CLEARED',
-                  honors_eligibility: 'ELIGIBLE',
-                  gmc_status: 'AVAILABLE',
-                  handbook_citation: 'Section 14',
-                };
-
-                const typeMap = {
-                  LOW: 'success',
-                  MODERATE: 'warning',
-                  HIGH: 'orange',
-                  CRITICAL: 'error',
-                };
-                const standingType = typeMap[rs.tier] || 'success';
-                const clearanceType = rs.clearance_impact === 'CLEARED' ? 'success' : rs.clearance_impact === 'HOLD' ? 'error' : 'warning';
-                const honorsType = rs.honors_eligibility === 'ELIGIBLE' ? 'success' : rs.honors_eligibility === 'UNDER_REVIEW' ? 'warning' : 'error';
-                const gmcType = rs.gmc_status === 'AVAILABLE' ? 'success' : rs.gmc_status === 'DEFERRED' ? 'warning' : 'error';
-
-                return (
-                  <>
-                    <StatusRow label="Behavioral Standing" status={rs.standing} type={standingType} />
-                    <StatusRow label="Clearance (§14)" status={rs.clearance_impact} type={clearanceType} />
-                    <StatusRow label="Dean's List / Honors" status={rs.honors_eligibility.replace('_', ' ')} type={honorsType} />
-                    <StatusRow label="Good Moral (GMC)" status={rs.gmc_status} type={gmcType} />
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* Documents & Identification Card */}
-          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-5 sm:p-7">
-            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#003624] flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[20px]">id_card</span>
+              <div className="flex items-center justify-between p-4 rounded-2xl bg-white/50 border border-white group cursor-pointer hover:bg-white transition-all">
+                <div className="flex items-center gap-4">
+                  <span className="material-symbols-outlined text-portal-text-muted/40 text-[20px]">vpn_key</span>
+                  <span className="font-manrope font-bold text-[#1a1a1a]">Two-Factor Authentication</span>
                 </div>
-                <div>
-                  <h3 className="font-pjs font-bold text-base text-slate-900 leading-tight">Identity &amp; Credentials</h3>
-                  <p className="text-xs text-slate-400 font-manrope">Digital campus pass &amp; certificates</p>
+                <div className="flex items-center gap-3">
+                  <span className="px-4 py-1.5 bg-emerald-100 text-[#006b5d] text-[11px] font-bold rounded-full uppercase tracking-widest">Enabled</span>
                 </div>
               </div>
             </div>
+          </SectionCard>
+        </div>
 
-            <div className="space-y-3">
-              {/* Barcode Registration Item */}
-              <div 
-                onClick={() => setShowBarcodeModal(true)}
-                className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 hover:bg-emerald-50/50 border border-slate-100 hover:border-emerald-200 transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-emerald-700 shadow-xs border border-emerald-50 shrink-0">
-                    <span className="material-symbols-outlined text-[18px]">barcode_scanner</span>
-                  </div>
-                  <div className="min-w-0">
-                    <h5 className="font-pjs font-bold text-xs text-slate-800 group-hover:text-[#003624] leading-tight truncate">
-                      Physical ID Barcode
-                    </h5>
-                    <p className="text-[10.5px] text-slate-400 font-manrope truncate mt-0.5">
-                      {profile?.barcode_value ? `Barcode: ${profile.barcode_value}` : 'Upload ID image or scan barcode'}
-                    </p>
-                  </div>
-                </div>
-                <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors shrink-0 ${
-                  profile?.barcode_value ? 'bg-emerald-100 text-[#006b5d]' : 'bg-slate-100 text-slate-600'
-                }`}>
-                  {profile?.barcode_value ? 'Linked · Manage' : 'Register ID'}
-                </span>
-              </div>
+        {/* Digital ID & Documents */}
+        <div className="lg:col-span-6">
+          <SectionCard title="Digital ID & Documents" icon="badge" subtitle="Access verified academic certificates" bgColor="bg-[#e9eded]">
+             <div className="space-y-3">
+               <div 
+                 onClick={() => setShowBarcodeModal(true)}
+                 className="flex items-center justify-between p-3.5 rounded-xl border border-emerald-50/50 hover:bg-white/80 transition-all cursor-pointer group bg-white/50"
+               >
+                 <div className="flex items-center gap-3">
+                   <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-50">
+                     <span className="material-symbols-outlined text-[18px]">barcode_scanner</span>
+                   </div>
+                   <div>
+                     <h5 className="font-pjs font-bold text-[#003624] text-[13px] leading-none mb-1 text-left">Physical ID Barcode</h5>
+                     <p className="text-[11px] font-manrope font-medium text-portal-text-muted/60">{profile?.barcode_value ? `Linked (${profile.barcode_value})` : 'Click to register barcode'}</p>
+                   </div>
+                 </div>
+                 <button className="w-8 h-8 rounded-full flex items-center justify-center text-portal-text-muted/40 group-hover:bg-[#006b5d] group-hover:text-white transition-all">
+                   <span className="material-symbols-outlined text-[16px]">edit</span>
+                 </button>
+               </div>
 
-              <DocRow 
-                icon="badge"
-                title="Digital Student ID Card"
-                subtitle="NFC & Barcode Verified"
-                actionText="View ID"
-                onClick={() => setShowIdModal(true)}
-              />
-              <DocRow 
-                icon="menu_book"
-                title="Campus Student Handbook"
-                subtitle="Rules, policies & procedures"
-                actionText="Open"
-                to="/student/handbook"
-              />
-              <DocRow 
-                icon="verified"
-                title="Good Moral Character Status"
-                subtitle={profile?.risk_standing?.gmc_status === 'AVAILABLE' ? "Eligible for automatic issuance" : "Under review"}
-                actionText="Check"
-                onClick={() => setShowDocNotice("Good Moral Certificate")}
-              />
-              <DocRow 
-                icon="description"
-                title="Transcript of Records"
-                subtitle={profile?.risk_standing?.clearance_impact === 'HOLD' ? 'Locked — Section 14 Clearance Hold' : 'Ready for request'}
-                actionText={profile?.risk_standing?.clearance_impact === 'HOLD' ? 'Locked' : 'Request'}
-                onClick={() => setShowDocNotice("Transcript Clearance Status")}
-              />
-            </div>
-          </div>
-
-          {/* Security & Access */}
-          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-5 sm:p-7">
-            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#003624] flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[20px]">security</span>
-                </div>
-                <div>
-                  <h3 className="font-pjs font-bold text-base text-slate-900 leading-tight">Access &amp; Privacy</h3>
-                  <p className="text-xs text-slate-400 font-manrope">University single sign-on credentials</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <span className="material-symbols-outlined text-emerald-600 text-[18px]">lock</span>
-                  <span className="font-semibold text-slate-700">Multi-Factor Authentication</span>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full font-bold uppercase text-[9.5px] bg-emerald-100 text-emerald-800">
-                  Enforced
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <span className="material-symbols-outlined text-emerald-600 text-[18px]">verified_user</span>
-                  <span className="font-semibold text-slate-700">Account Type</span>
-                </div>
-                <span className="font-bold text-slate-600">Student Account</span>
-              </div>
-            </div>
-          </div>
-
+               <DocumentLink title="Digital Student ID" subtitle="Synced with campus directory" icon="id_card" actionIcon="visibility" />
+               <DocumentLink title="Transcript of Records" subtitle="Ready for download (Unofficial)" icon="description" actionIcon="download" />
+             </div>
+          </SectionCard>
         </div>
 
       </div>
 
+      {/* Barcode Registration Modal */}
+      <BarcodeRegistrationModal
+        isOpen={showBarcodeModal}
+        onClose={() => setShowBarcodeModal(false)}
+        studentNumber={studentId}
+        onSuccess={(newBarcode) => {
+          setProfile(prev => ({ ...prev, barcode_value: newBarcode }));
+        }}
+      />
+
+      {/* Student Number Confirmation Modal */}
+      <StudentNumberPromptModal
+        isOpen={showStudentIdModal}
+        onClose={() => setShowStudentIdModal(false)}
+        user={user}
+        profile={profile}
+        onSuccess={(updatedProfile) => {
+          setProfile(updatedProfile);
+        }}
+      />
 
       {/* ══════════════════════════ DIGITAL ID MODAL ══════════════════════════ */}
       {showIdModal && createPortal(
@@ -427,9 +593,15 @@ export default function StudentProfile() {
 
               {/* ID Body */}
               <div className="flex items-center gap-5 relative z-10">
-                <div className="w-24 h-28 rounded-2xl bg-white/10 border-2 border-white/20 flex flex-col items-center justify-center text-white shrink-0 shadow-inner">
-                  <span className="font-pjs font-black text-3xl">{initials}</span>
-                  <span className="text-[8px] uppercase tracking-wider text-emerald-300 font-bold mt-1">Photo ID</span>
+                <div className="w-24 h-28 rounded-2xl bg-white/10 border-2 border-white/20 flex flex-col items-center justify-center text-white shrink-0 shadow-inner overflow-hidden relative">
+                  {profilePicture ? (
+                    <img src={profilePicture} alt={fullName} className="w-full h-full object-cover" />
+                  ) : (
+                    <>
+                      <span className="font-pjs font-black text-3xl">{initials}</span>
+                      <span className="text-[8px] uppercase tracking-wider text-emerald-300 font-bold mt-1">Photo ID</span>
+                    </>
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <h4 className="font-pjs font-bold text-base text-white truncate leading-snug">{fullName}</h4>
@@ -462,6 +634,99 @@ export default function StudentProfile() {
         document.body
       )}
 
+      {/* ══════════════════════════ PROFILE PICTURE MODAL ══════════════════════════ */}
+      {showPhotoModal && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-[440px] rounded-3xl overflow-hidden shadow-2xl bg-white border border-slate-100 animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-5 bg-gradient-to-r from-[#003624] to-[#004d33] text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white border border-white/20">
+                  <span className="material-symbols-outlined text-[20px]">add_a_photo</span>
+                </div>
+                <div>
+                  <h3 className="font-pjs font-bold text-base leading-tight">Student Profile Picture</h3>
+                  <p className="text-[10px] text-emerald-200/80 font-manrope font-semibold">Official institutional photo ID</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowPhotoModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 flex flex-col items-center text-center">
+              {/* Photo Preview Frame */}
+              <div className="relative mb-5">
+                <div className="w-32 h-32 rounded-3xl bg-[#003624] ring-4 ring-emerald-100 shadow-xl overflow-hidden flex items-center justify-center text-white font-pjs font-extrabold text-4xl">
+                  {profilePicture ? (
+                    <img src={profilePicture} alt={fullName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{initials}</span>
+                  )}
+                </div>
+                {profilePicture && (
+                  <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-600 rounded-full border-2 border-white flex items-center justify-center text-white shadow" title="Active Photo">
+                    <span className="material-symbols-outlined text-[18px]">check</span>
+                  </div>
+                )}
+              </div>
+
+              <h4 className="font-pjs font-bold text-slate-900 text-base mb-1">{fullName}</h4>
+              <p className="text-xs text-slate-500 font-manrope mb-6 max-w-xs">
+                Upload a clear portrait or headshot photo. Accepted formats: JPG, PNG, or WebP.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="w-full space-y-2.5">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileSelect} 
+                  accept="image/png,image/jpeg,image/webp,image/jpg" 
+                  className="hidden" 
+                />
+
+                <button
+                  type="button"
+                  disabled={uploadingPhoto}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-3 px-4 rounded-xl bg-[#003624] hover:bg-[#004d33] active:scale-[0.99] text-white font-pjs font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/20 cursor-pointer disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[18px]">upload</span>
+                  <span>{uploadingPhoto ? "Processing..." : profilePicture ? "Choose Different Photo" : "Upload Photo"}</span>
+                </button>
+
+                {profilePicture && (
+                  <button
+                    type="button"
+                    disabled={uploadingPhoto}
+                    onClick={handleRemovePhoto}
+                    className="w-full py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-[0.99] text-rose-700 font-pjs font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                    <span>Remove Profile Photo</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowPhotoModal(false)}
+                  className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-[0.99] text-slate-600 font-pjs font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Document Notice Toast / Modal */}
       {showDocNotice && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -486,99 +751,68 @@ export default function StudentProfile() {
         document.body
       )}
 
-      {/* Barcode Registration Modal */}
-      <BarcodeRegistrationModal
-        isOpen={showBarcodeModal}
-        onClose={() => setShowBarcodeModal(false)}
-        profile={profile}
-        onSuccess={(newBarcode) => {
-          setProfile(prev => ({ ...prev, barcode_value: newBarcode }));
-          fetchProfile();
-        }}
-      />
-
-    </div>
-  );
-}
-
-/* ══════════════════════════ HELPER COMPONENTS ══════════════════════════ */
-
-function StatusCard({ label, value, badge, icon, color, bg }) {
-  return (
-    <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 font-pjs">
-          {label}
-        </span>
-        <div className={`w-8 h-8 rounded-xl ${bg} ${color} flex items-center justify-center shrink-0`}>
-          <span className="material-symbols-outlined text-[17px]">{icon}</span>
+      {/* Toast Notification */}
+      {photoToast && (
+        <div className="fixed bottom-6 right-6 z-[999999] bg-[#003624] text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-500/30 animate-in slide-in-from-bottom-5 duration-300">
+          <span className="material-symbols-outlined text-emerald-400 text-[22px]">check_circle</span>
+          <span className="text-xs sm:text-sm font-pjs font-bold">{photoToast}</span>
         </div>
-      </div>
-      <div>
-        <h4 className="text-sm sm:text-base font-bold text-slate-900 font-pjs leading-tight truncate">
-          {value}
-        </h4>
-        <span className="text-[10px] font-medium text-slate-500 font-manrope mt-0.5 inline-block">
-          {badge}
-        </span>
-      </div>
+      )}
+
     </div>
   );
 }
 
-function ProfileItem({ icon, label, value }) {
+/* ══════════════════════════ SUB-COMPONENTS ══════════════════════════ */
+
+function SectionCard({ title, icon, subtitle, children, bgColor = "bg-white" }) {
   return (
-    <div className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/70 border border-slate-100">
-      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-emerald-700 shadow-xs border border-emerald-50 shrink-0 mt-0.5">
-        <span className="material-symbols-outlined text-[17px]">{icon}</span>
+    <div className={`${bgColor} p-5 max-md:p-4 rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-black/5 h-full group transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] flex flex-col justify-between`}>
+      {title && (
+        <div className="flex items-start gap-3 mb-5 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-[#006b5d] border border-emerald-50">
+            <span className="material-symbols-outlined fill-1 text-[20px]">{icon}</span>
+          </div>
+          <div>
+            <h3 className="text-lg font-pjs font-bold text-[#1a1a1a] tracking-tight">{title}</h3>
+            {subtitle && <p className="text-[13px] font-manrope text-portal-text-muted/60 font-medium mt-0.5">{subtitle}</p>}
+          </div>
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function DetailItem({ icon, label, value, iconBg, iconColor }) {
+  return (
+    <div className="flex items-start gap-4 max-md:gap-2">
+      <div className={`w-11 h-11 max-md:w-8 max-md:h-8 max-md:rounded-lg rounded-xl ${iconBg} ${iconColor} flex items-center justify-center shrink-0 shadow-xs`}>
+        <span className="material-symbols-outlined text-[20px] max-md:text-[16px]">{icon}</span>
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-pjs mb-0.5">{label}</p>
-        <p className="text-xs sm:text-[13px] font-semibold text-slate-800 font-manrope leading-snug break-words">{value}</p>
+      <div className="space-y-0.5 max-md:space-y-0 overflow-hidden">
+        <p className="text-[11px] max-md:text-[9px] font-pjs font-bold text-portal-text-muted uppercase tracking-widest leading-tight">{label}</p>
+        <p className="font-manrope font-bold text-[#003624] leading-tight text-[15px] max-md:text-[12px] truncate" title={value}>{value}</p>
       </div>
     </div>
   );
 }
 
-function DocRow({ icon, title, subtitle, actionText, onClick, to }) {
-  const content = (
-    <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 hover:bg-emerald-50/50 border border-slate-100 hover:border-emerald-200 transition-all cursor-pointer group">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-emerald-700 shadow-xs border border-emerald-50 shrink-0">
+function DocumentLink({ title, subtitle, icon, actionIcon }) {
+  return (
+    <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-50/50 hover:bg-white/80 transition-all cursor-pointer group shadow-xs bg-white/50">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-50">
           <span className="material-symbols-outlined text-[18px]">{icon}</span>
         </div>
-        <div className="min-w-0">
-          <h5 className="font-pjs font-bold text-xs text-slate-800 group-hover:text-[#003624] leading-tight truncate">{title}</h5>
-          <p className="text-[10.5px] text-slate-400 font-manrope truncate mt-0.5">{subtitle}</p>
+        <div>
+          <h5 className="font-pjs font-bold text-[#003624] text-[13px] leading-none mb-1 text-left">{title}</h5>
+          <p className="text-[11px] font-manrope font-medium text-portal-text-muted/50">{subtitle}</p>
         </div>
       </div>
-      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white px-2.5 py-1 rounded-lg transition-colors shrink-0">
-        {actionText}
-      </span>
-    </div>
-  );
-
-  if (to) {
-    return <Link to={to} className="block no-underline">{content}</Link>;
-  }
-
-  return <div onClick={onClick}>{content}</div>;
-}
-
-function StatusRow({ label, status, type }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="font-manrope font-semibold text-portal-text text-[14px]">{label}</span>
-      <span className={`px-4 py-1.5 rounded-2xl text-[12px] font-bold font-pjs uppercase tracking-tight shadow-sm ${
-        type === 'success' ? 'bg-[#d1fadf] text-[#006b5d]' : 
-        type === 'warning' ? 'bg-amber-100 text-amber-800' :
-        type === 'orange' ? 'bg-orange-100 text-orange-800' :
-        type === 'error' ? 'bg-red-100 text-red-700' :
-        'bg-slate-100 text-slate-600'
-      }`}>
-        {status}
-      </span>
+      <button className="w-8 h-8 rounded-full flex items-center justify-center text-portal-text-muted/40 group-hover:bg-[#006b5d] group-hover:text-white transition-all">
+        <span className="material-symbols-outlined text-[16px]">{actionIcon}</span>
+      </button>
     </div>
   );
 }
-

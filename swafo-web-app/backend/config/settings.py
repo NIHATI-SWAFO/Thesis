@@ -207,3 +207,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # AI Assistant Settings
 GEMINI_API_KEY = env('GEMINI_API_KEY', default='')
 HANDBOOK_PATH = env('HANDBOOK_PATH', default=str(BASE_DIR.parent.parent / 'additional context' / 'handbook_reference.md'))
+
+# Email & Password Recovery Settings
+EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='SWAFO Security Portal <swafo-noreply@dlsud.edu.ph>')
+FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:5173')
+

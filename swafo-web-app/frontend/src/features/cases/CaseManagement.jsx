@@ -31,9 +31,14 @@ export default function CaseManagement({ role }) {
       : API_ENDPOINTS.VIOLATIONS_LIST;
     setLoading(true);
 
+    const appealHeaders = {};
+    if (user?.token && user.token !== 'undefined' && user.token !== 'null') {
+      appealHeaders["Authorization"] = `Bearer ${user.token}`;
+    }
+
     Promise.all([
-      fetch(url).then(r => r.json()),
-      fetch(API_ENDPOINTS.VIOLATIONS_APPEALS, { headers: { "Authorization": `Bearer ${user?.token}` } }).then(r => r.json()).catch(() => [])
+      fetch(url).then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch(API_ENDPOINTS.VIOLATIONS_APPEALS, { headers: appealHeaders }).then(r => r.ok ? r.json() : []).catch(() => [])
     ])
       .then(([violData, appealsData]) => {
         setViolations(Array.isArray(violData) ? violData : (violData.results || []));
@@ -44,7 +49,7 @@ export default function CaseManagement({ role }) {
         console.error('Error fetching data:', err);
         setLoading(false);
       });
-  }, [collegeFilter, user?.token]);
+  }, [collegeFilter, user]);
 
   useEffect(() => {
     if (role === 'admin') {
@@ -758,6 +763,7 @@ export default function CaseManagement({ role }) {
           </div>
 
           {/* Pending Appeals Section */}
+          {(user?.role === 'DIRECTOR' || user?.role === 'ADMIN' || role === 'admin') && (
           <div className="bg-white rounded-[2.5rem] p-10 shadow-[0_4px_40px_rgba(0,0,0,0.02)] border border-slate-50 flex flex-col gap-8">
             <div className="flex justify-between items-center">
               <h3 className="text-[18px] font-pjs font-bold text-[#111827]">Pending Appeals</h3>
@@ -774,7 +780,7 @@ export default function CaseManagement({ role }) {
                     color="bg-amber-50 text-amber-600"
                     title={a.student_name}
                     sub={<span className="flex items-center gap-1.5 truncate">
-                      Ref: {a.violation_code}
+                      Ref: {a.reference_id || a.violation_code}
                     </span>}
                     time={`${dateStr}, ${timeStr}`}
                     onClick={() => setSelectedAppeal(a)}
@@ -794,6 +800,7 @@ export default function CaseManagement({ role }) {
               </button>
             </div>
           </div>
+          )}
         </div>
       </div>
       {selectedCase && ReactDOM.createPortal(
@@ -1272,12 +1279,16 @@ function AppealReviewWrapper({ appealData, onClose, user }) {
         payload.reviewer_remarks = remarks;
       }
 
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      if (user?.token && user.token !== 'undefined' && user.token !== 'null') {
+        headers['Authorization'] = `Bearer ${user.token}`;
+      }
+
       const res = await fetch(API_ENDPOINTS.VIOLATIONS_APPEALS_UPDATE(appealData.id), {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`
-        },
+        headers,
         body: JSON.stringify(payload)
       });
       if (res.ok) {
@@ -1375,7 +1386,7 @@ function AllAppealsModal({ appeals, onClose, onSelectAppeal }) {
                         <span className="text-[14px] font-bold text-gray-900">{a.student_name}</span>
                         {badge}
                       </div>
-                      <p className="text-[12px] font-bold text-slate-500">Ref: {a.violation_code} • Subj: {a.subject}</p>
+                      <p className="text-[12px] font-bold text-slate-500">Ref: {a.reference_id || a.violation_code} • Subj: {a.subject}</p>
                     </div>
                     <div className="text-right shrink-0">
                       <span className="text-[11px] font-bold text-slate-400 block">{dateStr}</span>

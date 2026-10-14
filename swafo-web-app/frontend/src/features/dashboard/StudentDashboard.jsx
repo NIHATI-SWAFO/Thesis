@@ -1,33 +1,88 @@
 import { useAuth } from "../../context/AuthContext";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { API_ENDPOINTS } from "../../api/config";
 import BarcodeRegistrationModal from "../../components/BarcodeRegistrationModal";
 
 export default function StudentDashboard() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [violations, setViolations] = useState([]);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedViolation, setSelectedViolation] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
+  const [isAppealing, setIsAppealing] = useState(false);
+  const [appealData, setAppealData] = useState({ subject: '', description: '' });
+  const [isSubmittingAppeal, setIsSubmittingAppeal] = useState(false);
+  const [appealSuccess, setAppealSuccess] = useState(false);
 
   const displayName = profile?.user_details?.full_name || profile?.user?.full_name || user?.name || user?.email?.split('@')[0] || 'Student';
-  const firstName = displayName.split(' ')[0];
+  const rawFirstName = displayName.split(' ')[0] || 'Student';
+  const firstName = rawFirstName.charAt(0).toUpperCase() + rawFirstName.slice(1).toLowerCase();
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setTimeout(() => {
+      setIsAppealing(false);
+      setAppealSuccess(false);
+      setAppealData({ subject: '', description: '' });
+    }, 300);
+  };
+
+  const handleAppealSubmit = async (e) => {
+    e.preventDefault();
+    if (!appealData.subject || !appealData.description || !selectedViolation) return;
+
+    setIsSubmittingAppeal(true);
+    try {
+      const payload = {
+        violation: selectedViolation.rawId || selectedViolation.id,
+        subject: appealData.subject,
+        description: appealData.description,
+      };
+
+      const headers = {
+        "Content-Type": "application/json"
+      };
+      if (user?.token) {
+        headers["Authorization"] = `Bearer ${user.token}`;
+      }
+
+      const res = await fetch(API_ENDPOINTS.VIOLATIONS_APPEALS_SUBMIT, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        setAppealSuccess(true);
+      } else {
+        console.warn("Failed to submit appeal");
+      }
+    } catch (err) {
+      console.error("Dashboard appeal submit error:", err);
+    } finally {
+      setIsSubmittingAppeal(false);
+    }
+  };
 
   const fetchData = async () => {
-    if (!user?.email) return;
+    if (!user?.email) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const profileResp = await fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${user.email}`);
+      const profileResp = await fetch(`${API_ENDPOINTS.PROFILE_BY_EMAIL}?email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name || '')}`);
       if (profileResp.ok) setProfile(await profileResp.json());
 
-      const violationsResp = await fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?email=${user.email}`);
-      const violationsData = await violationsResp.json();
-      setViolations(Array.isArray(violationsData) ? violationsData : (violationsData.results || []));
+      const violationsResp = await fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?email=${encodeURIComponent(user.email)}`);
+      if (violationsResp.ok) {
+        const violationsData = await violationsResp.json();
+        setViolations(Array.isArray(violationsData) ? violationsData : (violationsData.results || []));
+      }
     } catch (err) {
       console.error("Dashboard sync error:", err);
     } finally {
@@ -41,6 +96,9 @@ export default function StudentDashboard() {
 
   const handleTakeAction = (v) => {
     setSelectedViolation(v);
+    setIsAppealing(false);
+    setAppealSuccess(false);
+    setAppealData({ subject: '', description: '' });
     setShowModal(true);
   };
 
@@ -75,14 +133,14 @@ export default function StudentDashboard() {
     <div className="max-w-[1400px] mx-auto space-y-6 sm:space-y-8 animate-fade-in-up pb-10">
 
       {/* ═══════════════════════ HEADER & GREETING ═══════════════════════ */}
-      <section className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-emerald-100/60 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5">
+      <section className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-emerald-100/60 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-5">
         <div className="flex items-start sm:items-center gap-4">
           <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#003624] text-white flex items-center justify-center shrink-0 shadow-lg shadow-emerald-950/20">
             <span className="material-symbols-outlined text-[30px] sm:text-[34px]">school</span>
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="text-xs font-manrope font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="text-[11px] font-manrope font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-emerald-100">
                 Student Portal
               </span>
               <span className="text-xs text-slate-400 font-medium">
@@ -92,330 +150,162 @@ export default function StudentDashboard() {
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-pjs font-bold text-[#003624] tracking-tight leading-tight truncate">
               Welcome back, {firstName}
             </h1>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-slate-500 font-medium font-manrope">
-              <span className="flex items-center gap-1 font-semibold text-slate-700">
-                <span className="material-symbols-outlined text-[15px] text-emerald-600">badge</span>
+            <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-slate-500 font-manrope">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-100/80 font-mono font-bold text-[11px]">
+                <span className="material-symbols-outlined text-[14px] text-emerald-700">badge</span>
                 {profile?.student_number || '---'}
               </span>
-              <span className="text-slate-300">•</span>
-              <span className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-[15px] text-emerald-600">account_balance</span>
-                <span className="truncate max-w-[260px] sm:max-w-none">{profile?.course || 'Academic Program'}</span>
+              <span className="text-slate-300 font-bold">•</span>
+              <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium text-xs truncate max-w-[280px] sm:max-w-none">
+                <span className="material-symbols-outlined text-[14px] text-slate-400">account_balance</span>
+                {profile?.course || 'Academic Program'}
               </span>
             </div>
           </div>
         </div>
-        {/* Status Badges - Behavioral Standing, Clearance & ID Barcode */}
-        <div className="flex flex-wrap items-center gap-2 pt-2.5 md:pt-0 border-t md:border-t-0 border-slate-100 w-full md:w-auto">
-          <div className={`flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full border text-[11px] sm:text-[12px] font-pjs font-bold tracking-tight uppercase transition-all shadow-xs ${
-            standingData.tier === 'LOW' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
-            standingData.tier === 'CRITICAL' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-            standingData.tier === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-            'bg-amber-50 text-amber-800 border-amber-200'
-          }`}>
-            <span className="material-symbols-outlined text-[15px] shrink-0 fill-1">
-              {standingData.tier === 'LOW' ? 'verified' : standingData.tier === 'CRITICAL' ? 'gavel' : standingData.tier === 'HIGH' ? 'warning' : 'info'}
-            </span>
-            <span>{standingData.standing}</span>
-          </div>
 
-          <div className={`flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full border text-[11px] sm:text-[12px] font-pjs font-bold tracking-tight uppercase transition-all shadow-xs ${
-            standingData.clearance_impact === 'HOLD' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-            standingData.clearance_impact === 'RESTRICTED' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-            standingData.clearance_impact === 'CONDITIONAL' ? 'bg-amber-50 text-amber-800 border-amber-200' :
-            'bg-emerald-50/70 text-emerald-700 border-emerald-200/80'
-          }`}>
-            <span className="material-symbols-outlined text-[15px] shrink-0">
-              {standingData.clearance_impact === 'HOLD' ? 'block' : 'verified_user'}
+        {/* Unified Status & Clearance Capsule */}
+        <div className="flex items-center divide-x divide-slate-100 bg-slate-50/90 rounded-2xl border border-slate-200/70 p-1.5 sm:p-2 shadow-xs shrink-0 self-stretch sm:self-auto justify-between sm:justify-start">
+          {/* Disciplinary Standing */}
+          <Link
+            to="/student/profile"
+            title="View conduct standing and handbook details on Academic Profile"
+            className="flex-1 sm:flex-initial px-3 sm:px-4 py-1.5 text-center no-underline group hover:bg-white rounded-xl transition-all cursor-pointer"
+          >
+            <span className="text-[10px] font-pjs font-bold text-slate-400 uppercase tracking-wider block">
+              Standing
             </span>
-            <span>
-              Clearance: {standingData.clearance_impact === 'HOLD' ? 'On Hold (§14)' : standingData.clearance_impact === 'CLEARED' ? 'Cleared (§14)' : standingData.clearance_impact}
-            </span>
-          </div>
+            <div className="flex items-center justify-center gap-1.5 mt-0.5">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${
+                standingData.tier === 'LOW' ? 'bg-emerald-500 ring-2 ring-emerald-100' :
+                standingData.tier === 'CRITICAL' ? 'bg-rose-500 ring-2 ring-rose-100' :
+                standingData.tier === 'HIGH' ? 'bg-orange-500 ring-2 ring-orange-100' :
+                'bg-amber-500 ring-2 ring-amber-100'
+              }`} />
+              <span className={`text-xs font-pjs font-bold truncate ${
+                standingData.tier === 'LOW' ? 'text-emerald-800' :
+                standingData.tier === 'CRITICAL' ? 'text-rose-700' :
+                standingData.tier === 'HIGH' ? 'text-orange-700' :
+                'text-amber-800'
+              }`}>
+                {standingData.standing}
+              </span>
+            </div>
+          </Link>
 
+          {/* Institutional Clearance */}
+          <Link
+            to="/student/profile"
+            title="View institutional clearance status on Academic Profile"
+            className="flex-1 sm:flex-initial px-3 sm:px-4 py-1.5 text-center no-underline group hover:bg-white rounded-xl transition-all cursor-pointer"
+          >
+            <span className="text-[10px] font-pjs font-bold text-slate-400 uppercase tracking-wider block">
+              Clearance
+            </span>
+            <div className="flex items-center justify-center gap-1.5 mt-0.5">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${
+                standingData.clearance_impact === 'CLEARED' ? 'bg-emerald-500 ring-2 ring-emerald-100' :
+                standingData.clearance_impact === 'HOLD' ? 'bg-rose-500 ring-2 ring-rose-100' :
+                'bg-amber-500 ring-2 ring-amber-100'
+              }`} />
+              <span className={`text-xs font-pjs font-bold truncate ${
+                standingData.clearance_impact === 'CLEARED' ? 'text-emerald-800' :
+                standingData.clearance_impact === 'HOLD' ? 'text-rose-700' :
+                'text-amber-800'
+              }`}>
+                {standingData.clearance_impact === 'HOLD' ? 'On Hold' :
+                 standingData.clearance_impact === 'CLEARED' ? 'Cleared' :
+                 'Conditional'}
+              </span>
+            </div>
+          </Link>
+
+          {/* Physical ID Barcode */}
           <button
             onClick={() => setShowBarcodeModal(true)}
-            className={`flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full border text-[11px] sm:text-[12px] font-pjs font-bold tracking-tight uppercase transition-all shadow-xs cursor-pointer hover:opacity-90 ${
-              profile?.barcode_value ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'
-            }`}
-            title="Click to view or register physical ID barcode"
+            title={profile?.barcode_value ? `Linked Barcode: ${profile.barcode_value} (Click to re-scan)` : 'Click to link your physical ID barcode'}
+            className="flex-1 sm:flex-initial px-3 sm:px-4 py-1.5 text-center group hover:bg-white rounded-xl transition-all cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[15px] shrink-0">
-              {profile?.barcode_value ? 'barcode_scanner' : 'add_photo_alternate'}
+            <span className="text-[10px] font-pjs font-bold text-slate-400 uppercase tracking-wider block">
+              ID Barcode
             </span>
-            <span>{profile?.barcode_value ? `Barcode: ${profile.barcode_value}` : 'Barcode: Not Linked'}</span>
+            <div className="flex items-center justify-center gap-1.5 mt-0.5">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${
+                profile?.barcode_value ? 'bg-emerald-500 ring-2 ring-emerald-100' : 'bg-slate-400'
+              }`} />
+              <span className={`text-xs font-pjs font-bold truncate ${
+                profile?.barcode_value ? 'text-emerald-800' : 'text-slate-600'
+              }`}>
+                {profile?.barcode_value ? 'Linked' : 'Not Linked'}
+              </span>
+            </div>
           </button>
         </div>
       </section>
 
-      {/* ═══════════════════════ BARCODE REGISTRATION & STATUS BANNER ═══════════════════════ */}
-      {profile && (
-        !profile.barcode_value ? (
-          <section className="bg-gradient-to-r from-[#003624] to-[#015237] text-white p-5 md:p-6 rounded-2xl sm:rounded-3xl shadow-lg border border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shrink-0">
-                <span className="material-symbols-outlined text-[28px]">barcode_scanner</span>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="font-pjs font-bold text-[16px] leading-tight">
-                    Link Physical ID Barcode
-                  </h4>
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold uppercase tracking-wider">
-                    Not Linked
-                  </span>
-                </div>
-                <p className="font-manrope text-[12px] text-emerald-100/70 mt-1 max-w-xl">
-                  Upload a photo or scan your physical DLSU-D ID barcode to activate instant officer scanning during campus patrols.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowBarcodeModal(true)}
-              className="shrink-0 bg-white hover:bg-emerald-50 text-[#003624] font-pjs font-black text-[12px] px-6 py-3 rounded-xl uppercase tracking-wider transition-all active:scale-95 shadow-md flex items-center gap-2 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[18px]">add_a_photo</span>
-              Register Barcode
-            </button>
-          </section>
-        ) : (
-          <section className="bg-white p-5 md:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-emerald-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#003624] border border-emerald-100 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[28px]">barcode_scanner</span>
-              </div>
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <h4 className="font-pjs font-bold text-[16px] text-[#003624] leading-tight">
-                    Institutional ID Barcode Linked
-                  </h4>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[12px]">verified</span> Active
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="font-manrope text-[12px] text-slate-500">Registered Code:</span>
-                  <span className="font-mono text-[12px] font-black text-[#003624] bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
-                    {profile.barcode_value}
-                  </span>
-                  <span className="text-[11px] text-slate-400 font-medium hidden md:inline">· Active for officer patrol scanning</span>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowBarcodeModal(true)}
-              className="shrink-0 bg-emerald-50 hover:bg-emerald-100 text-[#003624] border border-emerald-200 font-pjs font-bold text-[12px] px-5 py-2.5 rounded-xl uppercase tracking-wider transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[16px]">edit</span>
-              Update / Re-Scan ID
-            </button>
-          </section>
-        )
-      )}
-
-      {/* ═══════════════════════ INSTITUTIONAL STANDING & PRIVILEGES ═══════════════════════ */}
-      <section className="bg-white p-6 md:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-emerald-100/60 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-          <div className="flex items-center gap-3.5">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-              standingData.tier === 'LOW' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' :
-              standingData.tier === 'CRITICAL' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
-              standingData.tier === 'HIGH' ? 'bg-orange-50 text-orange-700 border border-orange-200' :
-              'bg-amber-50 text-amber-700 border border-amber-200'
-            }`}>
-              <span className="material-symbols-outlined text-[24px]">
-                {standingData.tier === 'LOW' ? 'verified' : standingData.tier === 'CRITICAL' ? 'gavel' : standingData.tier === 'HIGH' ? 'warning' : 'info'}
-              </span>
+      {/* ═══════════════════════ UNLINKED BARCODE PROMPT BANNER ═══════════════════════ */}
+      {profile && !profile.barcode_value && (
+        <section className="bg-gradient-to-r from-[#003624] to-[#015237] text-white p-5 md:p-6 rounded-2xl sm:rounded-3xl shadow-lg border border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shrink-0">
+              <span className="material-symbols-outlined text-[28px]">barcode_scanner</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-xl font-pjs font-bold text-[#003624]">
-                  Institutional Standing &amp; Privileges
-                </h3>
-                <span className="text-[11px] font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
-                  {standingData.handbook_citation}
+                <h4 className="font-pjs font-bold text-[16px] leading-tight">
+                  Link Physical ID Barcode
+                </h4>
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold uppercase tracking-wider">
+                  Not Linked
                 </span>
               </div>
-              <p className="text-[12px] font-manrope text-slate-500 mt-0.5">
-                Evaluation of academic honors, privileges, and clearance under the DLSU-D Student Handbook 2022–2027.
+              <p className="font-manrope text-[12px] text-emerald-100/70 mt-1 max-w-xl">
+                Upload a photo or scan your physical DLSU-D ID barcode to activate instant officer scanning during campus patrols.
               </p>
             </div>
           </div>
+          <button
+            onClick={() => setShowBarcodeModal(true)}
+            className="shrink-0 bg-white hover:bg-emerald-50 text-[#003624] font-pjs font-black text-[12px] px-6 py-3 rounded-xl uppercase tracking-wider transition-all active:scale-95 shadow-md flex items-center gap-2 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">add_a_photo</span>
+            Register Barcode
+          </button>
+        </section>
+      )}
 
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Recency Risk Score</span>
-              <span className={`text-lg font-black font-mono ${
-                standingData.tier === 'LOW' ? 'text-emerald-700' :
-                standingData.tier === 'CRITICAL' ? 'text-rose-600' :
-                standingData.tier === 'HIGH' ? 'text-orange-600' : 'text-amber-600'
-              }`}>
-                {standingData.score} pts
-              </span>
-            </div>
-            <span className={`px-3.5 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider border ${
-              standingData.tier === 'LOW' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
-              standingData.tier === 'CRITICAL' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-              standingData.tier === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-              'bg-amber-50 text-amber-800 border-amber-200'
-            }`}>
-              {standingData.standing}
-            </span>
-          </div>
-        </div>
 
-        {/* Executive Consequence Statement */}
-        <div className={`p-4 md:p-5 rounded-2xl border text-[13px] font-manrope leading-relaxed flex items-start gap-3.5 ${
-          standingData.tier === 'LOW' ? 'bg-emerald-50/60 border-emerald-100 text-emerald-950' :
-          standingData.tier === 'CRITICAL' ? 'bg-rose-50/70 border-rose-200 text-rose-950' :
-          standingData.tier === 'HIGH' ? 'bg-orange-50/70 border-orange-200 text-orange-950' :
-          'bg-amber-50/70 border-amber-200 text-amber-950'
-        }`}>
-          <span className="material-symbols-outlined text-[20px] shrink-0 mt-0.5 opacity-80">info</span>
-          <div>
-            <strong className="font-pjs font-bold uppercase tracking-wider text-[11px] block mb-0.5">Student Consequence Summary:</strong>
-            {standingData.consequence_summary}
-          </div>
-        </div>
-
-        {/* 3 Privileges Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="material-symbols-outlined text-slate-500 text-[20px]">military_tech</span>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  standingData.honors_eligibility === 'ELIGIBLE' ? 'bg-emerald-100 text-emerald-800' :
-                  standingData.honors_eligibility === 'UNDER_REVIEW' ? 'bg-amber-100 text-amber-800' :
-                  'bg-rose-100 text-rose-800'
-                }`}>
-                  {standingData.honors_eligibility.replace('_', ' ')}
-                </span>
-              </div>
-              <h4 className="font-pjs font-bold text-[14px] text-[#003624]">Dean's List &amp; Latin Honors</h4>
-              <p className="font-manrope text-[11px] text-slate-500 mt-1 leading-snug">
-                Academic award qualification contingent on clear disciplinary conduct records.
-              </p>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="material-symbols-outlined text-slate-500 text-[20px]">account_balance</span>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  standingData.clearance_impact === 'CLEARED' ? 'bg-emerald-100 text-emerald-800' :
-                  standingData.clearance_impact === 'CONDITIONAL' ? 'bg-amber-100 text-amber-800' :
-                  standingData.clearance_impact === 'RESTRICTED' ? 'bg-orange-100 text-orange-800' :
-                  'bg-rose-100 text-rose-800'
-                }`}>
-                  {standingData.clearance_impact}
-                </span>
-              </div>
-              <h4 className="font-pjs font-bold text-[14px] text-[#003624]">Institutional Clearance (§14)</h4>
-              <p className="font-manrope text-[11px] text-slate-500 mt-1 leading-snug">
-                Clearance status required for semester enrollment, graduation, and transcript release.
-              </p>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="material-symbols-outlined text-slate-500 text-[20px]">verified</span>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  standingData.gmc_status === 'AVAILABLE' ? 'bg-emerald-100 text-emerald-800' :
-                  standingData.gmc_status === 'DEFERRED' ? 'bg-amber-100 text-amber-800' :
-                  'bg-rose-100 text-rose-800'
-                }`}>
-                  {standingData.gmc_status}
-                </span>
-              </div>
-              <h4 className="font-pjs font-bold text-[14px] text-[#003624]">Good Moral Certificate (GMC)</h4>
-              <p className="font-manrope text-[11px] text-slate-500 mt-1 leading-snug">
-                Certification of moral character required for scholarship renewals, transfer, or employment.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Restorative Justice Principle */}
-        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 text-[11px] font-manrope text-slate-500">
-          <span className="material-symbols-outlined text-emerald-700 text-[18px] shrink-0">hourglass_top</span>
-          <span>
-            <strong className="text-[#003624] font-semibold">Restorative Discipline Principle:</strong> Incident risk weights decay by 50% every 30 days without re-offense. Continued good conduct restores full academic privileges and clearance standing.
-          </span>
-        </div>
+      {/* Stats row removed for brevity in display, but remains functional in code */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 px-1 max-md:flex max-md:overflow-x-auto max-md:snap-x max-md:gap-4 max-md:pb-2 max-md:[&::-webkit-scrollbar]:hidden max-md:[scrollbar-width:none]">
+        <StatCard icon="history" label="Violation History" value={totalCount.toString().padStart(2, '0')} iconBg="bg-slate-100" iconColor="text-slate-600" delay="1" />
+        <StatCard icon="pending" label="Pending Actions" value={pendingCount.toString().padStart(2, '0')} iconBg="bg-[#fee4e2]" iconColor="text-[#d92d20]" delay="2" />
+        <StatCard icon="check_circle" label="Closed Records" value={closedCount.toString().padStart(2, '0')} iconBg="bg-[#d1fadf]" iconColor="text-[#006b5d]" delay="3" />
       </section>
 
-      {/* ═══════════════════════ STATS OVERVIEW ═══════════════════════ */}
-      <section className="grid grid-cols-3 gap-3 sm:gap-6">
-        <StatCard 
-          icon="history" 
-          label="Total Records" 
-          value={totalCount.toString().padStart(2, '0')} 
-          subtitle="Lifetime entries"
-          iconBg="bg-slate-100" 
-          iconColor="text-slate-600" 
-        />
-        <StatCard 
-          icon="hourglass_top" 
-          label="Active Obligations" 
-          value={pendingCount.toString().padStart(2, '0')} 
-          subtitle="Awaiting resolution"
-          iconBg="bg-amber-50" 
-          iconColor="text-amber-600" 
-          highlight={pendingCount > 0}
-        />
-        <StatCard 
-          icon="check_circle" 
-          label="Resolved Cases" 
-          value={closedCount.toString().padStart(2, '0')} 
-          subtitle="Closed / Cleared"
-          iconBg="bg-emerald-50" 
-          iconColor="text-emerald-700" 
-        />
-      </section>
-
-      {/* ═══════════════════════ QUICK PORTAL SERVICES ═══════════════════════ */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-base sm:text-lg font-pjs font-bold text-[#003624]">
-            Services &amp; Quick Access
-          </h2>
-          <span className="text-xs text-slate-400 font-medium">Campus Resources</span>
+      {/* Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-6">
+          <Link to="/student/profile" className="block relative overflow-hidden bg-[#0A3D2E] p-8 max-md:py-5 max-md:px-6 rounded-[2rem] text-white min-h-[220px] max-md:min-h-[160px] flex flex-col justify-between shadow-xl group cursor-pointer transition-all border border-white/5">
+            <div className="relative z-10">
+              <h3 className="text-2xl max-md:text-lg font-pjs font-bold mb-2">Complete Academic Profile</h3>
+              <p className="text-white/50 mb-5 text-[15px]">Manage your institutional credentials and semester enrollment details.</p>
+              <button className="bg-white text-[#0A3D2E] px-7 py-2.5 rounded-xl font-pjs font-bold text-[12px]">Manage Details</button>
+            </div>
+          </Link>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Link to="/student/handbook"><LinkCard icon="menu_book" title="Campus Handbook" linkText="PDF Download" linkIcon="picture_as_pdf" /></Link>
+            <Link to="/student/violations"><LinkCard icon="gavel" title="Violation History" description="Review incident logs and corrective actions." /></Link>
+          </div>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
-          <ServiceCard
-            to="/student/violations"
-            icon="gavel"
-            title="Violation Records"
-            description="Inspect detailed incident logs, dates, and sanctions"
-            badge={pendingCount > 0 ? `${pendingCount} Pending` : null}
-            badgeColor="bg-amber-100 text-amber-800"
-          />
-          <ServiceCard
-            to="/student/profile"
-            icon="account_circle"
-            title="Academic Profile"
-            description="Manage your credentials, enrollment, and college status"
-          />
-          <ServiceCard
-            to="/student/handbook"
-            icon="menu_book"
-            title="Student Handbook"
-            description="Read campus policies, dress code, and guidelines"
-          />
-          <ServiceCard
-            to="/student/chatbot"
-            icon="smart_toy"
-            title="AI Policy Curator"
-            description="Instant answers to handbook questions and procedures"
-            highlight={true}
-          />
+        <div className="lg:col-span-1">
+          <Link to="/student/chatbot" className="bg-[#006b5d] p-8 max-md:py-5 max-md:px-6 rounded-[2rem] text-white shadow-xl h-full flex flex-col relative overflow-hidden max-md:min-h-[160px]">
+            <div className="w-12 h-12 rounded-xl bg-[#2bd99b] flex items-center justify-center mb-5"><span className="material-symbols-outlined">auto_awesome</span></div>
+            <h3 className="text-xl max-md:text-lg font-pjs font-bold mb-2">AI Curator</h3>
+            <p className="text-white/60 text-[13px] mb-8">Ask anything about campus rules or guidelines.</p>
+            <div className="mt-auto bg-white/10 rounded-2xl p-4 text-[12px] italic text-white/50 border border-white/10">"What are the curfew hours for dormitories?"</div>
+          </Link>
         </div>
-      </section>
+      </div>
 
       {/* ═══════════════════════ RECENT VIOLATIONS FEED ═══════════════════════ */}
       <section className="bg-white p-5 sm:p-7 rounded-2xl sm:rounded-3xl shadow-sm border border-emerald-100/50">
@@ -424,19 +314,19 @@ export default function StudentDashboard() {
             <h3 className="text-base sm:text-xl font-pjs font-bold text-[#003624]">Recent Incident Logs</h3>
             <p className="text-xs text-slate-400 font-manrope mt-0.5">Official disciplinary entries recorded under your student profile</p>
           </div>
-          <Link 
-            to="/student/violations" 
+          <Link
+            to="/student/violations"
             className="text-xs font-pjs font-bold text-[#003624] hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100/70 px-3.5 py-1.5 rounded-xl uppercase tracking-wider transition-colors flex items-center gap-1"
           >
             <span>All Records</span>
             <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
           </Link>
         </div>
-        
+
         <div className="space-y-3.5 sm:space-y-4">
           {violations.length > 0 ? (
             violations.slice(0, 3).map(v => (
-              <ViolationCard 
+              <ViolationCard
                 key={v.id}
                 violation={v}
                 onTakeAction={handleTakeAction}
@@ -460,20 +350,20 @@ export default function StudentDashboard() {
       {showModal && selectedViolation && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-[520px] overflow-hidden shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
-            
+
             {/* Modal Header */}
             <div className="px-6 py-5 bg-[#003624] text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white">
-                  <span className="material-symbols-outlined text-[20px]">gavel</span>
+                  <span className="material-symbols-outlined text-[20px]">{isAppealing ? 'edit_document' : 'gavel'}</span>
                 </div>
                 <div>
-                  <h3 className="font-pjs font-bold text-base leading-tight">Case Information</h3>
+                  <h3 className="font-pjs font-bold text-base leading-tight">{isAppealing ? 'Submit Inquiry / Appeal' : 'Case Information'}</h3>
                   <p className="text-[11px] text-emerald-300 font-manrope">Ref #{selectedViolation.id}</p>
                 </div>
               </div>
-              <button 
-                onClick={() => setShowModal(false)}
+              <button
+                onClick={handleCloseModal}
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
                 aria-label="Close"
               >
@@ -483,67 +373,145 @@ export default function StudentDashboard() {
 
             {/* Modal Content */}
             <div className="p-6 space-y-4 overflow-y-auto">
-              <div>
-                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2 ${
-                  ['CLOSED', 'DISMISSED'].includes(selectedViolation.status) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                }`}>
-                  Status: {selectedViolation.status?.replace(/_/g, ' ')}
-                </span>
-                <h4 className="text-lg font-pjs font-bold text-slate-900 leading-snug">
-                  {selectedViolation.rule_details?.title || selectedViolation.rule_details?.category || "Policy Violation"}
-                </h4>
-                {selectedViolation.rule_details?.description && (
-                  <p className="text-xs text-slate-500 font-manrope mt-1 leading-relaxed">
-                    {selectedViolation.rule_details.description}
-                  </p>
-                )}
-              </div>
-
-              {/* Metadata Box */}
-              <div className="grid grid-cols-2 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-                <div>
-                  <p className="text-[10px] font-bold uppercase text-slate-400">Location</p>
-                  <p className="font-semibold text-slate-700 mt-0.5 truncate">{selectedViolation.location || 'Campus Ground'}</p>
+              {isAppealing ? (
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                  {appealSuccess ? (
+                    <div className="py-8 text-center">
+                      <div className="w-16 h-16 mx-auto bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
+                        <span className="material-symbols-outlined text-[32px]">check_circle</span>
+                      </div>
+                      <h4 className="text-lg font-pjs font-bold text-slate-800 mb-2">Appeal Submitted</h4>
+                      <p className="text-sm text-slate-500 font-manrope">Your inquiry has been successfully sent to SWAFO. You can track its status in the Violation Records page.</p>
+                    </div>
+                  ) : (
+                    <form id="dashboardAppealForm" onSubmit={handleAppealSubmit} className="space-y-4">
+                      <div>
+                        <label className="block text-[11px] font-pjs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Category</label>
+                        <select
+                          value={appealData.subject}
+                          onChange={e => setAppealData({ ...appealData, subject: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                          required
+                        >
+                          <option value="" disabled>Select Appeal Type...</option>
+                          <option value="Request for Clarification">Request for Clarification</option>
+                          <option value="Formal Appeal">Formal Appeal</option>
+                          <option value="Report Error in Record">Report Error in Record</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-pjs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Details</label>
+                        <textarea
+                          value={appealData.description}
+                          onChange={e => setAppealData({ ...appealData, description: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all resize-none h-32 font-manrope"
+                          placeholder="Provide detailed information regarding your inquiry or appeal..."
+                          required
+                        ></textarea>
+                      </div>
+                    </form>
+                  )}
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase text-slate-400">Date Logged</p>
-                  <p className="font-semibold text-slate-700 mt-0.5">{new Date(selectedViolation.timestamp).toLocaleDateString()}</p>
-                </div>
-              </div>
+              ) : (
+                <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
+                  <div>
+                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2 ${['CLOSED', 'DISMISSED'].includes(selectedViolation.status) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                      Status: {selectedViolation.status?.replace(/_/g, ' ')}
+                    </span>
+                    <h4 className="text-lg font-pjs font-bold text-slate-900 leading-snug">
+                      {selectedViolation.rule_details?.title || selectedViolation.rule_details?.category || "Policy Violation"}
+                    </h4>
+                    {selectedViolation.rule_details?.description && (
+                      <p className="text-xs text-slate-500 font-manrope mt-1 leading-relaxed">
+                        {selectedViolation.rule_details.description}
+                      </p>
+                    )}
+                  </div>
 
-              {/* Sanction Box */}
-              <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100">
-                <p className="text-[10px] font-bold uppercase text-emerald-800 tracking-wider mb-1">Prescribed Action / Sanction</p>
-                <p className="text-xs font-semibold text-[#003624] leading-relaxed">
-                  {selectedViolation.prescribed_sanction || selectedViolation.director_sanction || "Case is under review by SWAFO Disciplinary Board."}
-                </p>
-              </div>
+                  {/* Metadata Box */}
+                  <div className="grid grid-cols-2 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Location</p>
+                      <p className="font-semibold text-slate-700 mt-0.5 truncate">{selectedViolation.location || 'Campus Ground'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Date Logged</p>
+                      <p className="font-semibold text-slate-700 mt-0.5">{new Date(selectedViolation.timestamp).toLocaleDateString()}</p>
+                    </div>
+                  </div>
 
-              {selectedViolation.director_remarks && (
-                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                  <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-1">Director's Notes</p>
-                  <p className="text-xs text-slate-600 italic">"{selectedViolation.director_remarks}"</p>
+                  {/* Sanction Box */}
+                  <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100">
+                    <p className="text-[10px] font-bold uppercase text-emerald-800 tracking-wider mb-1">Prescribed Action / Sanction</p>
+                    <p className="text-xs font-semibold text-[#003624] leading-relaxed">
+                      {selectedViolation.prescribed_sanction || selectedViolation.director_sanction || "Case is under review by SWAFO Disciplinary Board."}
+                    </p>
+                  </div>
+
+                  {selectedViolation.director_remarks && (
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                      <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-1">Director's Notes</p>
+                      <p className="text-xs text-slate-600 italic">"{selectedViolation.director_remarks}"</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Modal Actions */}
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center gap-3 shrink-0">
-              <button 
-                onClick={() => { 
-                  window.open(`mailto:swafo@dlsud.edu.ph?subject=Appeal Request: Case ${selectedViolation?.id}&body=Name: ${displayName}%0D%0AStudent Number: ${profile?.student_number}%0D%0AViolation: ${selectedViolation?.rule_details?.title || selectedViolation?.rule_details?.category}%0D%0AReason for Appeal: `); 
-                  setShowModal(false); 
-                }} 
-                className="flex-1 py-3 bg-[#003624] hover:bg-[#004d33] text-white rounded-xl font-pjs font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 cursor-pointer text-center"
-              >
-                Inquire / Appeal (Email)
-              </button>
-              <button 
-                onClick={() => setShowModal(false)} 
-                className="py-3 px-5 border border-slate-200 text-slate-600 rounded-xl font-pjs font-bold text-xs uppercase tracking-wider hover:bg-white transition-all active:scale-95 cursor-pointer"
-              >
-                Close
-              </button>
+              {isAppealing ? (
+                !appealSuccess ? (
+                  <>
+                    <button
+                      form="dashboardAppealForm"
+                      type="submit"
+                      disabled={isSubmittingAppeal}
+                      className="flex-1 py-3 bg-[#003624] hover:bg-[#004d33] disabled:bg-slate-300 text-white rounded-xl font-pjs font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 cursor-pointer text-center flex justify-center items-center gap-2"
+                    >
+                      {isSubmittingAppeal ? (
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-[16px]">send</span>
+                          Send to SWAFO
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setIsAppealing(false)}
+                      disabled={isSubmittingAppeal}
+                      className="py-3 px-5 border border-slate-200 text-slate-600 rounded-xl font-pjs font-bold text-xs uppercase tracking-wider hover:bg-white transition-all active:scale-95 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleCloseModal}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-pjs font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    Close Window
+                  </button>
+                )
+              ) : (
+                <>
+                  <button
+                    onClick={() => setIsAppealing(true)}
+                    className="flex-1 py-3 bg-[#003624] hover:bg-[#004d33] text-white rounded-xl font-pjs font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 cursor-pointer text-center flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">contact_support</span>
+                    Submit Inquiry / Appeal
+                  </button>
+                  <button
+                    onClick={handleCloseModal}
+                    className="py-3 px-5 border border-slate-200 text-slate-600 rounded-xl font-pjs font-bold text-xs uppercase tracking-wider hover:bg-white transition-all active:scale-95 cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>,
@@ -565,15 +533,11 @@ export default function StudentDashboard() {
 
 /* ═══════════════════════ SUB-COMPONENTS ═══════════════════════ */
 
-function StatCard({ icon, label, value, subtitle, iconBg, iconColor, highlight }) {
+function StatCard({ icon, label, value, subtitle, iconBg, iconColor }) {
   return (
-    <div className={`bg-white p-3.5 sm:p-5 rounded-2xl border transition-all shadow-sm flex flex-col justify-between ${
-      highlight ? 'border-amber-200 ring-2 ring-amber-100/50' : 'border-slate-100'
-    }`}>
-      <div className="flex items-center justify-between mb-2">
-        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl ${iconBg} ${iconColor} flex items-center justify-center shrink-0`}>
-          <span className="material-symbols-outlined text-[18px] sm:text-[22px]">{icon}</span>
-        </div>
+    <div className={`bg-white p-6 max-md:p-4 rounded-2xl flex items-center gap-5 max-md:gap-4 border border-transparent shadow-sm group hover:-translate-y-1 transition-all max-md:min-w-[80%] max-md:snap-center`}>
+      <div className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center`}>
+        <span className={`material-symbols-outlined ${iconColor}`}>{icon}</span>
       </div>
       <div>
         <p className="text-[9px] sm:text-[11px] font-pjs text-slate-400 font-bold uppercase tracking-wider truncate mb-0.5">
@@ -592,19 +556,17 @@ function StatCard({ icon, label, value, subtitle, iconBg, iconColor, highlight }
 
 function ServiceCard({ to, icon, title, description, badge, badgeColor, highlight }) {
   return (
-    <Link 
-      to={to} 
-      className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between group hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${
-        highlight 
-          ? 'bg-gradient-to-br from-[#003624] to-[#004d33] text-white border-[#003624] shadow-md' 
+    <Link
+      to={to}
+      className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between group hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${highlight
+          ? 'bg-gradient-to-br from-[#003624] to-[#004d33] text-white border-[#003624] shadow-md'
           : 'bg-white text-slate-800 border-slate-100 hover:border-emerald-200'
-      }`}
+        }`}
     >
       <div>
         <div className="flex items-center justify-between mb-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 ${
-            highlight ? 'bg-white/15 text-emerald-300' : 'bg-emerald-50 text-[#003624]'
-          }`}>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 ${highlight ? 'bg-white/15 text-emerald-300' : 'bg-emerald-50 text-[#003624]'
+            }`}>
             <span className="material-symbols-outlined text-[22px]">{icon}</span>
           </div>
           {badge && (
@@ -613,14 +575,12 @@ function ServiceCard({ to, icon, title, description, badge, badgeColor, highligh
             </span>
           )}
         </div>
-        <h4 className={`text-sm sm:text-base font-pjs font-bold mb-1 leading-snug ${
-          highlight ? 'text-white' : 'text-slate-900 group-hover:text-[#003624]'
-        }`}>
+        <h4 className={`text-sm sm:text-base font-pjs font-bold mb-1 leading-snug ${highlight ? 'text-white' : 'text-slate-900 group-hover:text-[#003624]'
+          }`}>
           {title}
         </h4>
-        <p className={`text-xs font-manrope line-clamp-2 leading-relaxed ${
-          highlight ? 'text-emerald-100/80' : 'text-slate-400'
-        }`}>
+        <p className={`text-xs font-manrope line-clamp-2 leading-relaxed ${highlight ? 'text-emerald-100/80' : 'text-slate-400'
+          }`}>
           {description}
         </p>
       </div>
@@ -643,9 +603,8 @@ function ViolationCard({ violation, onTakeAction }) {
     <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-100 hover:border-emerald-100 transition-all shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2 mb-1.5">
-          <span className={`px-2.5 py-0.5 text-[9px] font-black rounded-full uppercase tracking-wider ${
-            isClosed ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-          }`}>
+          <span className={`px-2.5 py-0.5 text-[9px] font-black rounded-full uppercase tracking-wider ${isClosed ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+            }`}>
             {isClosed ? 'Resolved' : violation.status?.replace(/_/g, ' ')}
           </span>
           <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wide">
@@ -672,11 +631,10 @@ function ViolationCard({ violation, onTakeAction }) {
       <div className="shrink-0 flex items-center justify-end">
         <button
           onClick={() => onTakeAction(violation)}
-          className={`w-full sm:w-auto px-4 py-2.5 rounded-xl font-pjs text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
-            isClosed 
-              ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' 
+          className={`w-full sm:w-auto px-4 py-2.5 rounded-xl font-pjs text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${isClosed
+              ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
               : 'bg-[#003624] hover:bg-[#004d33] text-white shadow-sm'
-          }`}
+            }`}
         >
           <span>View Details</span>
           <span className="material-symbols-outlined text-[16px]">visibility</span>
@@ -685,3 +643,26 @@ function ViolationCard({ violation, onTakeAction }) {
     </div>
   );
 }
+
+function LinkCard({ icon, title, description, linkText, linkIcon }) {
+  return (
+    <div className="bg-slate-50/80 p-6 rounded-[1.5rem] flex flex-col justify-between hover:bg-emerald-50/40 transition-all shadow-sm group cursor-pointer border border-slate-100 hover:border-emerald-200 min-h-[158px]">
+      <div className="flex justify-between items-start mb-6">
+        <div className="w-12 h-12 rounded-xl bg-[#003624] text-white flex items-center justify-center shadow-md">
+          <span className="material-symbols-outlined text-[24px]">{icon}</span>
+        </div>
+        {linkText && (
+          <div className="flex items-center gap-1.5 text-[#006b5d] text-[12px] font-bold font-pjs group-hover:translate-x-1 transition-transform">
+            <span>{linkText}</span>
+            {linkIcon && <span className="material-symbols-outlined text-[16px]">{linkIcon}</span>}
+          </div>
+        )}
+      </div>
+      <div>
+        <h4 className="font-pjs font-bold text-slate-900 text-lg mb-1 leading-tight">{title}</h4>
+        {description && <p className="text-slate-400 font-manrope text-xs leading-relaxed">{description}</p>}
+      </div>
+    </div>
+  );
+}
+

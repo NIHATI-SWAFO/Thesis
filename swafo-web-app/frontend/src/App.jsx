@@ -27,8 +27,10 @@ import DirectorPatrolAssignments from './features/patrols/DirectorPatrolAssignme
 import MapTrial from './features/maps/MapTrial';
 import LiveNavigation from './features/maps/LiveNavigation';
 import UserManagement from './features/users/UserManagement';
+import OfficerAccounts from './features/users/OfficerAccounts';
+import ResetPassword from './features/auth/ResetPassword';
 
-
+import ErrorBoundary from './components/ErrorBoundary';
 import { AuthProvider } from './context/AuthContext';
 import SwafoDevTools from './components/dev/SwafoDevTools';
 
@@ -36,11 +38,14 @@ import OfficerFreedomWall from './features/freedom_wall/OfficerFreedomWall';
 
 function App() {
   return (
+    <ErrorBoundary>
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-        {/* Auth Route */}
+        {/* Auth Routes */}
         <Route path="/login" element={<SignIn />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+
 
         {/* Student Protected Routes */}
         <Route path="/student" element={<StudentLayout />}>
@@ -90,6 +95,7 @@ function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="officer-accounts" element={<OfficerAccounts />} />
           <Route path="cases" element={<CaseManagement role="admin" />} />
           <Route path="students" element={<StudentRecords role="admin" />} />
           <Route path="students/:id" element={<StudentProfileDetail role="admin" />} />
@@ -112,8 +118,10 @@ function App() {
         <SwafoDevTools />
       </AuthProvider>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 
 export default App;
+
 

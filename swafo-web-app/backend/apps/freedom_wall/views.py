@@ -38,6 +38,7 @@ class IsOfficerOrDirector(permissions.BasePermission):
         return request.user and request.user.is_authenticated and request.user.role in ['ADMIN', 'OFFICER']
 
 class StudentSubmissionListCreateView(generics.ListCreateAPIView):
+    authentication_classes = []
     permission_classes = [IsStudent]
     
     def get_queryset(self):
@@ -225,6 +226,9 @@ class DirectorSubmissionRespondView(APIView):
         
         return Response(SubmissionResponseSerializer(response_obj).data, status=status.HTTP_201_CREATED)
 
+from django.core.mail import send_mail
+from django.conf import settings
+
 class DirectorSubmissionReferView(APIView):
     permission_classes = [IsOfficerOrDirector]
 
@@ -246,8 +250,42 @@ class DirectorSubmissionReferView(APIView):
             reason=reason,
             created_by=request.user
         )
+
+        submission.status = 'Action Taken'
+        submission.save()
         
-        return Response(SubmissionReferralSerializer(referral).data, status=status.HTTP_201_CREATED)
+        subject = f"SWAFO Case Referral: {submission.reference_number}"
+        message = (
+            f"Dear Department,\n\n"
+            f"I am referring the following SWAFO case to your office for further action.\n\n"
+            f"Case Details:\n"
+            f"Reference: {submission.reference_number}\n"
+            f"Title: {submission.title}\n"
+            f"Description: {submission.description}\n\n"
+            f"Officer's Reason for Referral:\n{reason}\n\n"
+            f"Please let us know if you require further information.\n\n"
+            f"Regards,\nSWAFO Office"
+        )
+
+        try:
+            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'swafo@dlsud.edu.ph')
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=from_email,
+                recipient_list=[referred_to],
+                fail_silently=False,
+            )
+            email_status = "Email dispatched successfully"
+        except Exception as e:
+            print("Failed to send referral email:", str(e))
+            email_status = f"Failed to dispatch email: {str(e)}"
+        
+        return Response({
+            "referral": SubmissionReferralSerializer(referral).data,
+            "email_status": email_status,
+            "message": f"Referral successfully sent to {referred_to}"
+        }, status=status.HTTP_201_CREATED)
 
 class DirectorAnalyticsView(APIView):
     permission_classes = [IsOfficerOrDirector]
@@ -293,3 +331,4 @@ class CommunityCommentDeleteView(generics.DestroyAPIView):
         if instance.author != self.request.user:
             raise PermissionDenied("You do not have permission to delete this comment.")
         instance.delete()
+

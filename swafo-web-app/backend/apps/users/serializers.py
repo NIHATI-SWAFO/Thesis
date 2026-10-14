@@ -2,13 +2,13 @@ import math
 from datetime import timedelta
 from django.utils import timezone
 from rest_framework import serializers
-from .models import User, StudentProfile
+from .models import User, StudentProfile, Notification, PasswordResetToken, PasswordResetRequest, SecurityAuditLog
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'full_name', 'role', 'username', 'is_active', 'date_joined']
+        fields = ['id', 'email', 'full_name', 'role', 'username', 'officer_badge', 'must_change_password', 'is_active', 'last_login', 'date_joined']
 
 
 class StudentProfileSerializer(serializers.ModelSerializer):
@@ -18,6 +18,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     has_pending_violations = serializers.SerializerMethodField()
     risk_score = serializers.SerializerMethodField()
     risk_standing = serializers.SerializerMethodField()
+    needs_id_confirmation = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentProfile
@@ -25,7 +26,16 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             'id', 'student_number', 'user_details', 'course', 'year_level',
             'violation_count', 'is_repeat_offender', 'has_pending_violations',
             'clearance_status', 'risk_score', 'risk_standing', 'barcode_value',
+            'is_id_confirmed', 'needs_id_confirmation', 'profile_picture',
         ]
+
+    def get_needs_id_confirmation(self, obj):
+        if obj.is_id_confirmed:
+            return False
+        import re
+        if obj.user and obj.user.email and re.search(r'\b(20\d{7})\b|\b(\d{9})\b', obj.user.email):
+            return False
+        return True
 
     # ─── Basic Counts ──────────────────────────────────────────────
     def get_violation_count(self, obj):
@@ -165,4 +175,49 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ['id', 'title', 'message', 'notification_type', 'reference_id', 'is_read', 'created_at']
+
+
+class PasswordResetRequestSerializer(serializers.ModelSerializer):
+    reviewed_by_name = serializers.CharField(source='reviewed_by.full_name', read_only=True)
+
+    class Meta:
+        model = PasswordResetRequest
+        fields = [
+            'id', 'officer_name', 'officer_email', 'officer_id',
+            'status', 'rejection_reason', 'requested_at', 'reviewed_at',
+            'reviewed_by', 'reviewed_by_name'
+        ]
+
+
+class SecurityAuditLogSerializer(serializers.ModelSerializer):
+    actor_name = serializers.CharField(source='actor.full_name', read_only=True)
+    target_name = serializers.CharField(source='target_user.full_name', read_only=True)
+
+    class Meta:
+        model = SecurityAuditLog
+        fields = [
+            'id', 'action', 'actor', 'actor_name', 'target_user', 'target_name',
+            'ip_address', 'details', 'timestamp'
+        ]
+
+
+class OfficerAccountSerializer(serializers.ModelSerializer):
+    is_currently_online = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'email', 'full_name', 'role', 'officer_badge',
+            'is_active', 'must_change_password', 'last_login', 'date_joined',
+            'last_seen', 'is_currently_online'
+        ]
+
+    def get_is_currently_online(self, obj):
+        # Online only if the officer has an open session AND sent activity within the last 5 minutes
+        from datetime import timedelta
+        from django.utils import timezone
+        if not obj.is_online or not obj.last_seen:
+            return False
+        return timezone.now() - obj.last_seen <= timedelta(minutes=5)
+
 

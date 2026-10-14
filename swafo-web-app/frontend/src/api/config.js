@@ -8,8 +8,23 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://thesis-production-1816.up.railway.app';
 
 export const API_ENDPOINTS = {
-  // Auth
+  // Auth & Credential Recovery
   AUTH_MOCK_LOGIN: `${API_BASE_URL}/api/users/mock-login/`,
+  PRESENCE_HEARTBEAT: `${API_BASE_URL}/api/users/presence/heartbeat/`,
+  PRESENCE_OFFLINE: `${API_BASE_URL}/api/users/presence/offline/`,
+  DIRECTOR_FORGOT_PASSWORD: `${API_BASE_URL}/api/users/auth/director/forgot-password/`,
+  DIRECTOR_RESET_PASSWORD: `${API_BASE_URL}/api/users/auth/director/reset-password/`,
+  OFFICER_REQUEST_RESET: `${API_BASE_URL}/api/users/auth/officer/request-reset/`,
+  CHANGE_PASSWORD: `${API_BASE_URL}/api/users/auth/change-password/`,
+  ADMIN_OFFICERS: `${API_BASE_URL}/api/users/admin/officers/`,
+  ADMIN_OFFICER_CREATE: `${API_BASE_URL}/api/users/admin/officers/create/`,
+  ADMIN_OFFICER_DELETE: (id) => `${API_BASE_URL}/api/users/admin/officers/${id}/delete/`,
+  ADMIN_OFFICER_TOGGLE_STATUS: (id) => `${API_BASE_URL}/api/users/admin/officers/${id}/toggle-status/`,
+  ADMIN_OFFICER_MANUAL_RESET: (id) => `${API_BASE_URL}/api/users/admin/officers/${id}/manual-reset/`,
+  ADMIN_RESET_REQUESTS: `${API_BASE_URL}/api/users/admin/reset-requests/`,
+  ADMIN_RESET_REQUEST_APPROVE: (id) => `${API_BASE_URL}/api/users/admin/reset-requests/${id}/approve/`,
+  ADMIN_RESET_REQUEST_REJECT: (id) => `${API_BASE_URL}/api/users/admin/reset-requests/${id}/reject/`,
+  ADMIN_SECURITY_AUDIT_LOGS: `${API_BASE_URL}/api/users/admin/security-audit-logs/`,
   
   // Users
   SEARCH_USERS: `${API_BASE_URL}/api/users/search/`,
@@ -18,9 +33,12 @@ export const API_ENDPOINTS = {
   USER_DETAIL: (id) => `${API_BASE_URL}/api/users/users/${id}/`,
   USERS_BY_ROLE: (role) => `${API_BASE_URL}/api/users/users/?role=${role}`,
   PROFILE_BY_EMAIL: `${API_BASE_URL}/api/users/profile-by-email/`,
+  UPDATE_STUDENT_NUMBER: `${API_BASE_URL}/api/users/update-student-number/`,
+  UPDATE_PROFILE_PICTURE: `${API_BASE_URL}/api/users/profile/update-picture/`,
   COLLEGES_LIST: `${API_BASE_URL}/api/users/colleges/`,
   UPDATE_BARCODE: `${API_BASE_URL}/api/users/update-barcode/`,
   DECODE_BARCODE: `${API_BASE_URL}/api/users/decode-barcode/`,
+
 
   
     NOTIFICATIONS: `${API_BASE_URL}/api/users/notifications/`,
@@ -36,6 +54,7 @@ export const API_ENDPOINTS = {
   VIOLATIONS_LOCATIONS: `${API_BASE_URL}/api/violations/locations/`,
   VIOLATIONS_STATISTICS: `${API_BASE_URL}/api/violations/statistics/`,
   VIOLATIONS_APPEALS: `${API_BASE_URL}/api/violations/appeals/`,
+  VIOLATIONS_APPEALS_PENDING: `${API_BASE_URL}/api/violations/appeals/pending/`,
   VIOLATIONS_APPEALS_SUBMIT: `${API_BASE_URL}/api/violations/appeals/submit/`,
   VIOLATIONS_APPEALS_UPDATE: (id) => `${API_BASE_URL}/api/violations/appeals/${id}/update/`,
   
@@ -54,6 +73,7 @@ export const API_ENDPOINTS = {
   // Analytics
   OFFICER_DASHBOARD: `${API_BASE_URL}/api/analytics/officer-dashboard/`,
   ADMIN_DASHBOARD: `${API_BASE_URL}/api/analytics/admin-dashboard/`,
+  COLLEGE_REPORT: (college) => `${API_BASE_URL}/api/analytics/college-report/?college=${encodeURIComponent(college)}`,
   NOTIFICATIONS: (email = '', role = '') => {
     const params = new URLSearchParams();
     if (email) params.append('email', email);

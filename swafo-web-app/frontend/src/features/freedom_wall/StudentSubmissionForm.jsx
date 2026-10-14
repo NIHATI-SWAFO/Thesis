@@ -34,6 +34,8 @@ export default function StudentSubmissionForm() {
   useEffect(() => {
     if (user?.email) {
       fetchSubmissions();
+    } else {
+      setLoadingSubmissions(false);
     }
   }, [user?.email]);
 

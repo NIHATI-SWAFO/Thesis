@@ -46,6 +46,9 @@ urlpatterns = [
     path('api/analytics/', include('apps.analytics.urls')),
     path('api/patrols/', include('apps.patrols.urls')),
     path('api/freedom-wall/', include('apps.freedom_wall.urls')),
+    path('api/appeals/', include([
+        path('', include('apps.violations.urls')),
+    ])),
 ]
 
 from django.conf import settings

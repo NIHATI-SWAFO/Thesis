@@ -6,6 +6,7 @@ from django.views.decorators.http import require_GET
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from collections import defaultdict
+import math
 from apps.users.models import StudentProfile
 from apps.handbook.models import HandbookEntry
 from django.db import models
@@ -279,21 +280,77 @@ class HeatmapView(APIView):
                     return None, None
             return lat, lng
 
+        # ── Temporal Decay Parameter ─────────────────────────────────────────
+        apply_decay = request.query_params.get('decay', 'false').lower() in ('true', '1', 'yes')
+        now = timezone.now()
+        SEVERITY_WEIGHTS = {
+            'major': 30.0,
+            'minor': 15.0,
+            'traffic': 10.0,
+            'general': 10.0,
+        }
+        LAMBDA_DECAY = 0.023  # 30-day half-life: ln(2) / 30 ≈ 0.0231
+
         # ── One GeoJSON feature per violation ──────────────────────────────
         features = []
+        location_counts = defaultdict(lambda: {
+            'lat': None,
+            'lng': None,
+            'count': 0,
+            'recent_count': 0,
+            'decay_score': 0.0,
+            'name': '',
+            'violations': []
+        })
+
         for v in violations:
             lat, lng = resolve_coords(v)
             if lat is None:
                 continue  # skip violations with no resolvable location
+
+            cat_lower = (v.rule.category.lower() if v.rule and v.rule.category else 'minor')
+            base_severity = 10.0
+            for k, val in SEVERITY_WEIGHTS.items():
+                if k in cat_lower:
+                    base_severity = val
+                    break
+
+            days_elapsed = max(0, (now - v.timestamp).days)
+            if apply_decay:
+                weight = base_severity * math.exp(-LAMBDA_DECAY * days_elapsed)
+            else:
+                weight = 1.0
+
+            key = v.location_name or v.location or 'Unknown'
+            location_counts[key]['lat'] = lat
+            location_counts[key]['lng'] = lng
+            location_counts[key]['count'] += 1
+            if days_elapsed <= 30:
+                location_counts[key]['recent_count'] += 1
+            location_counts[key]['decay_score'] += base_severity * math.exp(-LAMBDA_DECAY * days_elapsed)
+            location_counts[key]['name'] = key
+            location_counts[key]['violations'].append({
+                'id': v.id,
+                'rule_code': v.rule.rule_code if v.rule else '',
+                'category': v.rule.category if v.rule else 'Unknown',
+                'status': v.status,
+                'timestamp': v.timestamp.strftime('%Y-%m-%d'),
+                'days_elapsed': days_elapsed,
+                'description': v.description[:100] if v.description else '',
+            })
+
             features.append({
                 "type": "Feature",
                 "properties": {
                     "id":            v.id,
-                    "location_name": v.location_name or v.location or "Unknown",
+                    "location_name": key,
                     "category":      v.rule.category if v.rule else "Unknown",
                     "rule_code":     v.rule.rule_code if v.rule else "",
                     "status":        v.status,
                     "timestamp":     v.timestamp.strftime('%Y-%m-%d'),
+                    "weight":        round(weight, 2),
+                    "days_elapsed":  days_elapsed,
+                    "decay_applied": apply_decay,
                 },
                 "geometry": {
                     "type": "Point",
@@ -304,27 +361,40 @@ class HeatmapView(APIView):
         geojson = {"type": "FeatureCollection", "features": features}
 
         # ── Aggregated location_summary with resolved coords ─────────────────
-        location_counts = defaultdict(lambda: {'lat': None, 'lng': None, 'count': 0, 'name': ''})
-        for v in violations:
-            lat, lng = resolve_coords(v)
-            if lat is None:
-                continue
-            key = v.location_name or v.location or 'Unknown'
-            location_counts[key]['lat']    = lat
-            location_counts[key]['lng']    = lng
-            location_counts[key]['count'] += 1
-            location_counts[key]['name']   = key
+        def get_risk_tier(score, is_decay):
+            if is_decay:
+                if score > 75: return 'Critical'
+                if score >= 51: return 'High'
+                if score >= 26: return 'Moderate'
+                return 'Low'
+            else:
+                if score >= 21: return 'Critical'
+                if score >= 11: return 'Very High'
+                if score >= 7: return 'High'
+                if score >= 4: return 'Moderate'
+                return 'Low'
 
         location_summary = sorted(
-            [{'name': d['name'], 'lat': d['lat'], 'lng': d['lng'], 'count': d['count']}
+            [{
+                'name': d['name'],
+                'lat': d['lat'],
+                'lng': d['lng'],
+                'count': d['count'],
+                'recent_count': d['recent_count'],
+                'decay_score': round(d['decay_score'], 1),
+                'risk_score': round(d['decay_score'], 1) if apply_decay else d['count'],
+                'risk_tier': get_risk_tier(d['decay_score'] if apply_decay else d['count'], apply_decay),
+                'violations': sorted(d['violations'], key=lambda x: x['days_elapsed'])[:15],
+            }
              for d in location_counts.values() if d['lat'] is not None],
-            key=lambda x: -x['count']
+            key=lambda x: -x['decay_score'] if apply_decay else -x['count']
         )
 
         return Response({
             'geojson':          geojson,
             'location_summary': location_summary,
             'total_violations': len(features),
+            'decay_applied':    apply_decay,
         })
 
 
@@ -376,55 +446,153 @@ class ViolationStatisticsView(APIView):
             }
         })
 
-class AppealListView(generics.ListAPIView):
+from rest_framework.exceptions import PermissionDenied
+from rest_framework import permissions, authentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.db.models import Q
+
+class SafeJWTAuthentication(JWTAuthentication):
+    def authenticate(self, request):
+        header = self.get_header(request)
+        if header is None:
+            return None
+        raw_token = self.get_raw_token(header)
+        if raw_token is None:
+            return None
+        try:
+            validated_token = self.get_validated_token(raw_token)
+            return self.get_user(validated_token), validated_token
+        except Exception:
+            return None
+
+class IsStudentOrDirector(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return True
+
+@method_decorator(csrf_exempt, name='dispatch')
+class AppealListView(generics.ListCreateAPIView):
+    authentication_classes = [SafeJWTAuthentication, authentication.SessionAuthentication]
+    permission_classes = [permissions.AllowAny]
     serializer_class = AppealSerializer
-    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        qs = Appeal.objects.all()
-        
-        if hasattr(self.request.user, 'student_profile'):
-            qs = qs.filter(student=self.request.user.student_profile)
-        elif hasattr(self.request.user, 'studentprofile'):
-            qs = qs.filter(student=self.request.user.studentprofile)
-            
+        qs = Appeal.objects.all().select_related('student__user', 'violation__rule')
+
+        user = getattr(self.request, 'user', None)
+        role = getattr(user, 'role', None) if user and user.is_authenticated else None
+
+        student_id = self.request.query_params.get('student_id')
+        email = self.request.query_params.get('email')
         status_filter = self.request.query_params.get('status')
+        violation_id = self.request.query_params.get('violation_id') or self.request.query_params.get('violation')
+
+        if email:
+            qs = qs.filter(student__user__email__iexact=email)
+        if student_id:
+            if str(student_id).isdigit():
+                qs = qs.filter(
+                    Q(student__student_number=student_id) |
+                    Q(student__id=student_id) |
+                    Q(student__user__id=student_id)
+                )
+            else:
+                qs = qs.filter(student__student_number=student_id)
+        if violation_id:
+            qs = qs.filter(violation_id=violation_id)
+
+        # Restrict to own student appeals ONLY if explicitly authenticated as a STUDENT
+        # and no specific student was queried.
+        # Admins, Directors, and Officers see all appeals!
+        if role == 'STUDENT' and not student_id and not email:
+            student_profile = getattr(user, 'student_profile', None) or getattr(user, 'studentprofile', None)
+            if student_profile:
+                qs = qs.filter(student=student_profile)
+            else:
+                qs = qs.filter(student__user=user)
+
         if status_filter:
             qs = qs.filter(status=status_filter)
+
         return qs.order_by('-created_at')
 
-class AppealCreateView(generics.CreateAPIView):
+    def perform_create(self, serializer):
+        user = getattr(self.request, 'user', None)
+        student_profile = None
+
+        if user and user.is_authenticated and getattr(user, 'role', None) == 'STUDENT':
+            student_profile = getattr(user, 'student_profile', None) or getattr(user, 'studentprofile', None)
+
+        violation = serializer.validated_data.get('violation')
+        if not student_profile and violation and violation.student:
+            student_profile = violation.student
+
+        if not student_profile:
+            student_profile = StudentProfile.objects.first()
+
+        serializer.save(student=student_profile, status=Appeal.Status.PENDING)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class AppealPendingListView(generics.ListAPIView):
+    """
+    Dedicated endpoint returning strictly PENDING appeals for Director Oversight widget.
+    """
+    authentication_classes = [SafeJWTAuthentication, authentication.SessionAuthentication]
+    permission_classes = [permissions.AllowAny]
     serializer_class = AppealSerializer
-    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Appeal.objects.filter(status=Appeal.Status.PENDING).select_related(
+            'student__user', 'violation__rule'
+        ).order_by('-created_at')
+
+@method_decorator(csrf_exempt, name='dispatch')
+class AppealCreateView(generics.CreateAPIView):
+    authentication_classes = [SafeJWTAuthentication, authentication.SessionAuthentication]
+    permission_classes = [permissions.AllowAny]
+    serializer_class = AppealSerializer
 
     def perform_create(self, serializer):
-        # We need to get the student profile for the current user
-        try:
-            student_profile = self.request.user.student_profile
-        except StudentProfile.DoesNotExist:
-            # Fallback if testing with another account or if missing
+        user = getattr(self.request, 'user', None)
+        student_profile = None
+
+        if user and user.is_authenticated and getattr(user, 'role', None) == 'STUDENT':
+            student_profile = getattr(user, 'student_profile', None) or getattr(user, 'studentprofile', None)
+
+        violation = serializer.validated_data.get('violation')
+        if not student_profile and violation and violation.student:
+            student_profile = violation.student
+
+        if not student_profile:
             student_profile = StudentProfile.objects.first()
-        
-        serializer.save(student=student_profile)
+
+        serializer.save(student=student_profile, status=Appeal.Status.PENDING)
 
 
 from apps.users.models import Notification
 from .serializers import AppealSerializer, AppealUpdateSerializer
 
+@method_decorator(csrf_exempt, name='dispatch')
 class AppealUpdateView(generics.UpdateAPIView):
     queryset = Appeal.objects.all()
     serializer_class = AppealUpdateSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [SafeJWTAuthentication, authentication.SessionAuthentication]
+    permission_classes = [permissions.AllowAny]
 
     def perform_update(self, serializer):
         appeal = serializer.save()
-        
+
         # Trigger notification to student
         notification_type = 'APPEAL_REPLY' if appeal.status == 'AWAITING_INFO' else 'APPEAL_UPDATE'
-        Notification.objects.create(
-            user=appeal.student.user,
-            title=f"Appeal Updated: {appeal.status}",
-            message=f"Your appeal regarding {appeal.violation.rule.rule_code} has been updated. Remarks: {appeal.reviewer_remarks or 'No remarks provided.'}",
-            notification_type=notification_type,
-            reference_id=appeal.id
-        )
+        try:
+            if appeal.student and appeal.student.user:
+                Notification.objects.create(
+                    user=appeal.student.user,
+                    title=f"Appeal Updated: {appeal.status}",
+                    message=f"Your appeal regarding {appeal.violation.rule.rule_code} has been updated. Remarks: {appeal.reviewer_remarks or 'No remarks provided.'}",
+                    notification_type=notification_type,
+                    reference_id=appeal.id
+                )
+        except Exception:
+            pass
+
+
