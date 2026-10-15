@@ -5,7 +5,8 @@ import os
 class GeminiService:
     def __init__(self):
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel('gemini-flash-latest')
+        self.model_name = 'gemini-3.1-flash-lite'
+        self.model = genai.GenerativeModel(self.model_name)
         self.handbook_context = self._load_handbook()
         self._embedding_cache = {}
 
@@ -44,14 +45,24 @@ class GeminiService:
         5. If the user mentions their ID being confiscated or common violations, refer to the escalation logic (e.g., 4th minor = major).
         """
         
-        chat = self.model.start_chat(history=[])
         full_prompt = f"System Instruction: {system_prompt}\n\nUser Question: {user_query}"
         
-        try:
-            response = chat.send_message(full_prompt)
-            return response.text
-        except Exception as e:
-            return f"Error connecting to AI engine: {str(e)}"
+        # Try primary model first, with fallbacks if quota is temporarily reached
+        models_to_try = [self.model_name, 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-flash-latest']
+        last_error = None
+
+        for m_name in models_to_try:
+            try:
+                m = genai.GenerativeModel(m_name)
+                chat = m.start_chat(history=[])
+                response = chat.send_message(full_prompt)
+                if response and response.text:
+                    return response.text
+            except Exception as e:
+                last_error = e
+                continue
+
+        return f"Error connecting to AI engine: {str(last_error)}"
 
     def prewarm_handbook_cache(self, candidates):
         """Batches embeddings for all rules to avoid per-item API calls."""
