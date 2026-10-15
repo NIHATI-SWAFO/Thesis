@@ -11,10 +11,20 @@ class GeminiService:
 
     def _load_handbook(self):
         try:
-            if not os.path.exists(settings.HANDBOOK_PATH):
-                return "Handbook context unavailable."
-            with open(settings.HANDBOOK_PATH, 'r', encoding='utf-8') as f:
-                return f.read()
+            from pathlib import Path
+            candidates = [
+                Path(__file__).resolve().parent / 'handbook_reference.md',
+                Path(settings.HANDBOOK_PATH) if hasattr(settings, 'HANDBOOK_PATH') and settings.HANDBOOK_PATH else None,
+                Path(settings.BASE_DIR) / 'data' / 'handbook_reference.md',
+                Path(settings.BASE_DIR).parent.parent / 'additional context' / 'handbook_reference.md',
+            ]
+            for p in candidates:
+                if p and p.exists():
+                    with open(p, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        if content.strip():
+                            return content
+            return "Handbook context unavailable."
         except Exception as e:
             print(f"Error loading handbook: {e}")
             return "Handbook context unavailable."
