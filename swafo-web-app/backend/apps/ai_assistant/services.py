@@ -153,7 +153,11 @@ class GeminiService:
         """
         if self.is_gemini_active:
             full_prompt = f"System Instruction: {system_prompt}\n\nUser Question: {user_query}"
-            models_to_try = [self.model_name, 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-flash-latest']
+            models_to_try = [
+                'gemini-3.1-flash-lite',
+                'gemini-3.5-flash-lite',
+                'gemini-flash-lite-latest',
+            ]
             for m_name in models_to_try:
                 try:
                     m = genai.GenerativeModel(m_name)
@@ -165,7 +169,7 @@ class GeminiService:
                     print(f"Gemini live API call notice with {m_name}: {e}")
                     continue
 
-        # Intelligent local handbook fallback (100% offline & zero API key required)
+        # Intelligent local handbook fallback (100% offline & zero API key / zero quota required)
         return self._local_handbook_response(user_query)
 
     def prewarm_handbook_cache(self, candidates):

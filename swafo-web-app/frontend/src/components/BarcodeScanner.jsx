@@ -231,8 +231,8 @@ export default function BarcodeScanner({ onScan, onClose }) {
       videoConstraints: {
         deviceId: cameraIdToUse ? { exact: cameraIdToUse } : undefined,
         facingMode: cameraIdToUse ? undefined : { ideal: 'environment' },
-        width: { ideal: 1920, min: 1280 },
-        height: { ideal: 1080, min: 720 },
+        width: { ideal: 1920, min: 480 },
+        height: { ideal: 1080, min: 480 },
       },
       disableFlip: false,
     };
@@ -430,15 +430,37 @@ export default function BarcodeScanner({ onScan, onClose }) {
     <div className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-md flex flex-col justify-between text-white select-none">
       <style>{`
         #barcode-scanner-viewport {
-          position: relative !important;
+          position: absolute !important;
+          inset: 0 !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
           width: 100% !important;
           height: 100% !important;
           background: #000 !important;
+          overflow: hidden !important;
         }
         #barcode-scanner-viewport video {
-          object-fit: cover !important;
+          position: absolute !important;
+          top: 50% !important;
+          left: 50% !important;
+          transform: translate(-50%, -50%) !important;
           width: 100% !important;
           height: 100% !important;
+          min-width: 100% !important;
+          min-height: 100% !important;
+          object-fit: cover !important;
+          display: block !important;
+        }
+        #barcode-scanner-viewport canvas {
+          display: none !important;
+        }
+        #barcode-scanner-viewport > div {
+          width: 100% !important;
+          height: 100% !important;
+          position: absolute !important;
+          inset: 0 !important;
         }
         #qr-shaded-region {
           display: none !important;
@@ -493,15 +515,15 @@ export default function BarcodeScanner({ onScan, onClose }) {
       </div>
 
       {/* ── Central Viewfinder Area ── */}
-      <div className="flex-1 relative flex items-center justify-center overflow-hidden px-4">
-        {/* Html5Qrcode video mount container */}
+      <div className="flex-1 relative flex flex-col items-center justify-center overflow-hidden w-full h-full">
+        {/* Html5Qrcode video mount container (covers full screen viewport) */}
         <div
           id="barcode-scanner-viewport"
-          className="absolute inset-0 w-full h-full"
+          className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none"
         />
 
-        {/* Viewfinder Target Overlay */}
-        <div className="relative z-10 flex flex-col items-center pointer-events-none">
+        {/* Viewfinder Target Overlay (centered right over camera feed) */}
+        <div className="relative z-10 flex flex-col items-center pointer-events-none px-4">
           {/* Rectangular Target Frame tailored to 1D ID Barcodes */}
           <div
             className={`w-[300px] sm:w-[380px] h-[130px] sm:h-[150px] rounded-2xl border-2 transition-all relative ${
