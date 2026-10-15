@@ -113,17 +113,20 @@ export default function StudentRecords({ role = 'officer' }) {
     const hasPending = student?.has_pending_violations ?? false;
     const isManualHold = student?.clearance_status === 'HOLD' || (studentStanding && studentStanding.clearance_impact === 'HOLD');
 
+    // Prioritize official handbook tier calculated by the Consequence Engine
     let tier = studentStanding?.tier;
-
-    // Strict alignment: 8+ violations or manual hold MUST be CRITICAL (Disciplinary Probation)
-    if (isManualHold || totalVios >= 8 || score > 75) {
+    if (!tier) {
+      if (isManualHold || totalVios >= 8 || score > 75) {
+        tier = 'CRITICAL';
+      } else if (totalVios >= 5 || score > 50) {
+        tier = 'HIGH';
+      } else if (totalVios >= 2 || hasPending || score > 25) {
+        tier = 'MODERATE';
+      } else {
+        tier = 'LOW';
+      }
+    } else if (isManualHold && tier !== 'CRITICAL') {
       tier = 'CRITICAL';
-    } else if (totalVios >= 5 || score > 50) {
-      tier = 'HIGH';
-    } else if (totalVios >= 2 || hasPending || score > 25) {
-      tier = 'MODERATE';
-    } else {
-      tier = tier || 'LOW';
     }
 
     if (tier === 'CRITICAL') {
@@ -131,7 +134,7 @@ export default function StudentRecords({ role = 'officer' }) {
         label: 'CRITICAL',
         tier: 'CRITICAL',
         standing: 'Disciplinary Probation',
-        citation: '',
+        citation: studentStanding?.handbook_citation || 'Section 27.3.5 / Section 14',
         consequence: studentStanding?.consequence_summary || 'Clearance placed on HOLD blocking enrollment and graduation. Honors forfeited; referral to SWAFO Director and Student Discipline Board.',
         clearance: studentStanding?.clearance_impact || 'HOLD',
         honors: studentStanding?.honors_eligibility || 'FORFEITED',
@@ -151,7 +154,7 @@ export default function StudentRecords({ role = 'officer' }) {
         label: 'HIGH',
         tier: 'HIGH',
         standing: 'Disciplinary Warning',
-        citation: '',
+        citation: studentStanding?.handbook_citation || 'Section 26.4 / Section 27.3.1.43',
         consequence: studentStanding?.consequence_summary || 'Disqualified from Dean\'s List and Latin Honors. Clearance restricted; Good Moral Certificate withheld.',
         clearance: studentStanding?.clearance_impact || 'RESTRICTED',
         honors: studentStanding?.honors_eligibility || 'DISQUALIFIED',
@@ -171,7 +174,7 @@ export default function StudentRecords({ role = 'officer' }) {
         label: 'MODERATE',
         tier: 'MODERATE',
         standing: 'Under Review',
-        citation: '',
+        citation: studentStanding?.handbook_citation || 'Section 27.1 / Section 14',
         consequence: studentStanding?.consequence_summary || 'Conditional clearance. Honors subject to review; Good Moral Certificate deferred pending case resolution.',
         clearance: studentStanding?.clearance_impact || 'CONDITIONAL',
         honors: studentStanding?.honors_eligibility || 'UNDER_REVIEW',
@@ -190,7 +193,7 @@ export default function StudentRecords({ role = 'officer' }) {
       label: 'LOW',
       tier: 'LOW',
       standing: 'Good Standing',
-      citation: '',
+      citation: studentStanding?.handbook_citation || 'Section 14',
       consequence: studentStanding?.consequence_summary || 'Unrestricted institutional clearance. Eligible for Dean\'s List and Latin Honors; unconditional GMC issuance.',
       clearance: studentStanding?.clearance_impact || 'CLEARED',
       honors: studentStanding?.honors_eligibility || 'ELIGIBLE',

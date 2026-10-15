@@ -118,74 +118,49 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         return round(min(total, self.MAX_SCORE), 1)
 
     def get_risk_standing(self, obj):
-        score = self.get_risk_score(obj)
-        has_pending = self.get_has_pending_violations(obj)
-        total_vios = obj.violations.count()
-        major_count = obj.violations.filter(rule__category__icontains='major').count()
-        is_manual_hold = (obj.clearance_status == 'HOLD')
+        from apps.violations.consequence_engine import evaluate_student_aggregate_standing
 
-        # ── Tier 1: Disciplinary Probation (Section 27.3.5) ──
-        # Triggers on: Manual clearance HOLD, Score > 75, 8+ total violations, or 3+ major offenses
-        if is_manual_hold or score > 75 or total_vios >= 8 or major_count >= 3:
+        score = self.get_risk_score(obj)
+        is_manual_hold = (obj.clearance_status == 'HOLD')
+        
+        violations_list = [
+            {
+                'rule_code': v.rule.rule_code if v.rule else '',
+                'category': v.rule.category if v.rule else '',
+                'status': v.status
+            }
+            for v in obj.violations.select_related('rule').all()
+        ]
+
+        standing_info = evaluate_student_aggregate_standing(
+            violations=violations_list,
+            manual_clearance_hold=is_manual_hold
+        )
+
+        # High point score override if applicable
+        tier = standing_info['tier']
+        standing = standing_info['standing']
+        color = standing_info['color']
+        clearance_impact = standing_info['clearance_impact']
+        honors_eligibility = standing_info['honors_eligibility']
+        gmc_status = standing_info['gmc_status']
+        consequence_summary = standing_info['consequence_summary']
+        handbook_citation = standing_info['handbook_citation']
+
+        if score > 75 and tier != 'CRITICAL':
             tier = 'CRITICAL'
             standing = 'Disciplinary Probation'
             clearance_impact = 'HOLD'
             honors_eligibility = 'FORFEITED'
             gmc_status = 'DENIED'
-            handbook_citation = ''
-            consequence_summary = (
-                f'Institutional Clearance placed on HOLD blocking enrollment and graduation. '
-                f'Honors forfeited; {total_vios} infractions on record. Referred to SWAFO Director '
-                f'and Student Discipline Board.'
-            )
             color = 'rose'
-
-        # ── Tier 2: Disciplinary Warning ──
-        # Triggers on: Score > 50, 5–7 total violations, or 2 major offenses
-        elif score > 50 or total_vios >= 5 or major_count >= 2:
+        elif score > 50 and tier in ['LOW', 'MODERATE']:
             tier = 'HIGH'
             standing = 'Disciplinary Warning'
             clearance_impact = 'RESTRICTED'
             honors_eligibility = 'DISQUALIFIED'
             gmc_status = 'WITHHELD'
-            handbook_citation = ''
-            consequence_summary = (
-                f'Disqualified from Dean\'s List and Latin Honors ({total_vios} violations on record). '
-                f'Clearance restricted; Good Moral Certificate withheld. '
-                f'Mandatory attendance in SWAFO Restorative Formation Program.'
-            )
             color = 'orange'
-
-        # ── Tier 3: Under Review ──
-        # Triggers on: Score > 25, 2–4 total violations, 1 major offense, or any unresolved pending violation
-        elif score > 25 or total_vios >= 2 or major_count >= 1 or has_pending:
-            tier = 'MODERATE'
-            standing = 'Under Review'
-            clearance_impact = 'CONDITIONAL'
-            honors_eligibility = 'UNDER_REVIEW'
-            gmc_status = 'DEFERRED'
-            handbook_citation = ''
-            consequence_summary = (
-                f'Conditional clearance. Honors subject to end-of-semester conduct review '
-                f'({total_vios} violation{"s" if total_vios != 1 else ""}, {"active pending case" if has_pending else "resolved"}). '
-                f'Good Moral Certificate deferred pending resolution of active obligations.'
-            )
-            color = 'amber'
-
-        # ── Tier 4: Good Standing ──
-        # Only for clean students (<= 1 resolved minor violation, 0 pending, score <= 25)
-        else:
-            tier = 'LOW'
-            standing = 'Good Standing'
-            clearance_impact = 'CLEARED'
-            honors_eligibility = 'ELIGIBLE'
-            gmc_status = 'AVAILABLE'
-            handbook_citation = ''
-            consequence_summary = (
-                'Unrestricted institutional clearance. Eligible for Dean\'s List '
-                'and Latin Honors; unconditional Good Moral Certificate (GMC) issuance.'
-            )
-            color = 'emerald'
 
         return {
             'tier': tier,
@@ -197,6 +172,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             'handbook_citation': handbook_citation,
             'consequence_summary': consequence_summary,
             'color': color,
+            'requires_formation': standing_info.get('requires_formation', False),
         }
 
 

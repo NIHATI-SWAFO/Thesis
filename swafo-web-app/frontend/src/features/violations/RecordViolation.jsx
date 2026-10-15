@@ -285,6 +285,7 @@ export default function RecordViolation() {
         location_name: formData.location,      // normalized key → auto-populates lat/lng
         description: formData.description,
         corrective_action: assessment.recommendation,
+        case_summary: `[${selectedRule.rule_code}] ${selectedRule.description.substring(0, 80)} at ${formData.location || 'Campus'}. Action: ${assessment.recommendation}.`,
         officer_email: user?.email,
         status: 'OPEN'
       };
@@ -893,28 +894,122 @@ export default function RecordViolation() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-12">
-                <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-[2.5rem] p-10 flex flex-col justify-between group hover:bg-white/10 transition-all">
+              {/* SANCTION & ESCALATION HEADER */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-[2.5rem] p-8 flex flex-col justify-between group hover:bg-white/10 transition-all">
                   <div>
-                    <p className="text-[11px] font-black text-white/30 uppercase tracking-[0.2em] mb-4">Escalation Logic Result</p>
-                    <p className="text-[24px] font-black text-white leading-tight mb-2 tracking-tight">
-                      {assessment.rule_code?.startsWith('27.1') ? `Violation #${(assessment.total_minor_count || 0) + 1}` : `Instance #${assessment.instance_number}`}
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Escalation Level</p>
+                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider ${assessment.is_escalated ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}`}>
+                        {assessment.is_escalated ? 'Escalated' : 'Standard'}
+                      </span>
+                    </div>
+                    <p className="text-[22px] font-black text-white leading-tight mb-2 tracking-tight">
+                      {assessment.penalty_level || (assessment.rule_code?.startsWith('27.1') ? `Violation #${(assessment.total_minor_count || 0) + 1}` : `Instance #${assessment.instance_number}`)}
                     </p>
-                    <p className="text-[14px] font-bold text-emerald-100/50 uppercase tracking-widest">
-                      {assessment.rule_code?.startsWith('27.1') ? 'MINOR CATEGORY ESCALATION' : 'MAJOR CATEGORY VIOLATION'}
+                    <p className="text-[12px] font-bold text-emerald-100/60 leading-relaxed">
+                      {assessment.escalation_reason || `Section ${assessment.rule_code} standard schedule.`}
                     </p>
                   </div>
+                  {assessment.monetary_fine ? (
+                    <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-amber-300">Accounting Fine Imposed:</span>
+                      <span className="text-[13px] font-black text-amber-200">Php {assessment.monetary_fine.toLocaleString()}</span>
+                    </div>
+                  ) : null}
                 </div>
-                <div className="bg-emerald-500 rounded-[2.5rem] p-10 shadow-[0_20px_60px_rgba(16,185,129,0.4)] flex flex-col justify-between group hover:scale-[1.02] transition-all">
+
+                <div className="bg-emerald-500 rounded-[2.5rem] p-8 shadow-[0_20px_60px_rgba(16,185,129,0.4)] flex flex-col justify-between group hover:scale-[1.01] transition-all">
                   <div>
-                    <p className="text-[11px] font-black text-emerald-950/40 uppercase tracking-[0.2em] mb-4">Mandated Sanction</p>
-                    <p className="text-[32px] font-black text-[#003624] leading-tight tracking-tighter">
+                    <p className="text-[11px] font-black text-emerald-950/40 uppercase tracking-[0.2em] mb-3">Prescribed Sanction</p>
+                    <p className="text-[26px] font-black text-[#003624] leading-tight tracking-tight">
                       {assessment.recommendation}
                     </p>
                   </div>
-                  <div className="mt-6 flex items-center gap-2 text-[#003624]/60">
-                    <span className="material-symbols-outlined text-[18px]">info</span>
-                    <span className="text-[11px] font-black uppercase tracking-widest">Handbook Page {assessment.rule_code?.substring(0, 4) || 'Ref'}</span>
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    {assessment.mandatory_formation && (
+                      <span className="bg-[#003624] text-emerald-200 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[13px]">school</span> Formation §26.4 Required
+                      </span>
+                    )}
+                    {assessment.requires_director_decision && (
+                      <span className="bg-[#003624] text-rose-300 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[13px]">gavel</span> SDB / Director Referral
+                      </span>
+                    )}
+                    {assessment.vehicle_pass_cancelled && (
+                      <span className="bg-[#003624] text-amber-200 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[13px]">cancel</span> Vehicle Pass Revoked
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* INSTITUTIONAL STAKES GRID (Clearance §14, Honors, GMC) */}
+              <div className="mb-10">
+                <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-400 mb-4 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[16px]">account_balance</span>
+                  Handbook Projected Impact on Student Privileges
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {/* Clearance Card */}
+                  <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Clearance (§14)</span>
+                        <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border ${
+                          assessment.clearance_impact === 'HOLD' ? 'bg-rose-500/30 text-rose-300 border-rose-500/50' :
+                          assessment.clearance_impact === 'RESTRICTED' ? 'bg-orange-500/30 text-orange-300 border-orange-500/50' :
+                          assessment.clearance_impact === 'CONDITIONAL' ? 'bg-amber-500/30 text-amber-300 border-amber-500/50' :
+                          'bg-emerald-500/30 text-emerald-300 border-emerald-500/50'
+                        }`}>
+                          {assessment.clearance_impact || 'CLEARED'}
+                        </span>
+                      </div>
+                      <p className="text-[12px] font-medium text-white/80 leading-snug">
+                        {assessment.clearance_reason || 'Normal institutional clearance maintained.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Honors Card */}
+                  <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Dean's List &amp; Honors</span>
+                        <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border ${
+                          assessment.honors_eligibility === 'FORFEITED' || assessment.honors_eligibility === 'DISQUALIFIED' ? 'bg-rose-500/30 text-rose-300 border-rose-500/50' :
+                          assessment.honors_eligibility === 'UNDER_REVIEW' ? 'bg-amber-500/30 text-amber-300 border-amber-500/50' :
+                          'bg-emerald-500/30 text-emerald-300 border-emerald-500/50'
+                        }`}>
+                          {(assessment.honors_eligibility || 'ELIGIBLE').replace('_', ' ')}
+                        </span>
+                      </div>
+                      <p className="text-[12px] font-medium text-white/80 leading-snug">
+                        {assessment.honors_reason || 'Eligible for Dean\'s List and academic awards.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* GMC Card */}
+                  <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Good Moral (GMC)</span>
+                        <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border ${
+                          assessment.gmc_status === 'DENIED' ? 'bg-rose-500/30 text-rose-300 border-rose-500/50' :
+                          assessment.gmc_status === 'WITHHELD' ? 'bg-orange-500/30 text-orange-300 border-orange-500/50' :
+                          assessment.gmc_status === 'DEFERRED' ? 'bg-amber-500/30 text-amber-300 border-amber-500/50' :
+                          'bg-emerald-500/30 text-emerald-300 border-emerald-500/50'
+                        }`}>
+                          {assessment.gmc_status || 'AVAILABLE'}
+                        </span>
+                      </div>
+                      <p className="text-[12px] font-medium text-white/80 leading-snug">
+                        {assessment.gmc_reason || 'Unconditional GMC issuance available.'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1506,16 +1601,87 @@ export default function RecordViolation() {
             )}
 
             {/* Mandated Sanction Card */}
-            <div className="bg-white rounded-2xl p-4 shadow-xs border-2 border-emerald-500/40 space-y-2">
-              <span className="text-[9px] font-black text-emerald-800 uppercase tracking-widest">Official Mandated Sanction</span>
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+            <div className="bg-white rounded-2xl p-4 shadow-xs border-2 border-emerald-500/40 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black text-emerald-800 uppercase tracking-widest">Official Mandated Sanction</span>
+                {assessment.is_escalated && (
+                  <span className="text-[8.5px] font-black bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Escalated
+                  </span>
+                )}
+              </div>
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 space-y-2">
                 <p className="text-[16px] font-black text-[#003624] leading-snug">
                   {assessment.recommendation}
                 </p>
-                <p className="text-[10px] font-bold text-emerald-700 mt-1.5 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[13px]">menu_book</span>
-                  <span>Handbook Page {assessment.rule_code?.substring(0, 4) || 'Ref'}</span>
-                </p>
+                {assessment.escalation_reason && (
+                  <p className="text-[10.5px] font-semibold text-emerald-900/80 leading-tight">
+                    {assessment.escalation_reason}
+                  </p>
+                )}
+                {assessment.monetary_fine ? (
+                  <p className="text-[11px] font-bold text-amber-800">
+                    Accounting Fine: Php {assessment.monetary_fine.toLocaleString()}
+                  </p>
+                ) : null}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {assessment.mandatory_formation && (
+                    <span className="bg-[#003624] text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase">
+                      Formation §26.4
+                    </span>
+                  )}
+                  {assessment.requires_director_decision && (
+                    <span className="bg-rose-700 text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase">
+                      Director / SDB
+                    </span>
+                  )}
+                  {assessment.vehicle_pass_cancelled && (
+                    <span className="bg-amber-600 text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase">
+                      Pass Revoked
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Mobile Privileges Stakes */}
+              <div className="pt-2 border-t border-gray-100 space-y-1.5">
+                <span className="text-[8.5px] font-black text-gray-400 uppercase tracking-wider block">Projected Student Privileges</span>
+                <div className="grid grid-cols-3 gap-1.5 text-center">
+                  <div className="bg-slate-50 p-2 rounded-xl border border-gray-100">
+                    <span className="text-[8px] font-bold text-gray-400 uppercase block mb-0.5">Clearance</span>
+                    <span className={`text-[9.5px] font-black px-1.5 py-0.5 rounded block uppercase ${
+                      assessment.clearance_impact === 'HOLD' ? 'bg-rose-100 text-rose-800' :
+                      assessment.clearance_impact === 'RESTRICTED' ? 'bg-orange-100 text-orange-800' :
+                      assessment.clearance_impact === 'CONDITIONAL' ? 'bg-amber-100 text-amber-800' :
+                      'bg-emerald-100 text-emerald-800'
+                    }`}>
+                      {assessment.clearance_impact || 'CLEARED'}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 p-2 rounded-xl border border-gray-100">
+                    <span className="text-[8px] font-bold text-gray-400 uppercase block mb-0.5">Honors</span>
+                    <span className={`text-[9.5px] font-black px-1.5 py-0.5 rounded block uppercase ${
+                      assessment.honors_eligibility === 'FORFEITED' || assessment.honors_eligibility === 'DISQUALIFIED' ? 'bg-rose-100 text-rose-800' :
+                      assessment.honors_eligibility === 'UNDER_REVIEW' ? 'bg-amber-100 text-amber-800' :
+                      'bg-emerald-100 text-emerald-800'
+                    }`}>
+                      {(assessment.honors_eligibility || 'ELIGIBLE').replace('_', ' ')}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 p-2 rounded-xl border border-gray-100">
+                    <span className="text-[8px] font-bold text-gray-400 uppercase block mb-0.5">Good Moral</span>
+                    <span className={`text-[9.5px] font-black px-1.5 py-0.5 rounded block uppercase ${
+                      assessment.gmc_status === 'DENIED' ? 'bg-rose-100 text-rose-800' :
+                      assessment.gmc_status === 'WITHHELD' ? 'bg-orange-100 text-orange-800' :
+                      assessment.gmc_status === 'DEFERRED' ? 'bg-amber-100 text-amber-800' :
+                      'bg-emerald-100 text-emerald-800'
+                    }`}>
+                      {assessment.gmc_status || 'AVAILABLE'}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1557,12 +1723,11 @@ export default function RecordViolation() {
       {/* ══════════════════════════════ UNIVERSAL PORTALS (MOBILE & DESKTOP) ══════════════════════════════ */}
 
       {/* ── CAMERA SCANNER MODAL ── */}
-      {showScannerModal && createPortal(
+      {showScannerModal && (
         <BarcodeScanner
           onScan={handleBarcodeScan}
           onClose={() => setShowScannerModal(false)}
-        />,
-        document.body
+        />
       )}
 
       {/* ── STUDENT PAST VIOLATIONS HISTORY MODAL ── */}
