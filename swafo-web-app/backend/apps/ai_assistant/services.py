@@ -224,7 +224,7 @@ class GeminiService:
                     item_text
                 )
                 
-                if similarity > 0.1:
+                if similarity > 0.25:
                     scored_candidates.append({
                         'id': item.get('id'),
                         'rule_code': item.get('rule_code'),
