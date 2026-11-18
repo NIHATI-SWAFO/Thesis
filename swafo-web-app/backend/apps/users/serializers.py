@@ -133,9 +133,11 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             for v in obj.violations.select_related('rule').all()
         ]
 
+        # Handbook standing from violations alone; the Director's manual HOLD and
+        # override are applied to clearance only, further below.
         standing_info = evaluate_student_aggregate_standing(
             violations=violations_list,
-            manual_clearance_hold=is_manual_hold
+            manual_clearance_hold=False
         )
 
         # High point score override if applicable
@@ -163,6 +165,14 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             gmc_status = 'WITHHELD'
             color = 'orange'
 
+        # What the handbook alone says about clearance (before any Director action)
+        handbook_clearance = clearance_impact
+
+        # Director HOLD: only the clearance changes; honors and GMC follow the handbook.
+        if is_manual_hold and clearance_impact != 'HOLD':
+            clearance_impact = 'HOLD'
+            consequence_summary = f"{consequence_summary} Clearance placed on HOLD by the SWAFO Director."
+
         # Director override: the SWAFO Director cleared the student, lifting a
         # handbook HOLD, RESTRICTED or CONDITIONAL clearance. Only the clearance
         # changes; honors and GMC still follow the handbook.
@@ -175,6 +185,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 
         return {
             'director_override': director_override,
+            'handbook_clearance': handbook_clearance,
             'tier': tier,
             'standing': standing,
             'score': score,

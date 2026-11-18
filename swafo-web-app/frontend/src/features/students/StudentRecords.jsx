@@ -94,13 +94,29 @@ export default function StudentRecords({ role = 'officer' }) {
   const clearanceButtonIcon = (status) =>
     status === 'CLEARED' ? 'verified_user' : status === 'HOLD' ? 'block' : 'warning';
 
-  const handleClearanceToggle = (studentId, currentStatus) => {
+  // Director toggle cycle:
+  //   handbook status (CLEARED / CONDITIONAL / RESTRICTED) -> HOLD
+  //   HOLD -> CLEARED (Director override when the handbook is not CLEARED)
+  //   Director CLEARED -> back to the handbook status
+  const nextClearance = (student) => {
+    const handbook = student?.risk_standing?.handbook_clearance || 'CLEARED';
+    const current = effectiveClearance(student);
+    if (student?.clearance_override && current === 'CLEARED' && handbook !== 'CLEARED') {
+      // Back to the handbook; a handbook HOLD is stored as HOLD like the auto-sync does
+      return { payload: { clearance_status: handbook === 'HOLD' ? 'HOLD' : 'CLEARED', clearance_override: false }, shows: handbook };
+    }
+    if (current === 'HOLD') {
+      return { payload: { clearance_status: 'CLEARED', clearance_override: handbook !== 'CLEARED' }, shows: 'CLEARED' };
+    }
+    return { payload: { clearance_status: 'HOLD', clearance_override: false }, shows: 'HOLD' };
+  };
+
+  const handleClearanceToggle = (studentId) => {
     if (role !== 'admin') return;
 
-    // HOLD -> CLEARED (Director clears). CLEARED / RESTRICTED / CONDITIONAL -> HOLD.
-    const newStatus = currentStatus === 'HOLD' ? 'CLEARED' : 'HOLD';
-    // Setting CLEARED is a Director override of any handbook hold; HOLD removes it.
-    const payload = { clearance_status: newStatus, clearance_override: newStatus === 'CLEARED' };
+    const target = students.find(s => s.id === studentId);
+    if (!target) return;
+    const { payload, shows } = nextClearance(target);
 
     // Optimistic update so the button flips right away
     setStudents(prev => prev.map(s =>
@@ -108,9 +124,7 @@ export default function StudentRecords({ role = 'officer' }) {
         ? {
             ...s,
             ...payload,
-            risk_standing: s.risk_standing
-              ? { ...s.risk_standing, clearance_impact: newStatus === 'CLEARED' ? 'CLEARED' : s.risk_standing.clearance_impact }
-              : s.risk_standing,
+            risk_standing: s.risk_standing ? { ...s.risk_standing, clearance_impact: shows } : s.risk_standing,
           }
         : s
     ));
@@ -773,7 +787,7 @@ export default function StudentRecords({ role = 'officer' }) {
                     {isAdmin && (
                       <td className="py-8 px-8 lg:px-10">
                         <button 
-                          onClick={() => handleClearanceToggle(student.id, effectiveClearance(student))}
+                          onClick={() => handleClearanceToggle(student.id)}
                           className={`flex items-center gap-3 px-5 py-2.5 rounded-2xl border-2 transition-all group/btn ${
                             clearanceButtonStyle(effectiveClearance(student), false)
                           }`}
@@ -907,7 +921,7 @@ export default function StudentRecords({ role = 'officer' }) {
                   {isAdmin && (
                     <div className="pt-1">
                       <button 
-                        onClick={() => handleClearanceToggle(student.id, effectiveClearance(student))}
+                        onClick={() => handleClearanceToggle(student.id)}
                         className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition-all ${
                           clearanceButtonStyle(effectiveClearance(student), true)
                         }`}
