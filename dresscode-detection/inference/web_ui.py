@@ -51,17 +51,21 @@ camera = None
 
 def get_camera():
     global camera
-    if camera is None:
-        camera = cv2.VideoCapture(0)
+    if camera is None or not camera.isOpened():
+        # Prefer DirectShow on Windows to avoid MSMF grab frame errors (-1072873822)
+        camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        if not camera.isOpened():
+            camera = cv2.VideoCapture(0)
         camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     return camera
 
 
 def generate_frames():
-    global LATEST_COMPLIANCE
-    cap = get_camera()
+    global LATEST_COMPLIANCE, camera
+    fail_count = 0
     while True:
+        cap = get_camera()
         if cap is None or not cap.isOpened():
             frame = np.zeros((720, 1280, 3), dtype=np.uint8)
             cv2.putText(frame, "Camera not detected / in use by another app", (280, 360), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (200, 200, 200), 2)
@@ -73,6 +77,12 @@ def generate_frames():
 
         success, frame = cap.read()
         if not success:
+            fail_count += 1
+            if fail_count > 5:
+                if camera is not None:
+                    camera.release()
+                camera = None
+                fail_count = 0
             frame = np.zeros((720, 1280, 3), dtype=np.uint8)
             cv2.putText(frame, "Waiting for video frame...", (380, 360), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (200, 200, 200), 2)
             ret, buffer = cv2.imencode('.jpg', frame)
@@ -80,6 +90,8 @@ def generate_frames():
                    b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
             time.sleep(0.1)
             continue
+        
+        fail_count = 0
         
         # 1. Run YOLO inference
         results = model(frame, conf=CONFIDENCE_THRESHOLD, verbose=False)

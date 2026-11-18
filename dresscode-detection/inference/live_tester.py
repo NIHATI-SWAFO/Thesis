@@ -22,6 +22,8 @@ ROOT_DIR = BASE_DIR.parent
 _CANDIDATES = [
     ROOT_DIR / "models" / "best.pt",
     BASE_DIR / "models" / "best.pt",
+    BASE_DIR / "models" / "yolo11s_dev_best.pt",
+    ROOT_DIR / "best.pt",
     BASE_DIR / "results" / "enhanced-uwear-dev" / "weights" / "best.pt",
 ]
 MODEL_PATH = next((p for p in _CANDIDATES if p.exists()), None)
@@ -40,7 +42,9 @@ def main():
     model = YOLO(str(MODEL_PATH))
 
     print("Opening webcam...")
-    cap = cv2.VideoCapture(0)  # 0 is usually the default laptop webcam
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    if not cap.isOpened():
+        cap = cv2.VideoCapture(0)
     
     # Increase resolution if camera supports it
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)

@@ -36,6 +36,21 @@ export default function RecordViolation() {
   const locationRef = useRef(null);
   const fileInputRef = useRef(null);
   const resultRef = useRef(null);
+  const skipNextSearchRef = useRef(false);
+
+  // Helper fetch with timeout to prevent hanging indefinite loading on mobile
+  const fetchWithTimeout = async (url, options = {}, timeoutMs = 7000) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timer);
+      return res;
+    } catch (err) {
+      clearTimeout(timer);
+      throw err;
+    }
+  };
 
   const [mobileStep, setMobileStep] = useState('student'); // 'student', 'details', 'sanction'
   const [showScannerModal, setShowScannerModal] = useState(false);
@@ -62,17 +77,18 @@ export default function RecordViolation() {
       extractedStudentId = cleanDigits;
     }
 
-    // Populate search query so officer visibly sees the extracted student ID
+    // Prevent debounced search from triggering a duplicate race condition
+    skipNextSearchRef.current = true;
     setSearchQuery(extractedStudentId);
 
     try {
-      // 1. Primary query with raw scanned barcode
-      let response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(rawVal)}`);
+      // 1. Primary query with raw scanned barcode (with 7s timeout)
+      let response = await fetchWithTimeout(`${API_ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(rawVal)}`);
       let data = response.ok ? await response.json() : [];
 
       // 2. Fallback query with extracted 9-digit student ID if distinct
       if ((!Array.isArray(data) || data.length === 0) && extractedStudentId !== rawVal) {
-        response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(extractedStudentId)}`);
+        response = await fetchWithTimeout(`${API_ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(extractedStudentId)}`);
         if (response.ok) {
           data = await response.json();
         }
@@ -96,7 +112,8 @@ export default function RecordViolation() {
         alert(`No student found for barcode: "${rawVal}" (Extracted Student ID: ${extractedStudentId}). Please search by name or enter student number manually.`);
       }
     } catch (e) {
-      console.error('Barcode lookup failed:', e);
+      console.error('Barcode lookup failed or timed out:', e);
+      alert(`Lookup timed out or network error while searching for ID "${extractedStudentId}". Please verify network connection or search manually.`);
     } finally {
       setIsSearching(false);
     }
@@ -131,13 +148,13 @@ export default function RecordViolation() {
     if (!studentEmail) return;
     setHistoryLoading(true);
     try {
-      const response = await fetch(`${API_ENDPOINTS.VIOLATIONS_LIST}?email=${studentEmail}`);
+      const response = await fetchWithTimeout(`${API_ENDPOINTS.VIOLATIONS_LIST}?email=${studentEmail}`, {}, 6000);
       if (response.ok) {
         const data = await response.json();
         setPastViolations(Array.isArray(data) ? data : (data.results || []));
       }
     } catch (error) {
-      console.error("Failed to fetch history:", error);
+      console.warn("History fetch non-fatal or timed out:", error);
     } finally {
       setHistoryLoading(false);
     }
@@ -158,6 +175,10 @@ export default function RecordViolation() {
   }, [searchQuery]);
 
   const handleSearch = async () => {
+    if (skipNextSearchRef.current) {
+      skipNextSearchRef.current = false;
+      return;
+    }
     if (!searchQuery) return;
     setIsSearching(true);
 
@@ -171,11 +192,11 @@ export default function RecordViolation() {
     }
 
     try {
-      let response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(query)}`);
+      let response = await fetchWithTimeout(`${API_ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(query)}`);
       let data = response.ok ? await response.json() : [];
 
       if ((!Array.isArray(data) || data.length === 0) && extractedId !== query) {
-        response = await fetch(`${API_ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(extractedId)}`);
+        response = await fetchWithTimeout(`${API_ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(extractedId)}`);
         if (response.ok) {
           data = await response.json();
         }

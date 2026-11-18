@@ -5,7 +5,21 @@
  * local development and production (Vercel/Railway).
  */
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://thesis-production-1816.up.railway.app';
+const getBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    const host = window.location.hostname;
+    // If accessing from mobile over local Wi-Fi (e.g. 192.168.x.x), replace localhost with host machine's IP
+    if (host !== 'localhost' && host !== '127.0.0.1') {
+      if (envUrl && (envUrl.includes('localhost') || envUrl.includes('127.0.0.1'))) {
+        return envUrl.replace(/localhost|127\.0\.0\.1/, host);
+      }
+    }
+  }
+  return envUrl || 'https://thesis-production-1816.up.railway.app';
+};
+
+export const API_BASE_URL = getBaseUrl();
 
 export const API_ENDPOINTS = {
   // Auth & Credential Recovery

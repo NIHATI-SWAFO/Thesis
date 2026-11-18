@@ -39,6 +39,7 @@ export default function BarcodeScanner({ onScan, onClose }) {
   const animationFrameRef = useRef(null);
   const backendProbeIntervalRef = useRef(null);
   const isFinishedRef = useRef(false);
+  const isDecodingBusyRef = useRef(false);
   const fileInputRef = useRef(null);
 
   const [status, setStatus] = useState('initializing'); // 'initializing' | 'scanning' | 'decoding_snapshot' | 'success' | 'error'
@@ -137,26 +138,31 @@ export default function BarcodeScanner({ onScan, onClose }) {
   // Capture frame from video element and send to backend zxing-cpp
   const captureAndDecodeFrame = useCallback(async (isManualTrigger = false) => {
     if (isFinishedRef.current) return;
+    if (isDecodingBusyRef.current) return;
+
     const scannerId = 'barcode-scanner-viewport';
     const container = document.getElementById(scannerId);
     const videoEl = container ? container.querySelector('video') : null;
 
     if (!videoEl || videoEl.videoWidth === 0 || videoEl.videoHeight === 0) return;
 
+    isDecodingBusyRef.current = true;
     if (isManualTrigger) {
       setIsCapturingSnap(true);
     }
 
+    const abortCtrl = new AbortController();
+    const timeoutId = setTimeout(() => abortCtrl.abort(), 6000);
+
     try {
       const canvas = document.createElement('canvas');
-      canvas.width = videoEl.videoWidth;
-      canvas.height = videoEl.videoHeight;
+      canvas.width = Math.min(videoEl.videoWidth, 1280);
+      canvas.height = Math.min(videoEl.videoHeight, 720);
       const ctx = canvas.getContext('2d');
       ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
 
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
       if (!blob) {
-        if (isManualTrigger) setIsCapturingSnap(false);
         return;
       }
 
@@ -166,6 +172,7 @@ export default function BarcodeScanner({ onScan, onClose }) {
       const resp = await fetch(API_ENDPOINTS.DECODE_BARCODE, {
         method: 'POST',
         body: formData,
+        signal: abortCtrl.signal,
       });
 
       if (resp.ok) {
@@ -175,9 +182,19 @@ export default function BarcodeScanner({ onScan, onClose }) {
           return;
         }
       }
+      if (isManualTrigger) {
+        alert('Could not decode barcode from snapshot. Please ensure the barcode is sharp, well-lit, and not reflecting light.');
+      }
     } catch (e) {
-      console.warn('Backend snapshot decode error:', e);
+      if (e.name !== 'AbortError') {
+        console.warn('Backend snapshot decode error:', e);
+      }
+      if (isManualTrigger) {
+        alert('Snapshot decode timed out. Please check your network connection.');
+      }
     } finally {
+      clearTimeout(timeoutId);
+      isDecodingBusyRef.current = false;
       if (isManualTrigger) {
         setIsCapturingSnap(false);
       }
@@ -289,14 +306,6 @@ export default function BarcodeScanner({ onScan, onClose }) {
           animationFrameRef.current = requestAnimationFrame(runNativeLoop);
         }
       }
-
-      // Backend zxing-cpp auto-probe (captures frame every 1.5s as background fallback)
-      backendProbeIntervalRef.current = setInterval(() => {
-        if (!isFinishedRef.current) {
-          captureAndDecodeFrame(false);
-        }
-      }, 1500);
-
     } catch (err) {
       console.error('Camera start error:', err);
       setStatus('error');
