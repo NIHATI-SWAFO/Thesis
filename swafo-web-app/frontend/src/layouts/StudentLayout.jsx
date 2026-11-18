@@ -30,6 +30,17 @@ export default function StudentLayout() {
     return user?.avatar || (user?.email ? localStorage.getItem(`swafo_student_avatar_${user.email}`) : null) || localStorage.getItem('swafo_student_avatar_current') || null;
   });
 
+  // Role Protection: Neither Director nor Officer permitted in Student Portal
+  useEffect(() => {
+    if (user && user.role !== 'STUDENT') {
+      if (user.role === 'ADMIN') {
+        navigate('/admin/dashboard', { replace: true });
+      } else if (user.role === 'OFFICER') {
+        navigate('/officer/dashboard', { replace: true });
+      }
+    }
+  }, [user, navigate]);
+
   useEffect(() => {
     if (user?.email) {
       const cached = localStorage.getItem(`swafo_student_avatar_${user.email}`) || localStorage.getItem('swafo_student_avatar_current');

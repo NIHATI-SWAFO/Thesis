@@ -25,6 +25,17 @@ export default function AdminLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingResetCount, setPendingResetCount] = useState(0);
 
+  // Role Protection: Only Director (ADMIN) is permitted in Admin/Director Portal
+  useEffect(() => {
+    if (user && user.role !== 'ADMIN') {
+      if (user.role === 'OFFICER') {
+        navigate('/officer/dashboard', { replace: true });
+      } else {
+        navigate('/student/dashboard', { replace: true });
+      }
+    }
+  }, [user, navigate]);
+
   // Close mobile drawer whenever location changes
   useEffect(() => {
     setIsMobileMenuOpen(false);

@@ -104,10 +104,10 @@ class MockLoginView(APIView):
                         info = data
                         break
             
-            if info or target_email.endswith('@dlsud.edu.ph') or 'officer' in target_email or 'admin' in target_email or 'director' in target_email:
-                officer_name = info["name"] if info else identifier.split('@')[0].replace('.', ' ').title()
-                role = info["role"] if info else (User.Role.ADMIN if ('admin' in target_email or 'director' in target_email) else User.Role.OFFICER)
-                initial_pw = info["password"] if info else "asd69q82^&7982"
+            if info:
+                officer_name = info["name"]
+                role = info["role"]
+                initial_pw = info["password"]
                 
                 user, _ = User.objects.get_or_create(
                     email__iexact=target_email,
@@ -126,10 +126,50 @@ class MockLoginView(APIView):
                 user.save()
 
         if not user:
-            return Response({"error": "User account not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "User account not found. Please verify your credentials."}, status=status.HTTP_404_NOT_FOUND)
 
         if getattr(user, 'is_deleted', False):
             return Response({"error": "This officer account has been deleted by the Director."}, status=status.HTTP_403_FORBIDDEN)
+
+        portal = (request.data.get('portal') or '').strip().lower()
+
+        # ─── STRICT PORTAL ENFORCEMENT ───────────────────────────────────────
+        director_emails = [
+            "ruel.elias@dlsud.edu.ph",
+            "director@dlsud.edu.ph",
+            "admin@dlsud.edu.ph",
+            "director.swafo@dlsud.edu.ph"
+        ]
+        is_director = (
+            user.role == User.Role.ADMIN or 
+            user.email.lower() in director_emails or
+            "ruel" in (user.full_name or "").lower()
+        )
+
+        # 1. Director Portal: Only Director Sir Ruel Elias
+        if portal in ['director', 'admin']:
+            if not is_director:
+                return Response({
+                    "error": "Access denied. Only Director Ruel Elias is authorized to log in to the Director Portal."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+        # 2. Officer Portal: Only Officers (Directors and Students forbidden)
+        elif portal == 'officer':
+            if is_director:
+                return Response({
+                    "error": "Access denied. This portal is strictly for Patrol and Staff Officers. Directors must sign in via the Admin/Director tab."
+                }, status=status.HTTP_403_FORBIDDEN)
+            if user.role != User.Role.OFFICER:
+                return Response({
+                    "error": "Access denied. Only designated SWAFO Patrol and Staff Officers can log in to the Officer Workstation."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+        # 3. Student Portal: Neither Director nor Officer permitted
+        elif portal == 'student':
+            if user.role in [User.Role.ADMIN, User.Role.OFFICER] or is_director:
+                return Response({
+                    "error": "Access denied. Directors and Officers cannot access the Student Portal."
+                }, status=status.HTTP_403_FORBIDDEN)
 
         client_ip = get_client_ip(request)
 
@@ -388,6 +428,10 @@ def get_or_create_student_profile(email, full_name=None, student_number=None, co
             username_prefix = email.split('@')[0]
             clean_name = username_prefix.replace('.', ' ').replace('_', ' ').title()
 
+    # Block Directors and Officers from acquiring StudentProfile
+    if user and user.role in [User.Role.ADMIN, User.Role.OFFICER]:
+        return None
+
     if not user:
         user = User.objects.create(
             username=email,
@@ -528,16 +572,41 @@ class ProfileByEmailView(APIView):
     Retrieves or auto-provisions the student record using Microsoft Entra SSO details.
     Ensures any student logging in via Microsoft account is officially registered in the database.
     """
+    def _is_staff(self, email):
+        clean_email = (email or '').strip().lower()
+        if not clean_email:
+            return False
+        director_emails = [
+            "ruel.elias@dlsud.edu.ph",
+            "director@dlsud.edu.ph",
+            "admin@dlsud.edu.ph",
+            "director.swafo@dlsud.edu.ph"
+        ]
+        if clean_email in director_emails or clean_email in OFFICER_REGISTRY:
+            return True
+        user = User.objects.filter(email__iexact=clean_email).first()
+        if user and user.role in [User.Role.ADMIN, User.Role.OFFICER]:
+            return True
+        return False
+
     def get(self, request):
         email = (request.query_params.get('email') or '').strip()
         name = (request.query_params.get('name') or '').strip()
         if not email:
             return Response({"error": "Email parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if self._is_staff(email):
+            return Response({
+                "error": "Access denied. SWAFO Directors and Officers cannot access the Student Portal. Please use the Officer or Director portal."
+            }, status=status.HTTP_403_FORBIDDEN)
             
         student = StudentProfile.objects.filter(user__email__iexact=email).first()
         if not student:
             # Auto-provision student account into database upon first profile resolution
             student = get_or_create_student_profile(email, full_name=name)
+
+        if not student:
+            return Response({"error": "Student account could not be provisioned."}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = StudentProfileSerializer(student)
         return Response(serializer.data)
@@ -551,6 +620,11 @@ class ProfileByEmailView(APIView):
         
         if not email:
             return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if self._is_staff(email):
+            return Response({
+                "error": "Access denied. SWAFO Directors and Officers cannot access the Student Portal. Please use the Officer or Director portal."
+            }, status=status.HTTP_403_FORBIDDEN)
             
         student = get_or_create_student_profile(
             email=email,
@@ -559,6 +633,9 @@ class ProfileByEmailView(APIView):
             course=course,
             year_level=year_level
         )
+
+        if not student:
+            return Response({"error": "Student account could not be provisioned."}, status=status.HTTP_403_FORBIDDEN)
         
         refresh = RefreshToken.for_user(student.user)
         return Response({

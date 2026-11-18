@@ -128,12 +128,38 @@ export default function SignIn() {
   };
 
 
-  // If user is already authenticated (came back from Microsoft redirect), go to dashboard
+  // Student tab error state
+  const [studentError, setStudentError] = useState('');
+
+  // If user came back from Microsoft redirect, verify role before routing
   useEffect(() => {
+    const errorMsg = sessionStorage.getItem('swafo_login_error');
+    if (errorMsg) {
+      sessionStorage.removeItem('swafo_login_error');
+      setStudentError(errorMsg);
+      setActiveTab('student');
+      return;
+    }
+
     if (accounts.length > 0) {
+      const email = (accounts[0].username || '').toLowerCase();
+      const isStaff = 
+        email.includes('director') || 
+        email.includes('ruel.elias') || 
+        email.includes('admin@') || 
+        email.includes('officer') ||
+        ['aclag', 'ceballos', 'diamante', 'doroteo', 'nicart', 'omana', 'penano', 'delacruz', 'deguzman', 'santos', 'reyes', 'garcia', 'cruz', 'villanueva', 'ramos', 'luna', 'castro', 'mendoza'].some(s => email.includes(s));
+
+      if (isStaff) {
+        setStudentError('Access denied: Director and Officer accounts cannot access the Student Portal. Please sign in via the Officer or Director portal.');
+        setActiveTab('student');
+        instance.logoutRedirect({ postLogoutRedirectUri: window.location.origin + '/login' }).catch(() => {});
+        return;
+      }
+
       navigate('/student/dashboard');
     }
-  }, [accounts, navigate]);
+  }, [accounts, navigate, instance]);
 
   const handleMicrosoftLogin = () => {
     // Navigates the browser to Microsoft Azure SSO
@@ -470,6 +496,12 @@ export default function SignIn() {
               ) : (
                 /* 3. STUDENT TAB */
                 <div className="flex flex-col space-y-4 text-center animate-in fade-in duration-300">
+                  {studentError && (
+                    <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs sm:text-[13px] font-semibold rounded-xl text-center">
+                      {studentError}
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={handleMicrosoftLogin}

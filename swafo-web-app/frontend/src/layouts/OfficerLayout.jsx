@@ -26,6 +26,17 @@ export default function OfficerLayout() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Role Protection: Only Patrol & Staff Officers permitted in Officer Workstation
+  useEffect(() => {
+    if (user && user.role !== 'OFFICER') {
+      if (user.role === 'ADMIN') {
+        navigate('/admin/dashboard', { replace: true });
+      } else {
+        navigate('/student/dashboard', { replace: true });
+      }
+    }
+  }, [user, navigate]);
+
   // Forced password change state
   const [forceNewPassword, setForceNewPassword] = useState('');
   const [forceConfirmPassword, setForceConfirmPassword] = useState('');

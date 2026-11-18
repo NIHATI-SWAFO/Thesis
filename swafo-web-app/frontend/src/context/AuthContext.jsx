@@ -20,11 +20,28 @@ export const AuthProvider = ({ children }) => {
 
     // Identity Resolver Logic
     useEffect(() => {
-        // If we have a real MSAL account, it takes absolute precedence over any mock data
+        // If we have a real MSAL account, check if it's permitted on the Student Portal
         if (accounts.length > 0) {
             const msalUser = accounts[0];
-            const msalEmail = msalUser.username || msalUser.idTokenClaims?.preferred_username || '';
+            const msalEmail = (msalUser.username || msalUser.idTokenClaims?.preferred_username || '').toLowerCase();
             const msalName = msalUser.name || msalUser.idTokenClaims?.name || '';
+
+            // Strictly forbid Directors and Officers from acquiring a Student session
+            const isStaff = 
+                msalEmail.includes('director') || 
+                msalEmail.includes('ruel.elias') || 
+                msalEmail.includes('admin@') || 
+                msalEmail.includes('officer') ||
+                ['aclag', 'ceballos', 'diamante', 'doroteo', 'nicart', 'omana', 'penano', 'delacruz', 'deguzman', 'santos', 'reyes', 'garcia', 'cruz', 'villanueva', 'ramos', 'luna', 'castro', 'mendoza'].some(s => msalEmail.includes(s));
+
+            if (isStaff) {
+                console.warn("Blocked Director/Officer MSAL login to Student Portal:", msalEmail);
+                setCurrentUser(null);
+                setMockUser(null);
+                localStorage.removeItem('swafo_mock_user');
+                sessionStorage.setItem('swafo_login_error', 'Access denied. Directors and Officers cannot access the Student Portal. Please use the Officer or Director portal.');
+                return;
+            }
 
             setCurrentUser(prev => ({
                 id: prev?.id,
@@ -45,8 +62,11 @@ export const AuthProvider = ({ children }) => {
                         name: msalName
                     })
                 })
-                .then(res => {
-                    if (!res.ok) return null;
+                .then(async res => {
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.error || 'Access denied');
+                    }
                     return res.json();
                 })
                 .then(data => {
@@ -58,13 +78,19 @@ export const AuthProvider = ({ children }) => {
                             email: msalEmail,
                             student_number: data.profile.student_number,
                             course: data.profile.course,
-                            role: data.user?.role || 'STUDENT',
+                            role: 'STUDENT',
                             token: data.access || null,
                             isMock: false
                         });
                     }
                 })
-                .catch(err => console.warn("MSAL profile sync warning:", err));
+                .catch(err => {
+                    console.warn("MSAL profile sync warning:", err);
+                    if (err.message && err.message.includes('Access denied')) {
+                        setCurrentUser(null);
+                        sessionStorage.setItem('swafo_login_error', err.message);
+                    }
+                });
             }
 
             // Clear mock storage to prevent confusion
@@ -122,7 +148,7 @@ export const AuthProvider = ({ children }) => {
 
     const loginAsOfficer = async (officerName, email, password) => {
         try {
-            const payload = { email: email };
+            const payload = { email: email, portal: 'officer' };
             if (password) payload.password = password;
 
             const res = await fetch(`${API_BASE_URL}/api/users/mock-login/`, {
@@ -132,20 +158,6 @@ export const AuthProvider = ({ children }) => {
             });
             const data = await res.json();
             if (!res.ok) {
-                // If backend returns 404 (e.g. account not seeded on remote DB yet), fall back to client session
-                if (res.status === 404 && (officerName || email)) {
-                    console.warn("Officer not found in remote DB, falling back to active officer session:", email);
-                    const fallbackUser = {
-                        id: 999,
-                        name: officerName || email.split('@')[0].replace('.', ' ').title(),
-                        email: email,
-                        role: 'OFFICER',
-                        token: 'fallback-officer-token'
-                    };
-                    localStorage.setItem('swafo_mock_user', JSON.stringify(fallbackUser));
-                    setMockUser(fallbackUser);
-                    return fallbackUser;
-                }
                 throw new Error(data.error || 'Authentication failed');
             }
 
@@ -161,28 +173,14 @@ export const AuthProvider = ({ children }) => {
             setMockUser(user);
             return user;
         } catch (error) {
-            if (officerName || (email && email.includes('@dlsud.edu.ph'))) {
-                console.warn("Using resilient fallback for officer login:", email);
-                const fallbackUser = {
-                    id: 999,
-                    name: officerName || email.split('@')[0],
-                    email: email,
-                    role: 'OFFICER',
-                    must_change_password: false,
-                    token: 'fallback-officer-token'
-                };
-                localStorage.setItem('swafo_mock_user', JSON.stringify(fallbackUser));
-                setMockUser(fallbackUser);
-                return fallbackUser;
-            }
-            console.error("Officer login failed", error);
+            console.error("Officer login failed:", error);
             throw error;
         }
     };
 
     const loginAsAdmin = async (adminName, email, password) => {
         try {
-            const payload = { email: email };
+            const payload = { email: email, portal: 'director' };
             if (password) payload.password = password;
 
             const res = await fetch(`${API_BASE_URL}/api/users/mock-login/`, {
