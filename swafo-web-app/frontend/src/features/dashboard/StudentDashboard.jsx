@@ -451,7 +451,7 @@ export default function StudentDashboard() {
                   {selectedViolation.director_remarks && (
                     <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
                       <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-1">Director's Notes</p>
-                      <p className="text-xs text-slate-600 italic">"{selectedViolation.director_remarks}"</p>
+                      <p className="text-xs text-slate-600 italic whitespace-pre-line">"{selectedViolation.director_remarks}"</p>
                     </div>
                   )}
                 </div>

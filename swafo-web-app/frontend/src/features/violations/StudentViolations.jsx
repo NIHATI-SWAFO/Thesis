@@ -401,7 +401,7 @@ export default function StudentViolations() {
                           {violation.directorRemarks && (
                             <div className="mt-4 p-4 bg-white/40 rounded-xl border border-emerald-100/30 w-full">
                               <p className="text-[10px] font-pjs font-black text-emerald-800/40 uppercase tracking-widest mb-1">Institutional Justification</p>
-                              <p className="text-[13px] font-manrope font-medium text-emerald-900/70 italic leading-relaxed">"{violation.directorRemarks}"</p>
+                              <p className="text-[13px] font-manrope font-medium text-emerald-900/70 italic leading-relaxed whitespace-pre-line">"{violation.directorRemarks}"</p>
                             </div>
                           )}
                         </div>

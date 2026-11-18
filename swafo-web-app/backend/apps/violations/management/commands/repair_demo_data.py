@@ -262,12 +262,16 @@ class Command(BaseCommand):
             stu = owner[c.id]
             a = assess(c, history(c, plain))
             sanction = a.recommendation
+            # The engine returns a placeholder when the Director must choose; a decided
+            # case needs a real sanction, so use the Director dropdown's wording.
+            decided_sanction = ('Sanction 2: Disciplinary Probation (1 Semester)'
+                                if sanction.upper().startswith('FOR SWAFO DIRECTOR DECISION') else sanction)
             fields = {
                 'student': stu,
                 'status': final,
                 'corrective_action': sanction[:255],
                 'assigned_to': None if st == 'OPEN_UNCLAIMED' else self.next_officer(),
-                'director_sanction': sanction[:255] if final in ('DECISION_RENDERED', 'CLOSED') else None,
+                'director_sanction': decided_sanction[:255] if final in ('DECISION_RENDERED', 'CLOSED') else None,
                 'director_remarks': self.remarks(final, c),
                 'case_summary': f"[{c.rule.rule_code}] {c.rule.description[:80]} reported at "
                                 f"{c.location_name or c.location}. Mandated action: {sanction}.",

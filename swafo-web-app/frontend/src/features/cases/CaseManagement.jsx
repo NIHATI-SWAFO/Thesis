@@ -154,7 +154,7 @@ export default function CaseManagement({ role }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus, ...extra })
     })
-      .then(res => res.json().then(data => {
+      .then(res => res.json().catch(() => ({})).then(data => {
         // Do not show a status change the server rejected (e.g. a missing reason)
         if (!res.ok) throw new Error(data?.director_remarks?.[0] || 'The case could not be updated.');
         return data;
