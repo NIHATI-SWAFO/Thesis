@@ -4,6 +4,7 @@
  */
 
 export const BUILDING_IMAGE_PATHS = {
+  MAGDALO_GATE: '/images/buildings/magdalo-gate.jpg',
   ICTC: '/images/buildings/ictc-building.jpg',
   ICTC_PARKING: '/images/buildings/ictc-parking.jpg',
   CTHM_PARKING: '/images/buildings/cthm-parking.jpg',
@@ -22,6 +23,15 @@ export const BUILDING_IMAGE_PATHS = {
 };
 
 export const BUILDING_CATALOG = [
+  {
+    id: 'magdalo-gate',
+    name: 'Magdalo Gate',
+    aliases: ['magdalo gate', 'magdalo', 'main gate', 'gate 1', 'de la salle university dasmarinas arch', 'entrance gate', 'magdalo entry'],
+    image: BUILDING_IMAGE_PATHS.MAGDALO_GATE,
+    zone: 'Zone 1: Magdalo Gate & Entry',
+    category: 'Gates & Entry Points',
+    description: 'De La Salle University - Dasmariñas iconic stone arch entrance and vehicular gate.',
+  },
   {
     id: 'ictc-bldg',
     name: 'ICTC Building',
@@ -180,6 +190,7 @@ export function getBuildingImage(nameOrLocation) {
   if (aliasMatch) return aliasMatch.image;
 
   // 3. Fallback based on common keywords
+  if (clean.includes('magdalo') || clean.includes('gate 1')) return BUILDING_IMAGE_PATHS.MAGDALO_GATE;
   if (clean.includes('ictc') || clean.includes('tech')) return BUILDING_IMAGE_PATHS.ICTC;
   if (clean.includes('felipe') || clean.includes('jfh')) return BUILDING_IMAGE_PATHS.JFH;
   if (clean.includes('borromeo') || clean.includes('pbh')) return BUILDING_IMAGE_PATHS.PBH;
