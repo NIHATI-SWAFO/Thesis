@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 from .models import Violation, Appeal
 from apps.users.serializers import StudentProfileSerializer
@@ -215,6 +216,43 @@ class ViolationSerializer(serializers.ModelSerializer):
             validated_data['location_name'] = loc_name
 
         instance = super().create(validated_data)
+
+        # Allow explicit incident date/time or custom timestamp from the client
+        try:
+            if request and hasattr(request, 'data'):
+                custom_ts = request.data.get('timestamp')
+                inc_date = request.data.get('incident_date') or request.data.get('incidentDate')
+                inc_time = request.data.get('incident_time') or request.data.get('incidentTime')
+                
+                custom_dt = None
+                if custom_ts:
+                    from dateutil.parser import parse
+                    dt = parse(custom_ts)
+                    if timezone.is_naive(dt):
+                        dt = timezone.make_aware(dt, timezone.get_current_timezone())
+                    custom_dt = dt
+                elif inc_date:
+                    import datetime
+                    d_parts = [int(p) for p in str(inc_date).split('-')]
+                    d = datetime.date(d_parts[0], d_parts[1], d_parts[2])
+                    
+                    t = timezone.localtime(timezone.now()).time()
+                    if inc_time:
+                        clean_time = str(inc_time).strip()
+                        for fmt in ('%I:%M %p', '%I:%M%p', '%H:%M:%S', '%H:%M'):
+                            try:
+                                t = datetime.datetime.strptime(clean_time, fmt).time()
+                                break
+                            except ValueError:
+                                pass
+                    dt = datetime.datetime.combine(d, t)
+                    custom_dt = timezone.make_aware(dt, timezone.get_current_timezone())
+
+                if custom_dt:
+                    instance.timestamp = custom_dt
+                    instance.save(update_fields=['timestamp'])
+        except Exception as e:
+            print(f"Custom incident timestamp notice: {e}")
 
         # Synchronize Student clearance if high escalation occurred
         try:

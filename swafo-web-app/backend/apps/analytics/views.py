@@ -39,8 +39,8 @@ class AdminDashboardAPIView(APIView):
             ).order_by('-count')[:5]
 
             # 3. Temporal Trends (Dynamic Range)
-            range_type = request.query_params.get('range', 'week')
-            days_count = 30 if range_type == 'month' else 7
+            range_type = request.query_params.get('range', 'week').lower().strip()
+            days_count = 30 if range_type == 'month' else (365 if range_type == 'year' else 7)
             
             temporal_data = []
             day_names = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
@@ -51,10 +51,16 @@ class AdminDashboardAPIView(APIView):
             total_days_to_fetch = days_count + lookback_days
             
             start_date = local_now.date() - timezone.timedelta(days=total_days_to_fetch - 1)
+            
+            # Use timezone-aware range boundaries to ensure 100% accurate local date aggregation
+            start_dt = timezone.make_aware(timezone.datetime.combine(start_date, timezone.datetime.min.time()), timezone.get_current_timezone())
+            end_dt = timezone.make_aware(timezone.datetime.combine(local_now.date(), timezone.datetime.max.time()), timezone.get_current_timezone())
+            
+            vs_timestamps = base_qs.filter(timestamp__gte=start_dt, timestamp__lte=end_dt).values_list('timestamp', flat=True)
             violations_by_date = {}
-            vs = base_qs.filter(timestamp__date__gte=start_date, timestamp__date__lte=local_now.date()).values('timestamp__date').annotate(count=Count('id'))
-            for v in vs:
-                violations_by_date[v['timestamp__date']] = v['count']
+            for ts in vs_timestamps:
+                loc_d = timezone.localtime(ts).date()
+                violations_by_date[loc_d] = violations_by_date.get(loc_d, 0) + 1
 
             counts_window = []
             sma_history = []
@@ -73,9 +79,16 @@ class AdminDashboardAPIView(APIView):
                 if i < days_count:
                     day_label = day_names[target_date.weekday()]
                     date_num = target_date.strftime('%d')
-                    display_label = f"{date_num} {day_label}" if (range_type == 'week' or i % 5 == 0) else ""
+                    
+                    if range_type == 'week':
+                        display_label = f"{date_num} {day_label}"
+                    elif range_type == 'month':
+                        display_label = target_date.strftime('%b %d')
+                    else:
+                        display_label = target_date.strftime('%b %d')
+
                     short_label = target_date.strftime('%b %d')
-                    full_date = target_date.strftime('%A, %B %d')
+                    full_date = target_date.strftime('%A, %B %d, %Y')
 
                     temporal_data.append({
                         "day": display_label,
@@ -375,18 +388,27 @@ class OfficerDashboardAPIView(APIView):
             day_names = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
             
             start_date = local_now.date() - timezone.timedelta(days=6)
+            start_dt = timezone.make_aware(timezone.datetime.combine(start_date, timezone.datetime.min.time()), timezone.get_current_timezone())
+            end_dt = timezone.make_aware(timezone.datetime.combine(local_now.date(), timezone.datetime.max.time()), timezone.get_current_timezone())
+            
+            vs_timestamps = Violation.objects.filter(timestamp__gte=start_dt, timestamp__lte=end_dt).values_list('timestamp', flat=True)
             violations_by_date = {}
-            vs = Violation.objects.filter(timestamp__date__gte=start_date, timestamp__date__lte=local_now.date()).values('timestamp__date').annotate(count=Count('id'))
-            for v in vs:
-                violations_by_date[v['timestamp__date']] = v['count']
+            for ts in vs_timestamps:
+                loc_d = timezone.localtime(ts).date()
+                violations_by_date[loc_d] = violations_by_date.get(loc_d, 0) + 1
             
             for i in range(6, -1, -1): # From 6 days ago to today
                 target_date = local_now.date() - timezone.timedelta(days=i)
                 day_label = day_names[target_date.weekday()]
+                date_num = target_date.strftime('%d')
                 
                 day_count = violations_by_date.get(target_date, 0)
                 
-                temporal_data.append({"day": day_label, "value": day_count})
+                temporal_data.append({
+                    "day": f"{date_num} {day_label}",
+                    "short_label": target_date.strftime('%b %d'),
+                    "value": day_count
+                })
 
             # 3. Violations by Type (Top 4)
             violations_by_type = Violation.objects.values('rule__category').annotate(

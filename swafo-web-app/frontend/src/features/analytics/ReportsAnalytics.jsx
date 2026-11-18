@@ -147,7 +147,7 @@ export default function ReportsAnalytics() {
             </button>
             {isFilterOpen && (
               <div className="absolute top-full mt-2 right-0 w-full sm:w-[160px] bg-white border border-slate-100 rounded-xl md:rounded-2xl shadow-xl z-50 p-1.5 animate-in fade-in slide-in-from-top-2">
-                {['Month', 'Year'].map(f => (
+                {['Week', 'Month', 'Year'].map(f => (
                   <button
                     key={f}
                     onClick={() => changeFilter(f)}
@@ -254,7 +254,25 @@ export default function ReportsAnalytics() {
         
         {/* Violations Over Time — Seasonality Analysis (7-Day SMA) */}
         <div className="overflow-hidden">
-          <ViolationsOverTimeChart analytics={analytics} />
+          <ViolationsOverTimeChart 
+            analytics={analytics} 
+            headerActions={
+              <div className="flex bg-slate-100 p-1 rounded-xl gap-1 shrink-0">
+                <button 
+                  onClick={() => setTimeFilter('Week')}
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${timeFilter.toLowerCase() === 'week' ? 'bg-white text-[#003624] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Week
+                </button>
+                <button 
+                  onClick={() => setTimeFilter('Month')}
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all ${timeFilter.toLowerCase() === 'month' ? 'bg-white text-[#003624] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Month
+                </button>
+              </div>
+            }
+          />
         </div>
 
         {/* Violations by Type - Refined Ranking */}

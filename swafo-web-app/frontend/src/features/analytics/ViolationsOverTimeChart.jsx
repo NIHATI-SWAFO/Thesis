@@ -50,31 +50,28 @@ export default function ViolationsOverTimeChart({ analytics, headerActions }) {
     ? analytics.temporal.filter(d => d.is_weekday)
     : analytics.temporal;
   
+  const chartData = filteredTemporal.map(d => ({
+    ...d,
+    label: (d.day && d.day.trim() !== "") ? d.day : (d.short_label || d.date),
+  }));
+
   // Find weekend ranges for shading
   const weekendRanges = [];
   let weekendStart = null;
-  filteredTemporal.forEach((d, i) => {
-    const key = d.day || d.short_label;
-    
-    // In our backend, Monday=0, Sunday=6. is_weekday is < 6 (Mon-Sat).
-    // For this context, Saturday is a school day. Weekends = Sunday only.
+  chartData.forEach((d, i) => {
+    // Weekends = Sunday only (or non-school days)
     if (!d.is_weekday && weekendStart === null) {
-      weekendStart = key;
+      weekendStart = d.label;
     } else if (d.is_weekday && weekendStart !== null) {
-      const prevKey = filteredTemporal[i-1]?.day || filteredTemporal[i-1]?.short_label;
+      const prevKey = chartData[i-1]?.label;
       weekendRanges.push({ start: weekendStart, end: prevKey });
       weekendStart = null;
     }
   });
   if (weekendStart) {
-    const lastItem = filteredTemporal[filteredTemporal.length - 1];
-    weekendRanges.push({ start: weekendStart, end: lastItem?.day || lastItem?.short_label });
+    const lastItem = chartData[chartData.length - 1];
+    weekendRanges.push({ start: weekendStart, end: lastItem?.label });
   }
-
-  const chartData = filteredTemporal.map(d => ({
-    ...d,
-    label: d.day !== "" ? d.day : d.short_label,
-  }));
 
   return (
     <div className="bg-white rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] p-4 sm:p-8 md:p-12 border border-[#f1f5f9] shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-full">
@@ -189,16 +186,18 @@ export default function ViolationsOverTimeChart({ analytics, headerActions }) {
             <CartesianGrid strokeDasharray="3 3" stroke="#e0f2e9" vertical={false} />
             <XAxis 
               dataKey="label" 
-              tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 700 }} 
+              tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} 
               axisLine={false} 
               tickLine={false}
-              interval={4}
+              interval={chartData.length <= 8 ? 0 : 'preserveStartEnd'}
+              minTickGap={10}
               angle={-25}
               textAnchor="end"
-              height={40}
+              height={45}
             />
             <YAxis 
-              tickCount={6} 
+              allowDecimals={false}
+              domain={[0, (dataMax) => Math.max(dataMax, 4)]}
               axisLine={false} 
               tickLine={false}
               tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }}
