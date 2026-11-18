@@ -759,7 +759,7 @@ export default function OfficerAccounts() {
               <div>
                 <h2 className="text-lg font-extrabold font-pjs text-gray-900">Security Audit Trail</h2>
                 <p className="text-xs text-gray-500 font-medium">
-                  Immutable security ledger tracking password recoveries, approvals, and authorization events.
+                  Immutable security ledger tracking officer logins, session events, password recoveries, and administrative authorizations.
                 </p>
               </div>
               <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-gray-100 text-gray-600">
@@ -796,13 +796,15 @@ export default function OfficerAccounts() {
 
                         <td className="px-6 py-3.5">
                           <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                            log.action.includes('APPROVED')
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : log.action.includes('REJECTED')
-                                ? 'bg-rose-100 text-rose-800'
+                            log.action.includes('REJECTED') || log.action.includes('FAILED') || log.action.includes('DELETED')
+                              ? 'bg-rose-100 text-rose-800'
+                              : log.action.includes('APPROVED') || log.action.includes('LOGIN')
+                                ? 'bg-emerald-100 text-emerald-800'
                                 : log.action.includes('REQUESTED')
                                   ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-blue-100 text-blue-800'
+                                  : log.action.includes('LOGOUT')
+                                    ? 'bg-slate-100 text-slate-700'
+                                    : 'bg-blue-100 text-blue-800'
                           }`}>
                             {log.action}
                           </span>

@@ -131,6 +131,8 @@ class MockLoginView(APIView):
         if getattr(user, 'is_deleted', False):
             return Response({"error": "This officer account has been deleted by the Director."}, status=status.HTTP_403_FORBIDDEN)
 
+        client_ip = get_client_ip(request)
+
         if password:
             reg_entry = OFFICER_REGISTRY.get(user.email.lower()) or OFFICER_REGISTRY.get(identifier.lower())
             expected_pw = reg_entry["password"] if reg_entry else None
@@ -143,6 +145,14 @@ class MockLoginView(APIView):
                 user.set_password(password)
                 user.save()
             else:
+                action_name = 'OFFICER_LOGIN_FAILED' if user.role == User.Role.OFFICER else 'LOGIN_FAILED'
+                SecurityAuditLog.objects.create(
+                    action=action_name,
+                    actor=user,
+                    target_user=user,
+                    ip_address=client_ip,
+                    details=f"Failed login attempt for {user.full_name} ({user.email}) - invalid password credentials."
+                )
                 return Response({"error": "Invalid password"}, status=status.HTTP_401_UNAUTHORIZED)
         
         # Presence: mark session as online at login time
@@ -151,6 +161,17 @@ class MockLoginView(APIView):
         user.last_seen = now
         user.is_online = True
         user.save(update_fields=['last_login', 'last_seen', 'is_online'])
+
+        # Security Audit Log: Record officer/director login activity
+        action_name = 'OFFICER_LOGIN' if user.role == User.Role.OFFICER else ('DIRECTOR_LOGIN' if user.role == User.Role.ADMIN else 'USER_LOGIN')
+        role_label = "Patrol Officer" if user.role == User.Role.OFFICER else ("Director" if user.role == User.Role.ADMIN else "User")
+        SecurityAuditLog.objects.create(
+            action=action_name,
+            actor=user,
+            target_user=user,
+            ip_address=client_ip,
+            details=f"{role_label} {user.full_name} ({user.email}) successfully authenticated and logged in."
+        )
 
         refresh = RefreshToken.for_user(user)
         return Response({
@@ -180,8 +201,23 @@ class PresenceOfflineView(APIView):
         email = (request.data.get('email') or '').strip()
         if not email:
             return Response({"error": "email is required"}, status=status.HTTP_400_BAD_REQUEST)
-        updated = User.objects.filter(email__iexact=email).update(is_online=False)
-        return Response({"ok": bool(updated)})
+        user = User.objects.filter(email__iexact=email).first()
+        if user:
+            was_online = user.is_online
+            user.is_online = False
+            user.save(update_fields=['is_online'])
+            if was_online:
+                action_name = 'OFFICER_LOGOUT' if user.role == User.Role.OFFICER else ('DIRECTOR_LOGOUT' if user.role == User.Role.ADMIN else 'USER_LOGOUT')
+                role_label = "Patrol Officer" if user.role == User.Role.OFFICER else ("Director" if user.role == User.Role.ADMIN else "User")
+                SecurityAuditLog.objects.create(
+                    action=action_name,
+                    actor=user,
+                    target_user=user,
+                    ip_address=get_client_ip(request),
+                    details=f"{role_label} {user.full_name} ({user.email}) logged out / ended active session."
+                )
+            return Response({"ok": True})
+        return Response({"ok": False})
 
 
 class StudentSearchView(APIView):
@@ -1229,7 +1265,22 @@ class SecurityAuditLogsListView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        logs = SecurityAuditLog.objects.all().order_by('-timestamp')[:150]
+        # Auto-seed past login records if the audit table is empty
+        if not SecurityAuditLog.objects.exists():
+            for u in User.objects.filter(last_login__isnull=False, role__in=[User.Role.OFFICER, User.Role.ADMIN]).order_by('last_login'):
+                action_name = 'OFFICER_LOGIN' if u.role == User.Role.OFFICER else 'DIRECTOR_LOGIN'
+                role_label = "Patrol Officer" if u.role == User.Role.OFFICER else "Director"
+                log = SecurityAuditLog.objects.create(
+                    action=action_name,
+                    actor=u,
+                    target_user=u,
+                    ip_address="127.0.0.1",
+                    details=f"{role_label} {u.full_name} ({u.email}) successfully authenticated and logged in."
+                )
+                if u.last_login:
+                    SecurityAuditLog.objects.filter(pk=log.pk).update(timestamp=u.last_login)
+
+        logs = SecurityAuditLog.objects.all().order_by('-timestamp')[:200]
         return Response(SecurityAuditLogSerializer(logs, many=True).data)
 
 
