@@ -4,6 +4,25 @@ import { API_ENDPOINTS } from '../../../api/config';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { toPng } from 'html-to-image';
+import { 
+  Clock, 
+  Compass, 
+  LogIn, 
+  LogOut, 
+  CheckCircle2, 
+  ShieldCheck, 
+  AlertTriangle, 
+  MapPin, 
+  Award, 
+  FileText, 
+  Camera, 
+  TrendingUp, 
+  Gavel, 
+  Check, 
+  Download, 
+  ArrowLeft, 
+  Save 
+} from 'lucide-react';
 import campusData from '../../../assets/dlsud-campus.json';
 import { getBuildingImage } from '../../../utils/buildingImages';
 
@@ -458,7 +477,7 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
 
     try {
       // Small pause for layout stabilization
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 120));
 
       const filter = (node) => {
         if (node && node.hasAttribute && node.hasAttribute('data-html2canvas-ignore')) {
@@ -467,13 +486,37 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
         return true;
       };
 
-      const dataUrl = await toPng(exportRef.current, {
+      const exportEl = exportRef.current;
+      const scrollEl = exportEl.querySelector('.overflow-y-auto');
+      const targetHeight = scrollEl ? scrollEl.scrollHeight + 140 : exportEl.scrollHeight;
+
+      // Temporarily expand scroll container so the whole summary renders without bottom truncation
+      const prevOverflow = scrollEl ? scrollEl.style.overflow : '';
+      const prevHeight = scrollEl ? scrollEl.style.height : '';
+      if (scrollEl) {
+        scrollEl.style.overflow = 'visible';
+        scrollEl.style.height = 'auto';
+      }
+
+      const dataUrl = await toPng(exportEl, {
         cacheBust: true,
         pixelRatio: 2,
         backgroundColor: isNight ? '#0D1F16' : '#F4F6F5',
         filter,
         skipFonts: true,
+        height: targetHeight,
+        style: {
+          height: `${targetHeight}px`,
+          maxHeight: 'none',
+          overflow: 'visible',
+        }
       });
+
+      // Restore scroll styling
+      if (scrollEl) {
+        scrollEl.style.overflow = prevOverflow;
+        scrollEl.style.height = prevHeight;
+      }
 
       const filename = `Patrol_${sessionData?.shift_type || 'Summary'}_${Date.now()}.png`;
 
@@ -562,9 +605,9 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
         <button 
           onClick={onBack} 
           data-html2canvas-ignore 
-          className="w-10 h-10 bg-white/90 backdrop-blur-md border border-gray-200/80 rounded-full shadow-md flex items-center justify-center text-gray-800 active:scale-90 transition-transform"
+          className="w-10 h-10 bg-white/90 backdrop-blur-md border border-gray-200/80 rounded-full shadow-md flex items-center justify-center text-gray-800 active:scale-90 transition-transform cursor-pointer"
         >
-          <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
         </button>
         
         <button 
@@ -573,7 +616,7 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
           data-html2canvas-ignore 
           className="px-4 h-10 bg-white/90 backdrop-blur-md border border-gray-200/80 rounded-full shadow-md flex items-center gap-2 text-gray-800 active:scale-90 transition-transform cursor-pointer"
         >
-          {isExporting ? <span className="material-symbols-outlined text-[18px] animate-spin">sync</span> : <span className="material-symbols-outlined text-[18px]">download</span>}
+          {isExporting ? <span className="animate-spin text-[16px]">⏳</span> : <Download className="w-4 h-4 text-gray-800" />}
           <span className="font-bold text-[13px]">{isExporting ? 'Saving...' : 'Save Image'}</span>
         </button>
       </div>
@@ -593,7 +636,7 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
               </div>
               <div className="absolute bottom-3 left-4 right-4">
                 <div className="flex items-center gap-1.5 text-white/80 text-[10px] font-bold uppercase tracking-widest mb-1">
-                  <span className="material-symbols-outlined text-[14px] text-[#39E58C]">location_on</span>
+                  <MapPin className="w-3.5 h-3.5 text-[#39E58C]" />
                   <span>{sessionData?.assignedZone || 'Designated Campus Zone'}</span>
                 </div>
                 <h2 className="font-black text-[22px] text-white leading-tight tracking-tight drop-shadow-sm">
@@ -606,12 +649,12 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
           {/* Officer footer chip */}
           <div className="px-4 py-2.5 bg-black/25 backdrop-blur-sm flex items-center justify-between border-t border-white/10">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-[#39E58C]/20 border border-[#39E58C]/40 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[#39E58C] text-[13px]">badge</span>
+              <div className="w-6 h-6 rounded-full bg-[#39E58C]/20 border border-[#39E58C]/40 flex items-center justify-center shrink-0">
+                <Award className="w-3.5 h-3.5 text-[#39E58C]" />
               </div>
-              <span className="text-[11px] font-bold text-white/90">{officerName}</span>
+              <span className="text-[11px] font-bold text-white/90 truncate">{officerName}</span>
             </div>
-            <span className="text-[10px] font-bold text-white/60">
+            <span className="text-[10px] font-bold text-white/60 shrink-0">
               {new Date().toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
           </div>
@@ -619,13 +662,13 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
 
         {/* ── 2. SESSION TITLE & STATUS ── */}
         <div className="px-1 pt-1">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[10px] font-black text-[#1A5C3A] tracking-[0.2em] uppercase">Session Detail</span>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] font-black text-[#1A5C3A] tracking-[0.2em] uppercase whitespace-nowrap">Session Detail</span>
             <span className="bg-[#39E58C] text-[#003624] text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm">
               Completed
             </span>
           </div>
-          <h1 className="font-black text-[28px] text-[#000000] leading-none tracking-tight">
+          <h1 className="font-black text-[28px] text-[#000000] leading-snug tracking-tight mt-1">
             {shiftType} Patrol
           </h1>
           <p className="text-[12px] font-bold text-gray-400 mt-1">
@@ -636,21 +679,24 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
         {/* ── 3. METRIC TILES (2x2 Grid) ── */}
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'DURATION', value: calculateDuration(), icon: 'schedule', color: 'text-emerald-700' },
-            { label: 'DISTANCE', value: distanceKm > 0 ? `${distanceKm} km` : '0.15 km', icon: 'explore', color: 'text-blue-600' },
-            { label: 'TIME STARTED', value: formatDisplayTime(sessionData?.actual_start), icon: 'login', color: 'text-amber-600' },
-            { label: 'TIME FINISHED', value: formatDisplayTime(sessionData?.actual_end), icon: 'logout', color: 'text-purple-600' }
-          ].map(stat => (
-            <div key={stat.label} className="flex flex-col gap-2 p-4 rounded-[22px] bg-white border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100">
-                  <span className={`material-symbols-outlined text-[16px] ${stat.color}`}>{stat.icon}</span>
+            { label: 'DURATION', value: calculateDuration(), icon: Clock, color: 'text-emerald-700' },
+            { label: 'DISTANCE', value: distanceKm > 0 ? `${distanceKm} km` : '0.15 km', icon: Compass, color: 'text-blue-600' },
+            { label: 'TIME STARTED', value: formatDisplayTime(sessionData?.actual_start), icon: LogIn, color: 'text-amber-600' },
+            { label: 'TIME FINISHED', value: formatDisplayTime(sessionData?.actual_end), icon: LogOut, color: 'text-purple-600' }
+          ].map(stat => {
+            const IconComp = stat.icon;
+            return (
+              <div key={stat.label} className="flex flex-col gap-2 p-4 rounded-[22px] bg-white border border-gray-100 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100">
+                    <IconComp className={`w-4 h-4 ${stat.color}`} />
+                  </div>
+                  <span className="font-black text-[9px] text-gray-400 uppercase tracking-widest whitespace-nowrap">{stat.label}</span>
                 </div>
-                <span className="font-black text-[9px] text-gray-400 uppercase tracking-widest">{stat.label}</span>
+                <span className="font-black text-[19px] text-[#000000] leading-tight tracking-tight">{stat.value}</span>
               </div>
-              <span className="font-black text-[19px] text-[#000000] leading-none tracking-tight">{stat.value}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* ── 4. CHECKPOINTS CLEARED SUMMARY ── */}
@@ -658,18 +704,18 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
           <div className="bg-white rounded-[24px] p-4 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-3 px-1">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#1A5C3A] text-[18px]">verified</span>
-                <span className="font-black text-[13px] text-[#000000] tracking-tight">Checkpoints Cleared</span>
+                <CheckCircle2 className="w-4 h-4 text-[#1A5C3A] shrink-0" />
+                <span className="font-black text-[13px] text-[#000000] tracking-tight whitespace-nowrap">Checkpoints Cleared</span>
               </div>
-              <span className="bg-[#E8F5E9] text-[#1A5C3A] text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
+              <span className="bg-[#E8F5E9] text-[#1A5C3A] text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full whitespace-nowrap">
                 {checkpoints.filter(c => c.done !== false).length}/{checkpoints.length} Cleared
               </span>
             </div>
             <div className="space-y-2">
               {checkpoints.map((cp, idx) => (
                 <div key={idx} className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50/70 border border-gray-100">
-                  <div className="w-6 h-6 rounded-full bg-[#1A5C3A] text-white flex items-center justify-center shrink-0 text-[11px] font-black">
-                    ✓
+                  <div className="w-6 h-6 rounded-full bg-[#1A5C3A] text-white flex items-center justify-center shrink-0">
+                    <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-black text-[13px] text-[#000] truncate leading-tight">{cp.name || cp.label || `Checkpoint ${idx + 1}`}</p>
@@ -688,10 +734,14 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
         <div className="bg-white rounded-[24px] p-4 shadow-sm border border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-3.5">
             <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${violationsCount > 0 ? 'bg-orange-50 text-orange-600 border border-orange-200' : 'bg-emerald-50 text-[#1A5C3A] border border-emerald-200'}`}>
-              <span className="material-symbols-outlined text-[22px]">{violationsCount > 0 ? 'warning' : 'shield'}</span>
+              {violationsCount > 0 ? (
+                <AlertTriangle className="w-5 h-5 text-orange-600" />
+              ) : (
+                <ShieldCheck className="w-5 h-5 text-[#1A5C3A]" />
+              )}
             </div>
             <div>
-              <p className="font-black text-[16px] text-[#000] leading-tight">
+              <p className="font-black text-[15px] text-[#000] leading-tight">
                 {violationsCount > 0 ? `${violationsCount} Violations Recorded` : 'Zero Incidents Logged'}
               </p>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
@@ -699,7 +749,7 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
               </p>
             </div>
           </div>
-          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${violationsCount > 0 ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-[#003624]'}`}>
+          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0 ${violationsCount > 0 ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-[#003624]'}`}>
             {violationsCount > 0 ? 'Alert' : 'All Clear'}
           </span>
         </div>
@@ -707,7 +757,7 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
         {/* ── 6. OFFICER OBSERVATIONS / NOTES ── */}
         {sessionData?.notes && (
           <div className="bg-amber-50/70 border border-amber-200/80 rounded-[24px] p-4 flex gap-3">
-            <span className="material-symbols-outlined text-amber-600 text-[18px] shrink-0 mt-0.5">edit_note</span>
+            <FileText className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest mb-0.5">Officer Observation</p>
               <p className="text-[12px] font-medium text-amber-950 leading-relaxed italic">
@@ -742,7 +792,7 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
             data-html2canvas-ignore 
             className={`w-full h-[58px] ${isSaving ? 'bg-gray-400' : 'bg-[#00875A] hover:bg-[#00704A]'} rounded-[20px] shadow-[0_8px_30px_rgba(0,135,90,0.35)] flex justify-center items-center gap-2.5 text-white active:scale-[0.98] transition-all cursor-pointer`}
           >
-            {isSaving ? <span className="animate-spin material-symbols-outlined text-[20px]">sync</span> : <span className="material-symbols-outlined text-[22px]">save</span>}
+            {isSaving ? <span className="animate-spin text-[20px]">⏳</span> : <Save className="w-5 h-5 text-white" />}
             <span className="font-black text-[16px] tracking-tight">{isSaving ? 'Saving Patrol Record...' : 'Save to History'}</span>
           </button>
         </div>
@@ -3061,7 +3111,7 @@ const PatrolSessionDetails = ({ onBack, sessionData }) => {
         {/* Celebration icon */}
         <div className="flex justify-center mb-4">
           <div className="w-20 h-20 rounded-full bg-[#39E58C]/15 border-2 border-[#39E58C]/30 flex items-center justify-center">
-            <span className="material-symbols-outlined text-[#39E58C] text-[40px]">verified</span>
+            <CheckCircle2 className="w-10 h-10 text-[#39E58C]" />
           </div>
         </div>
 
@@ -3072,16 +3122,19 @@ const PatrolSessionDetails = ({ onBack, sessionData }) => {
         {/* Big 3 stat ring row */}
         <div className="grid grid-cols-3 gap-3 mb-2">
           {[
-            { label: 'Duration', value: durationStr, sub: 'total time', icon: 'timer' },
-            { label: 'Evidence', value: `${photos.length}`, sub: 'photos', icon: 'photo_camera' },
-            { label: 'Efficiency', value: `${efficiencyScore}%`, sub: 'score', icon: 'trending_up' },
-          ].map(s => (
-            <div key={s.label} className="bg-white/8 border border-white/10 rounded-[20px] p-4 flex flex-col items-center gap-1 backdrop-blur-sm">
-              <span className="material-symbols-outlined text-[#39E58C] text-[18px] mb-0.5">{s.icon}</span>
-              <p className="font-black text-[22px] text-white leading-none tracking-tight">{s.value}</p>
-              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">{s.sub}</p>
-            </div>
-          ))}
+            { label: 'Duration', value: durationStr, sub: 'total time', icon: Clock },
+            { label: 'Evidence', value: `${photos.length}`, sub: 'photos', icon: Camera },
+            { label: 'Efficiency', value: `${efficiencyScore}%`, sub: 'score', icon: TrendingUp },
+          ].map(s => {
+            const StatIcon = s.icon;
+            return (
+              <div key={s.label} className="bg-white/8 border border-white/10 rounded-[20px] p-4 flex flex-col items-center gap-1 backdrop-blur-sm">
+                <StatIcon className="w-4 h-4 text-[#39E58C] mb-0.5" />
+                <p className="font-black text-[22px] text-white leading-none tracking-tight">{s.value}</p>
+                <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">{s.sub}</p>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -3094,23 +3147,26 @@ const PatrolSessionDetails = ({ onBack, sessionData }) => {
             <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">Session Overview</p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
               {[
-                { label: 'Time Started', value: startTime, icon: 'login' },
-                { label: 'Time Ended', value: endTime, icon: 'logout' },
-                { label: 'Officer', value: sessionData?.officer_name || sessionData?.officer_details?.full_name || 'SWAFO Officer', icon: 'badge' },
-                { label: 'Shift', value: sessionData?.shift_type || '--', icon: 'schedule' },
-                { label: 'Distance', value: `${distanceKm} km`, icon: 'straighten' },
-                { label: 'Area', value: areaName, icon: 'location_on' },
-              ].map(item => (
-                <div key={item.label} className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-[#E8F5E9] rounded-xl flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-[#1A5C3A] text-[15px]">{item.icon}</span>
+                { label: 'Time Started', value: startTime, icon: LogIn },
+                { label: 'Time Ended', value: endTime, icon: LogOut },
+                { label: 'Officer', value: sessionData?.officer_name || sessionData?.officer_details?.full_name || 'SWAFO Officer', icon: Award },
+                { label: 'Shift', value: sessionData?.shift_type || '--', icon: Clock },
+                { label: 'Distance', value: `${distanceKm} km`, icon: Compass },
+                { label: 'Area', value: areaName, icon: MapPin },
+              ].map(item => {
+                const ItemIcon = item.icon;
+                return (
+                  <div key={item.label} className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[#E8F5E9] rounded-xl flex items-center justify-center shrink-0">
+                      <ItemIcon className="w-4 h-4 text-[#1A5C3A]" />
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{item.label}</p>
+                      <p className="font-black text-[13px] tracking-tight text-[#000]">{item.value}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{item.label}</p>
-                    <p className="font-black text-[13px] tracking-tight text-[#000]">{item.value}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
           {/* Officer Notes — always shown */}
@@ -3126,7 +3182,7 @@ const PatrolSessionDetails = ({ onBack, sessionData }) => {
         <div className="bg-white rounded-[28px] shadow-sm border border-gray-50 px-5 py-4 flex items-center gap-4">
           {/* Icon circle */}
           <div className="w-12 h-12 rounded-full bg-[#1A5C3A]/10 flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[#1A5C3A] text-[22px]">gavel</span>
+            <Gavel className="w-5 h-5 text-[#1A5C3A]" />
           </div>
           {/* Number + labels */}
           <div className="flex-1">
