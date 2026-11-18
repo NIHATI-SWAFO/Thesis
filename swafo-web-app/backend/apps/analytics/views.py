@@ -170,15 +170,20 @@ class AdminDashboardAPIView(APIView):
                 leaderboard_qs = leaderboard_qs.filter(course__iexact=college)
             leaderboard = []
             from apps.users.serializers import StudentProfileSerializer
+            # Ordered by handbook standing (tier), then active (non-dismissed) violations
+            tier_rank = {'CRITICAL': 4, 'HIGH': 3, 'MODERATE': 2, 'LOW': 1}
             for s in leaderboard_qs:
                 s_ser = StudentProfileSerializer(s)
+                tier = (s_ser.data.get('risk_standing') or {}).get('tier', 'LOW')
+                active = s.violations.exclude(status='DISMISSED').count()
                 leaderboard.append({
                     "name": s.user.full_name,
                     "id": s.student_number,
-                    "score": s_ser.data.get('risk_score', 0),
+                    "score": active,
+                    "tier": tier,
                     "college": s.course
                 })
-            leaderboard = sorted(leaderboard, key=lambda x: x['score'], reverse=True)[:10]
+            leaderboard = sorted(leaderboard, key=lambda x: (tier_rank.get(x['tier'], 0), x['score']), reverse=True)[:10]
 
             # 11. Institutional Resolution Speed (Avg hours to CLOSE)
             resolved_cases_with_time = base_qs.filter(status='CLOSED').annotate(

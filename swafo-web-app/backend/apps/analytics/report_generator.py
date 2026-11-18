@@ -170,21 +170,23 @@ def generate_college_report(college: str) -> bytes:
     s2_min, s2_maj = sem_counts(college_qs, sem2_s, sem2_e)
 
     # Risk leaderboard
+    # Ordered by handbook standing (tier), then active (non-dismissed) violations
+    tier_rank = {'CRITICAL': 4, 'HIGH': 3, 'MODERATE': 2, 'LOW': 1}
     leaderboard = []
     for s in students_qs:
         ser = StudentProfileSerializer(s)
-        score = ser.data.get('risk_score', 0)
+        active = s.violations.exclude(status='DISMISSED').count()
         standing_info = ser.data.get('risk_standing', {})
-        if score > 0:
+        if active > 0:
             leaderboard.append({
                 'name': s.user.full_name,
                 'id': s.student_number,
                 'standing': standing_info.get('standing', 'Good Standing'),
                 'clearance': standing_info.get('clearance_impact', 'CLEARED'),
                 'tier': standing_info.get('tier', 'LOW'),
-                'score': score,
+                'score': active,
             })
-    leaderboard = sorted(leaderboard, key=lambda x: x['score'], reverse=True)[:8]
+    leaderboard = sorted(leaderboard, key=lambda x: (tier_rank.get(x['tier'], 0), x['score']), reverse=True)[:8]
 
     risk_buckets = {'LOW': 0, 'MODERATE': 0, 'HIGH': 0, 'CRITICAL': 0}
     for e in leaderboard:

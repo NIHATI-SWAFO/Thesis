@@ -371,7 +371,7 @@ export default function StudentRecords({ role = 'officer' }) {
                       text: 'text-emerald-800', 
                       bg: 'bg-emerald-50/70', 
                       border: 'border-emerald-200/60', 
-                      criteria: 'Clean record (0–1 resolved minor violation, 0 pending).',
+                      criteria: 'At most 1 minor offense and no active case (dismissed cases are not counted).',
                       impact: 'Clearance CLEARED; Honors ELIGIBLE; GMC AVAILABLE unconditionally.' 
                     },
                     { 
@@ -381,7 +381,7 @@ export default function StudentRecords({ role = 'officer' }) {
                       text: 'text-amber-800', 
                       bg: 'bg-amber-50/70', 
                       border: 'border-amber-200/60', 
-                      criteria: '2–4 infractions, 1 major offense, or active pending case.',
+                      criteria: '2 minor offenses, an active (open) case, or unsettled traffic fines.',
                       impact: 'Clearance CONDITIONAL; Honors subject to semester review; GMC DEFERRED.' 
                     },
                     { 
@@ -391,7 +391,7 @@ export default function StudentRecords({ role = 'officer' }) {
                       text: 'text-orange-800', 
                       bg: 'bg-orange-50/70', 
                       border: 'border-orange-200/60', 
-                      criteria: '5–7 infractions or 2 major offenses. Formation required.',
+                      criteria: '3 minor offenses or 1 major offense. Formation required.',
                       impact: 'Clearance RESTRICTED; Honors DISQUALIFIED; GMC WITHHELD.' 
                     },
                     { 
@@ -401,7 +401,7 @@ export default function StudentRecords({ role = 'officer' }) {
                       text: 'text-rose-800', 
                       bg: 'bg-rose-50/70', 
                       border: 'border-rose-200/60', 
-                      criteria: '8+ infractions, 3+ major offenses, or manual clearance HOLD.',
+                      criteria: '4+ minor offenses (escalates per §27.3.1.43) or 2+ major offenses.',
                       impact: 'Clearance HOLD (enrollment locked); Honors FORFEITED; GMC DENIED; SDB referral.' 
                     },
                   ].map(tier => (
