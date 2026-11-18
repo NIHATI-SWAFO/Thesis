@@ -436,6 +436,8 @@ export default function RecordViolation() {
         corrective_action: assessment.recommendation,
         case_summary: `[${selectedRule.rule_code}] ${selectedRule.description.substring(0, 80)} at ${formData.location || 'Campus'}. Action: ${assessment.recommendation}.`,
         officer_email: user?.email,
+        incident_date: formData.incidentDate,
+        incident_time: formData.incidentTime,
         status: 'OPEN'
       };
       const response = await fetch(API_ENDPOINTS.VIOLATIONS_CREATE, {
