@@ -77,17 +77,28 @@ export default function StudentRecords({ role = 'officer' }) {
 
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
 
-  // Effective clearance: HOLD if the Director set it, or if the handbook puts the
-  // student on hold and the Director has not lifted it (backend applies the override).
+  // Effective clearance shown on the toggle. The database only stores CLEARED or
+  // HOLD; RESTRICTED / CONDITIONAL come from the handbook (backend applies any
+  // Director override to clearance_impact).
   const effectiveClearance = (student) =>
-    student?.clearance_status === 'HOLD' || student?.risk_standing?.clearance_impact === 'HOLD'
+    student?.clearance_status === 'HOLD'
       ? 'HOLD'
-      : 'CLEARED';
+      : (student?.risk_standing?.clearance_impact || student?.clearance_status || 'CLEARED');
+
+  const clearanceButtonStyle = (status, compact) => {
+    if (status === 'CLEARED') return compact ? 'bg-emerald-50/80 border-emerald-200 text-emerald-800 hover:bg-emerald-100' : 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100';
+    if (status === 'HOLD') return compact ? 'bg-rose-50/80 border-rose-200 text-rose-800 hover:bg-rose-100' : 'bg-rose-50 border-rose-100 text-rose-700 hover:bg-rose-100';
+    return compact ? 'bg-amber-50/80 border-amber-200 text-amber-800 hover:bg-amber-100' : 'bg-amber-50 border-amber-100 text-amber-700 hover:bg-amber-100';
+  };
+
+  const clearanceButtonIcon = (status) =>
+    status === 'CLEARED' ? 'verified_user' : status === 'HOLD' ? 'block' : 'warning';
 
   const handleClearanceToggle = (studentId, currentStatus) => {
     if (role !== 'admin') return;
 
-    const newStatus = currentStatus === 'CLEARED' ? 'HOLD' : 'CLEARED';
+    // HOLD -> CLEARED (Director clears). CLEARED / RESTRICTED / CONDITIONAL -> HOLD.
+    const newStatus = currentStatus === 'HOLD' ? 'CLEARED' : 'HOLD';
     // Setting CLEARED is a Director override of any handbook hold; HOLD removes it.
     const payload = { clearance_status: newStatus, clearance_override: newStatus === 'CLEARED' };
 
@@ -98,7 +109,7 @@ export default function StudentRecords({ role = 'officer' }) {
             ...s,
             ...payload,
             risk_standing: s.risk_standing
-              ? { ...s.risk_standing, clearance_impact: newStatus === 'CLEARED' && s.risk_standing.clearance_impact === 'HOLD' ? 'CLEARED' : s.risk_standing.clearance_impact }
+              ? { ...s.risk_standing, clearance_impact: newStatus === 'CLEARED' ? 'CLEARED' : s.risk_standing.clearance_impact }
               : s.risk_standing,
           }
         : s
@@ -119,7 +130,31 @@ export default function StudentRecords({ role = 'officer' }) {
       .catch(err => console.error("Error updating clearance:", err));
   };
 
+  // Clearance chip follows the effective clearance only. A Director HOLD or a
+  // Director override changes the Clearance chip, never Honors or GMC.
+  const CLEARANCE_PILLS = {
+    HOLD: { label: 'HOLD', bg: 'bg-rose-100 text-rose-800 border-rose-200', icon: 'block' },
+    CLEARED: { label: 'CLEARED', bg: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: 'verified_user' },
+  };
+
   const getRiskLevel = (studentOrScore, maybeStanding, maybeStudent) => {
+    const risk = getHandbookRiskLevel(studentOrScore, maybeStanding, maybeStudent);
+    const student = (studentOrScore && typeof studentOrScore === 'object' && !('tier' in studentOrScore))
+      ? studentOrScore
+      : (maybeStudent || null);
+    const impact = (student?.risk_standing || maybeStanding)?.clearance_impact;
+    const clearance = student?.clearance_status === 'HOLD' ? 'HOLD' : impact;
+    if (clearance === 'HOLD' || clearance === 'CLEARED') {
+      return {
+        ...risk,
+        clearance,
+        privilegePills: { ...risk.privilegePills, clearance: CLEARANCE_PILLS[clearance] },
+      };
+    }
+    return risk;
+  };
+
+  const getHandbookRiskLevel = (studentOrScore, maybeStanding, maybeStudent) => {
     let student = null;
     let score = 0;
     let studentStanding = null;
@@ -136,12 +171,11 @@ export default function StudentRecords({ role = 'officer' }) {
 
     const totalVios = student?.violation_count ?? 0;
     const hasPending = student?.has_pending_violations ?? false;
-    const isManualHold = student?.clearance_status === 'HOLD' || (studentStanding && studentStanding.clearance_impact === 'HOLD');
-
-    // Prioritize official handbook tier calculated by the Consequence Engine
+    // Prioritize official handbook tier calculated by the Consequence Engine.
+    // A manual clearance HOLD does not change the tier (only the Clearance chip).
     let tier = studentStanding?.tier;
     if (!tier) {
-      if (isManualHold || totalVios >= 8 || score > 75) {
+      if (totalVios >= 8 || score > 75) {
         tier = 'CRITICAL';
       } else if (totalVios >= 5 || score > 50) {
         tier = 'HIGH';
@@ -150,8 +184,6 @@ export default function StudentRecords({ role = 'officer' }) {
       } else {
         tier = 'LOW';
       }
-    } else if (isManualHold && tier !== 'CRITICAL') {
-      tier = 'CRITICAL';
     }
 
     if (tier === 'CRITICAL') {
@@ -168,10 +200,7 @@ export default function StudentRecords({ role = 'officer' }) {
         bar: 'bg-rose-500',
         badge: 'bg-rose-50 border-rose-200 text-rose-700',
         privilegePills: {
-          // The Director can lift the hold; honors and GMC still follow the handbook
-          clearance: studentStanding?.clearance_impact === 'CLEARED'
-            ? { label: 'CLEARED', bg: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: 'verified_user' }
-            : { label: 'HOLD', bg: 'bg-rose-100 text-rose-800 border-rose-200', icon: 'block' },
+          clearance: { label: 'HOLD', bg: 'bg-rose-100 text-rose-800 border-rose-200', icon: 'block' },
           honors: { label: 'FORFEITED', bg: 'bg-rose-100 text-rose-800 border-rose-200', icon: 'cancel' },
           gmc: { label: 'DENIED', bg: 'bg-rose-100 text-rose-800 border-rose-200', icon: 'do_not_disturb_on' },
         }
@@ -746,13 +775,11 @@ export default function StudentRecords({ role = 'officer' }) {
                         <button 
                           onClick={() => handleClearanceToggle(student.id, effectiveClearance(student))}
                           className={`flex items-center gap-3 px-5 py-2.5 rounded-2xl border-2 transition-all group/btn ${
-                            effectiveClearance(student) === 'CLEARED' 
-                              ? 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100' 
-                              : 'bg-rose-50 border-rose-100 text-rose-700 hover:bg-rose-100'
+                            clearanceButtonStyle(effectiveClearance(student), false)
                           }`}
                         >
                            <span className="material-symbols-outlined text-[18px] transition-transform group-hover/btn:rotate-12">
-                             {effectiveClearance(student) === 'CLEARED' ? 'verified_user' : 'block'}
+                             {clearanceButtonIcon(effectiveClearance(student))}
                            </span>
                            <span className="text-[12px] font-black uppercase tracking-widest">{effectiveClearance(student)}</span>
                            <span className="material-symbols-outlined text-[16px] opacity-40">sync_alt</span>
@@ -882,14 +909,12 @@ export default function StudentRecords({ role = 'officer' }) {
                       <button 
                         onClick={() => handleClearanceToggle(student.id, effectiveClearance(student))}
                         className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition-all ${
-                          effectiveClearance(student) === 'CLEARED' 
-                            ? 'bg-emerald-50/80 border-emerald-200 text-emerald-800 hover:bg-emerald-100' 
-                            : 'bg-rose-50/80 border-rose-200 text-rose-800 hover:bg-rose-100'
+                          clearanceButtonStyle(effectiveClearance(student), true)
                         }`}
                       >
                         <div className="flex items-center gap-2">
                           <span className="material-symbols-outlined text-[18px]">
-                            {effectiveClearance(student) === 'CLEARED' ? 'verified_user' : 'block'}
+                            {clearanceButtonIcon(effectiveClearance(student))}
                           </span>
                           <span className="text-[11px] font-black uppercase tracking-wider">
                             Clearance: {effectiveClearance(student)}

@@ -576,7 +576,22 @@ def evaluate_student_aggregate_standing(
     """
     Evaluates the student's overall institutional standing across their active record.
     Unifies the criteria used by the student dashboard, profile view, and directory.
+
+    A manual clearance HOLD set by the SWAFO Director only affects clearance.
+    The tier, honors and GMC still come from the handbook rules.
     """
+    result = _evaluate_handbook_standing(violations)
+    if manual_clearance_hold and result['clearance_impact'] != CLEARANCE_HOLD:
+        result = {
+            **result,
+            'clearance_impact': CLEARANCE_HOLD,
+            'consequence_summary': f"{result['consequence_summary']} Clearance placed on HOLD by the SWAFO Director.",
+        }
+    return result
+
+
+def _evaluate_handbook_standing(violations: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Standing from the student's violations alone, per the DLSU-D handbook."""
     valid_violations = [v for v in violations if v.get('status') != 'DISMISSED']
     has_pending = any(v.get('status') in ['OPEN', 'AWAITING_DECISION'] for v in valid_violations)
     
@@ -629,7 +644,7 @@ def evaluate_student_aggregate_standing(
     total_valid = len(valid_violations)
 
     # ── Tier 1: Disciplinary Probation (CRITICAL) ──
-    if manual_clearance_hold or majors_count >= 2 or minors_count >= 4 or has_different_majors:
+    if majors_count >= 2 or minors_count >= 4 or has_different_majors:
         return {
             'tier': 'CRITICAL',
             'standing': 'Disciplinary Probation',

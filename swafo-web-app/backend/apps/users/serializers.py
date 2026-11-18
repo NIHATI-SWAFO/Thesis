@@ -163,14 +163,15 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             gmc_status = 'WITHHELD'
             color = 'orange'
 
-        # Director override: the SWAFO Director lifted the clearance hold.
-        # Only the clearance changes; honors and GMC still follow the handbook.
+        # Director override: the SWAFO Director cleared the student, lifting a
+        # handbook HOLD, RESTRICTED or CONDITIONAL clearance. Only the clearance
+        # changes; honors and GMC still follow the handbook.
         director_override = bool(
-            obj.clearance_override and obj.clearance_status == 'CLEARED' and clearance_impact == 'HOLD'
+            obj.clearance_override and obj.clearance_status == 'CLEARED' and clearance_impact != 'CLEARED'
         )
         if director_override:
             clearance_impact = 'CLEARED'
-            consequence_summary = f"{consequence_summary} Clearance hold lifted by the SWAFO Director."
+            consequence_summary = f"{consequence_summary} Clearance granted by the SWAFO Director."
 
         return {
             'director_override': director_override,
