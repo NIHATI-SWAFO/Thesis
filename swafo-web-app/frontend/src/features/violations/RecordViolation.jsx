@@ -1232,10 +1232,10 @@ export default function RecordViolation() {
       </div>
 
       {/* ══════════════════════════════ MOBILE LAYOUT (3-STEP REFINED WIZARD) ══════════════════════════════ */}
-      <div className="block lg:hidden font-pjs pb-20">
+      <div className="block lg:hidden font-pjs pb-28 space-y-5 max-w-lg mx-auto">
         
         {/* Page Header (Seamlessly matches portal theme) */}
-        <div className="flex items-center justify-between gap-3 mb-4 pt-1">
+        <div className="flex items-center justify-between gap-3 pt-1">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -1244,26 +1244,26 @@ export default function RecordViolation() {
                 else if (mobileStep === 'details') setMobileStep('student');
                 else navigate(-1);
               }}
-              className="w-10 h-10 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center text-[#003624] active:scale-90 transition-transform cursor-pointer shrink-0"
+              className="w-11 h-11 bg-white rounded-2xl shadow-sm border border-slate-200/80 flex items-center justify-center text-[#003624] active:scale-90 transition-transform cursor-pointer shrink-0"
               aria-label="Back"
             >
-              <span className="material-symbols-outlined text-[22px]">arrow_back</span>
+              <span className="material-symbols-outlined text-[24px]">arrow_back</span>
             </button>
             <div>
-              <p className="font-black text-[9px] text-gray-400 tracking-[0.2em] uppercase mb-0.5">
-                {mobileStep === 'student' ? 'STEP 1 OF 3 • LOOKUP' : mobileStep === 'details' ? 'STEP 2 OF 3 • DETAILS' : 'STEP 3 OF 3 • SANCTION'}
+              <p className="font-black text-[10.5px] text-emerald-800 tracking-[0.2em] uppercase mb-0.5">
+                {mobileStep === 'student' ? 'STEP 1 OF 3 • LOOKUP' : mobileStep === 'details' ? 'STEP 2 OF 3 • INCIDENT DETAILS' : 'STEP 3 OF 3 • SANCTION & COMMIT'}
               </p>
-              <h1 className="font-pjs font-extrabold text-[22px] text-[#003624] leading-none tracking-tight">
+              <h1 className="font-pjs font-black text-[24px] text-[#003624] leading-tight tracking-tight">
                 Record Violation
               </h1>
             </div>
           </div>
 
-          {/* Stepper Dots Pill */}
-          <div className="flex items-center gap-1.5 bg-white border border-gray-200/80 px-2.5 py-1.5 rounded-full shadow-xs shrink-0">
-            <span className={`w-2.5 h-2.5 rounded-full transition-all ${mobileStep === 'student' ? 'bg-[#003624] scale-110' : 'bg-gray-200'}`} />
-            <span className={`w-2.5 h-2.5 rounded-full transition-all ${mobileStep === 'details' ? 'bg-[#003624] scale-110' : 'bg-gray-200'}`} />
-            <span className={`w-2.5 h-2.5 rounded-full transition-all ${mobileStep === 'sanction' ? 'bg-[#003624] scale-110' : 'bg-gray-200'}`} />
+          {/* Stepper Dots Pill with Active Indicator Bar */}
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200/80 px-3 py-2 rounded-2xl shadow-xs shrink-0">
+            <span className={`h-2 rounded-full transition-all duration-300 ${mobileStep === 'student' ? 'w-6 bg-[#003624]' : 'w-2 bg-slate-200'}`} />
+            <span className={`h-2 rounded-full transition-all duration-300 ${mobileStep === 'details' ? 'w-6 bg-[#003624]' : 'w-2 bg-slate-200'}`} />
+            <span className={`h-2 rounded-full transition-all duration-300 ${mobileStep === 'sanction' ? 'w-6 bg-[#003624]' : 'w-2 bg-slate-200'}`} />
           </div>
         </div>
 
@@ -1272,41 +1272,51 @@ export default function RecordViolation() {
           <div className="space-y-4 animate-in fade-in duration-200">
             
             {/* Student Search & Barcode Scan Card */}
-            <div className="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Search Student</span>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Official Records</span>
+            <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-emerald-950/5 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#003624] to-[#005a3c] text-white flex items-center justify-center shadow-md shadow-emerald-950/20">
+                    <span className="material-symbols-outlined text-[20px]">badge</span>
+                  </div>
+                  <div>
+                    <h3 className="text-[14px] font-black text-[#003624] tracking-tight">Search Student Subject</h3>
+                    <p className="text-[11px] font-semibold text-slate-400">Institutional Identity Database</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/60 uppercase">
+                  Verified DB
+                </span>
               </div>
 
               {/* Search Bar */}
               <div className="relative">
-                <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[18px]">search</span>
+                <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-800 text-[20px]">search</span>
                 <input
                   type="text"
                   placeholder="Enter Student Number or Full Name..."
                   value={searchQuery || ""}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  className="w-full h-12 bg-slate-50 border border-gray-200 rounded-xl pl-10 pr-10 text-[13px] font-bold text-gray-800 outline-none focus:bg-white focus:border-emerald-500 transition-colors shadow-inner"
+                  className="w-full h-13 bg-slate-50/90 border-2 border-slate-100 focus:border-emerald-600 focus:bg-white rounded-2xl pl-11 pr-10 text-[14px] font-bold text-slate-800 outline-none transition-all shadow-inner placeholder:text-slate-400 placeholder:font-medium"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => { setSearchQuery(''); setSearchResults([]); }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
                   >
-                    <span className="material-symbols-outlined text-[16px]">close</span>
+                    <span className="material-symbols-outlined text-[18px]">close</span>
                   </button>
                 )}
               </div>
 
               {/* Action Buttons: Scan Barcode + Fetch */}
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="grid grid-cols-2 gap-3 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowScannerModal(true)}
-                  className="h-11 bg-emerald-50 hover:bg-emerald-100 text-[#003624] border border-emerald-200 rounded-xl font-bold text-[12px] flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-xs"
+                  className="h-13 bg-emerald-50 hover:bg-emerald-100 text-[#003624] border-2 border-emerald-200 rounded-2xl font-black text-[13px] flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-xs"
                 >
-                  <span className="material-symbols-outlined text-[18px] text-emerald-700">qr_code_scanner</span>
+                  <span className="material-symbols-outlined text-[20px] text-emerald-700">qr_code_scanner</span>
                   <span>Scan Barcode</span>
                 </button>
 
@@ -1314,13 +1324,13 @@ export default function RecordViolation() {
                   type="button"
                   onClick={handleSearch}
                   disabled={isSearching}
-                  className="h-11 bg-[#003624] hover:bg-[#004d35] text-white rounded-xl font-bold text-[12px] flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+                  className="h-13 bg-gradient-to-r from-[#003624] to-[#004d35] text-white rounded-2xl font-black text-[13px] flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-md shadow-emerald-950/20 disabled:opacity-50"
                 >
                   {isSearching ? (
                     <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <span className="material-symbols-outlined text-[17px]">person_search</span>
+                      <span className="material-symbols-outlined text-[19px]">person_search</span>
                       <span>Find Profile</span>
                     </>
                   )}
@@ -1329,7 +1339,11 @@ export default function RecordViolation() {
 
               {/* Live Search Results Dropdown */}
               {searchResults.length > 0 && (
-                <div className="mt-3 border border-emerald-100 rounded-xl overflow-hidden divide-y divide-gray-100 max-h-56 overflow-y-auto bg-white shadow-lg animate-in fade-in">
+                <div className="mt-3 border border-emerald-100 rounded-2xl overflow-hidden divide-y divide-slate-100 max-h-60 overflow-y-auto bg-white shadow-xl animate-in fade-in">
+                  <div className="bg-emerald-50/70 px-4 py-2 flex items-center justify-between text-[11px] font-black text-emerald-800 uppercase tracking-wider sticky top-0 backdrop-blur-xs">
+                    <span>{searchResults.length} Match{searchResults.length > 1 ? 'es' : ''} Found</span>
+                    <span>Select Student</span>
+                  </div>
                   {searchResults.map((s) => (
                     <button
                       key={s.id}
@@ -1340,16 +1354,16 @@ export default function RecordViolation() {
                         setSearchResults([]);
                         setSearchQuery('');
                       }}
-                      className="w-full flex items-center gap-3 p-3 text-left hover:bg-emerald-50/60 active:bg-emerald-100/50 transition-colors cursor-pointer"
+                      className="w-full flex items-center gap-3.5 p-3.5 text-left hover:bg-emerald-50 active:bg-emerald-100/50 transition-colors cursor-pointer group"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-[#003624] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#003624] to-[#005a3c] text-white flex items-center justify-center font-black text-[16px] shrink-0 shadow-xs">
                         {s.user_details?.full_name?.charAt(0) || 'S'}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-bold text-gray-900 truncate leading-tight">{s.user_details?.full_name}</p>
-                        <p className="text-[11px] font-medium text-gray-500 truncate">{s.student_number} • {s.course}</p>
+                        <p className="text-[14px] font-black text-slate-900 truncate leading-snug group-hover:text-[#003624]">{s.user_details?.full_name}</p>
+                        <p className="text-[12px] font-bold text-slate-500 truncate">{s.student_number} • {s.course}</p>
                       </div>
-                      <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
+                      <span className="material-symbols-outlined text-emerald-600 text-[20px]">check_circle</span>
                     </button>
                   ))}
                 </div>
@@ -1358,46 +1372,46 @@ export default function RecordViolation() {
 
             {/* Selected Student Card */}
             {foundStudent ? (
-              <div className="bg-white rounded-2xl p-4 shadow-sm border-2 border-emerald-500/30 space-y-3.5 animate-in zoom-in-95 duration-200">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-[#003624] text-white flex items-center justify-center font-extrabold text-base shadow-sm">
+              <div className="bg-white rounded-3xl p-5 shadow-[0_12px_40px_rgba(0,54,36,0.08)] border-2 border-emerald-500/30 space-y-4 animate-in zoom-in-95 duration-200">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#003624] to-[#004d35] text-white flex items-center justify-center font-black text-[20px] shadow-md shadow-emerald-950/20 ring-4 ring-emerald-500/10 shrink-0">
                       {foundStudent.user_details?.full_name?.charAt(0) || 'S'}
                     </div>
-                    <div>
-                      <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                         Verified Subject
                       </span>
-                      <h3 className="text-[15px] font-extrabold text-gray-900 leading-tight mt-0.5">
+                      <h3 className="text-[17px] font-black text-slate-900 leading-tight mt-1 truncate">
                         {foundStudent.user_details?.full_name}
                       </h3>
-                      <p className="text-[11px] font-bold text-gray-500">{foundStudent.student_number}</p>
+                      <p className="text-[12.5px] font-extrabold text-slate-500">{foundStudent.student_number}</p>
                     </div>
                   </div>
 
                   <button
                     onClick={() => { setFoundStudent(null); setPastViolations([]); }}
-                    className="text-[11px] font-bold text-gray-400 hover:text-rose-600 transition-colors px-2 py-1"
+                    className="text-[12px] font-extrabold text-slate-400 hover:text-rose-600 transition-colors px-3 py-1.5 rounded-xl border border-slate-200 hover:border-rose-200 cursor-pointer shrink-0"
                   >
                     Change
                   </button>
                 </div>
 
                 {/* Academic Badges */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg">
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <span className="text-[11.5px] font-extrabold bg-slate-100 text-slate-800 px-3 py-1.5 rounded-xl">
                     {foundStudent.college || 'CICS'}
                   </span>
-                  <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg truncate max-w-[200px]">
+                  <span className="text-[11.5px] font-extrabold bg-slate-100 text-slate-800 px-3 py-1.5 rounded-xl truncate max-w-[260px]">
                     {foundStudent.course}
                   </span>
                 </div>
 
                 {/* Past Violations History Badge */}
-                <div className="p-3 rounded-xl bg-slate-50 border border-gray-100 flex items-center justify-between">
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
                   <div>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Disciplinary History</span>
-                    <span className={`text-[12px] font-extrabold ${pastViolations.length > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Disciplinary History</span>
+                    <span className={`text-[13px] font-extrabold ${pastViolations.length > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
                       {pastViolations.length > 0 ? `${pastViolations.length} Prior Violation(s) on Record` : 'Clean Disciplinary Record'}
                     </span>
                   </div>
@@ -1405,7 +1419,7 @@ export default function RecordViolation() {
                     <button
                       type="button"
                       onClick={() => setShowHistoryModal(true)}
-                      className="text-[11px] font-bold text-emerald-800 bg-emerald-100/70 hover:bg-emerald-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                      className="text-[12px] font-black text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
                     >
                       View Log
                     </button>
@@ -1416,20 +1430,20 @@ export default function RecordViolation() {
                 <button
                   type="button"
                   onClick={() => setMobileStep('details')}
-                  className="w-full h-12 bg-[#003624] hover:bg-[#004d35] text-white rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 active:scale-98 transition-all shadow-md cursor-pointer"
+                  className="w-full h-14 bg-gradient-to-r from-[#003624] via-[#004d35] to-[#003624] hover:bg-[#004d35] text-white rounded-2xl font-black text-[14px] uppercase tracking-wider flex items-center justify-center gap-2 active:scale-98 transition-all shadow-lg shadow-emerald-950/20 cursor-pointer"
                 >
                   <span>Continue to Incident Details</span>
-                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                 </button>
               </div>
             ) : (
-              <div className="bg-white/60 border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center flex flex-col items-center justify-center">
-                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
-                  <span className="material-symbols-outlined text-[24px]">badge</span>
+              <div className="bg-white/80 border-2 border-dashed border-slate-200 rounded-3xl p-8 text-center flex flex-col items-center justify-center">
+                <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3 shadow-inner">
+                  <span className="material-symbols-outlined text-[28px]">badge</span>
                 </div>
-                <p className="text-[12px] font-extrabold text-gray-700">No Student Identified Yet</p>
-                <p className="text-[10px] text-gray-400 mt-0.5 max-w-[220px]">
-                  Use the barcode scanner or type a student ID number above to begin.
+                <p className="text-[14px] font-black text-slate-800">No Student Identified Yet</p>
+                <p className="text-[12px] font-medium text-slate-400 mt-1 max-w-[260px] leading-relaxed">
+                  Scan a physical student ID barcode or search student number above to begin violation logging.
                 </p>
               </div>
             )}
@@ -1442,43 +1456,61 @@ export default function RecordViolation() {
           <div className="space-y-4 animate-in fade-in duration-200">
             
             {/* Student verified banner (Portal theme) */}
-            <div className="bg-white rounded-2xl p-3.5 border border-emerald-100 shadow-xs flex items-center justify-between">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-100 flex items-center justify-center font-bold text-sm shrink-0">
+            <div className="bg-white rounded-3xl p-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-emerald-950/5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#003624] to-[#005a3c] text-white flex items-center justify-center font-black text-[18px] shrink-0 shadow-md shadow-emerald-950/20 ring-2 ring-emerald-500/20">
                   {foundStudent.user_details?.full_name?.charAt(0) || 'S'}
                 </div>
-                <div className="truncate">
-                  <p className="text-[13px] font-extrabold text-[#003624] truncate leading-tight">{foundStudent.user_details?.full_name}</p>
-                  <p className="text-[10.5px] text-gray-500 font-semibold">{foundStudent.student_number} • {foundStudent.course}</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9.5px] font-black bg-emerald-100 text-[#003624] px-2 py-0.5 rounded-md uppercase tracking-wider">
+                      Verified Student
+                    </span>
+                    <span className="text-[10.5px] font-extrabold text-slate-400">
+                      {foundStudent.college || 'CICS'}
+                    </span>
+                  </div>
+                  <p className="text-[15px] font-black text-[#003624] truncate leading-tight mt-0.5">
+                    {foundStudent.user_details?.full_name}
+                  </p>
+                  <p className="text-[11.5px] text-slate-500 font-bold truncate">
+                    {foundStudent.student_number} • {foundStudent.course}
+                  </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setMobileStep('student')}
-                className="text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-2.5 py-1 rounded-lg transition-colors shrink-0 cursor-pointer"
+                className="text-[12px] font-extrabold text-[#003624] bg-emerald-50 hover:bg-emerald-100/80 active:scale-95 border border-emerald-200/80 px-3.5 py-1.5 rounded-xl transition-all shrink-0 cursor-pointer shadow-2xs"
               >
                 Change
               </button>
             </div>
 
             {/* Violation Rule Picker Card */}
-            <div className="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                  Handbook Violation Rule *
-                </label>
-                <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
+            <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-emerald-950/5 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#003624] to-[#005a3c] text-white flex items-center justify-center shadow-md shadow-emerald-950/20">
+                    <span className="material-symbols-outlined text-[20px]">policy</span>
+                  </div>
+                  <div>
+                    <h3 className="text-[14px] font-black text-[#003624] tracking-tight">Handbook Violation Rule *</h3>
+                    <p className="text-[11px] font-semibold text-slate-400">DLSU-D Student Handbook 2023-2027</p>
+                  </div>
+                </div>
+                <div className="flex bg-slate-100 p-1 rounded-xl text-[11px] font-black">
                   <button
                     type="button"
                     onClick={() => setSearchMode('smart')}
-                    className={`px-2.5 py-1 rounded-md transition-all ${searchMode === 'smart' ? 'bg-[#003624] text-white shadow-xs' : 'text-gray-500'}`}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${searchMode === 'smart' ? 'bg-[#003624] text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'}`}
                   >
                     AI Search
                   </button>
                   <button
                     type="button"
                     onClick={() => setSearchMode('manual')}
-                    className={`px-2.5 py-1 rounded-md transition-all ${searchMode === 'manual' ? 'bg-[#003624] text-white shadow-xs' : 'text-gray-500'}`}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${searchMode === 'manual' ? 'bg-[#003624] text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'}`}
                   >
                     Browse
                   </button>
@@ -1487,21 +1519,21 @@ export default function RecordViolation() {
 
               {/* ── CASE 1: RULE ALREADY SELECTED ── */}
               {formData.violationType ? (
-                <div className="bg-emerald-50/90 border-2 border-emerald-500/30 rounded-2xl p-3.5 flex items-start justify-between gap-3 animate-in zoom-in-95 duration-200">
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-[#003624] text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
-                      <span className="material-symbols-outlined text-[18px]">verified</span>
+                <div className="bg-emerald-50/90 border-2 border-emerald-500/30 rounded-2xl p-4 flex items-start justify-between gap-3 animate-in zoom-in-95 duration-200">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-[#003624] text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                      <span className="material-symbols-outlined text-[20px]">verified</span>
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-black bg-[#003624] text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
+                        <span className="text-[11px] font-black bg-[#003624] text-white px-2.5 py-0.5 rounded-lg uppercase tracking-wider">
                           {formData.violationType}
                         </span>
-                        <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded uppercase">
+                        <span className="text-[10px] font-black text-[#003624] bg-emerald-100 px-2 py-0.5 rounded-md uppercase">
                           {formData.violationType.startsWith('27.1') ? 'Minor Offense' : formData.violationType.startsWith('27.4') ? 'Vehicle Violation' : 'Major Offense'}
                         </span>
                       </div>
-                      <p className="text-[12.5px] font-extrabold text-emerald-950 mt-1.5 leading-snug">
+                      <p className="text-[13.5px] font-extrabold text-emerald-950 mt-1.5 leading-snug">
                         {handbookRules.find(r => r.rule_code === formData.violationType)?.description || 'Selected Handbook Violation Rule'}
                       </p>
                     </div>
@@ -1509,25 +1541,25 @@ export default function RecordViolation() {
                   <button
                     type="button"
                     onClick={() => handleSelectRule('')}
-                    className="text-emerald-800 hover:text-rose-600 bg-white border border-emerald-200 p-1.5 rounded-xl shadow-2xs transition-colors shrink-0 cursor-pointer"
+                    className="text-emerald-800 hover:text-rose-600 bg-white border border-emerald-200 p-2 rounded-xl shadow-2xs transition-colors shrink-0 cursor-pointer active:scale-90"
                     title="Change rule"
                   >
-                    <span className="material-symbols-outlined text-[16px]">close</span>
+                    <span className="material-symbols-outlined text-[18px]">close</span>
                   </button>
                 </div>
               ) : (
                 /* ── CASE 2: NO RULE SELECTED YET ── */
                 <>
                   {searchMode === 'smart' ? (
-                    <div className="space-y-2.5">
+                    <div className="space-y-3">
                       <div className="relative">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[18px]">search</span>
+                        <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-800 text-[20px]">search</span>
                         <input
                           type="text"
                           placeholder="Type keyword (e.g. smoking, uniform, id, haircut)..."
                           value={smartSearchQuery || ""}
                           onChange={(e) => handleSmartSearch(e.target.value)}
-                          className="w-full h-11 bg-slate-50 border border-gray-200 rounded-xl pl-9 pr-8 text-[12.5px] font-bold text-gray-800 outline-none focus:bg-white focus:border-emerald-500 transition-colors shadow-2xs"
+                          className="w-full h-13 bg-slate-50/90 border-2 border-slate-100 focus:border-emerald-600 focus:bg-white rounded-2xl pl-11 pr-10 text-[14px] font-bold text-slate-800 outline-none transition-all shadow-inner placeholder:text-slate-400 placeholder:font-medium"
                         />
                         {smartSearchQuery && (
                           <button
@@ -1536,9 +1568,9 @@ export default function RecordViolation() {
                               setSmartSearchQuery('');
                               setSmartSearchResults([]);
                             }}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
                           >
-                            <span className="material-symbols-outlined text-[16px]">cancel</span>
+                            <span className="material-symbols-outlined text-[18px]">cancel</span>
                           </button>
                         )}
                       </div>
@@ -1546,8 +1578,8 @@ export default function RecordViolation() {
                       {/* Preset Rule Quick Chips (Only shown when input is empty) */}
                       {!smartSearchQuery && (
                         <div>
-                          <p className="text-[9.5px] font-black text-gray-400 uppercase tracking-wider mb-1.5">Common Violations:</p>
-                          <div className="flex flex-wrap gap-1.5">
+                          <p className="text-[10.5px] font-black text-slate-400 uppercase tracking-wider mb-2">Common Violations:</p>
+                          <div className="flex flex-wrap gap-2">
                             {[
                               { code: '27.1.4', label: 'Student ID' },
                               { code: '27.1.2.1', label: 'Dress Code' },
@@ -1559,9 +1591,9 @@ export default function RecordViolation() {
                                 key={chip.code}
                                 type="button"
                                 onClick={() => handleSelectRule(chip.code)}
-                                className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-gray-700 transition-colors border border-gray-200/80 cursor-pointer active:scale-95"
+                                className="text-[12px] font-extrabold px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-emerald-900 text-slate-700 transition-all border-2 border-slate-100 hover:border-emerald-200 cursor-pointer active:scale-95 shadow-2xs"
                               >
-                                <span className="text-emerald-700 font-extrabold mr-1">[{chip.code}]</span>
+                                <span className="text-emerald-800 font-black mr-1.5">[{chip.code}]</span>
                                 {chip.label}
                               </button>
                             ))}
@@ -1573,8 +1605,8 @@ export default function RecordViolation() {
                       {smartSearchQuery.trim().length >= 2 && (
                         <>
                           {smartSearchResults.length > 0 ? (
-                            <div className="border border-emerald-100 rounded-xl overflow-hidden bg-white shadow-md divide-y divide-gray-100 max-h-56 overflow-y-auto">
-                              <div className="bg-emerald-50/70 px-3 py-1.5 flex items-center justify-between text-[10px] font-black text-emerald-800 uppercase tracking-wider">
+                            <div className="border border-emerald-100 rounded-2xl overflow-hidden bg-white shadow-lg divide-y divide-slate-100 max-h-60 overflow-y-auto">
+                              <div className="bg-emerald-50/70 px-4 py-2 flex items-center justify-between text-[11px] font-black text-emerald-800 uppercase tracking-wider sticky top-0 backdrop-blur-xs">
                                 <span>{smartSearchResults.length} violation{smartSearchResults.length > 1 ? 's' : ''} found</span>
                                 <span>Tap to select</span>
                               </div>
@@ -1583,30 +1615,30 @@ export default function RecordViolation() {
                                   key={res.id || res.rule_code}
                                   type="button"
                                   onClick={() => handleSelectRule(res.rule_code)}
-                                  className="w-full p-2.5 text-left hover:bg-emerald-50 active:bg-emerald-100/50 transition-colors cursor-pointer group"
+                                  className="w-full p-3.5 text-left hover:bg-emerald-50 active:bg-emerald-100/60 transition-colors cursor-pointer group"
                                 >
-                                  <div className="flex items-center gap-1.5 mb-0.5">
-                                    <span className="text-[9.5px] font-black bg-emerald-700 text-white px-1.5 py-0.5 rounded">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-[10px] font-black bg-[#003624] text-white px-2 py-0.5 rounded-md">
                                       {res.rule_code}
                                     </span>
-                                    <span className="text-[8.5px] font-extrabold text-gray-400 uppercase">
+                                    <span className="text-[9.5px] font-extrabold text-slate-400 uppercase">
                                       {res.rule_code?.startsWith('27.1') ? 'Minor Offense' : res.rule_code?.startsWith('27.4') ? 'Vehicle Violation' : 'Major Offense'}
                                     </span>
                                   </div>
-                                  <p className="text-[11.5px] font-bold text-gray-800 leading-snug group-hover:text-[#003624]">
+                                  <p className="text-[13px] font-bold text-slate-800 leading-snug group-hover:text-[#003624]">
                                     {res.description}
                                   </p>
                                 </button>
                               ))}
                             </div>
                           ) : !smartSearchLoading ? (
-                            <div className="p-3 bg-slate-50 border border-gray-200/80 rounded-xl text-center space-y-1">
-                              <p className="text-[11.5px] font-extrabold text-gray-700">No violations found matching "{smartSearchQuery}"</p>
-                              <p className="text-[10px] text-gray-400">Try keywords like "smoking", "uniform", "id", "haircut", or switch to Browse mode.</p>
+                            <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl text-center space-y-1">
+                              <p className="text-[13px] font-black text-slate-700">No violations found matching "{smartSearchQuery}"</p>
+                              <p className="text-[11px] text-slate-400">Try keywords like "smoking", "uniform", "id", "haircut", or switch to Browse mode.</p>
                             </div>
                           ) : (
-                            <div className="p-3 text-center text-emerald-800 text-[11px] font-bold flex items-center justify-center gap-2">
-                              <div className="w-3.5 h-3.5 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin" />
+                            <div className="p-4 text-center text-emerald-800 text-[12px] font-black flex items-center justify-center gap-2">
+                              <div className="w-4 h-4 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin" />
                               Searching handbook rules...
                             </div>
                           )}
@@ -1619,16 +1651,16 @@ export default function RecordViolation() {
                         name="violationType"
                         value={formData.violationType || ''}
                         onChange={(e) => handleSelectRule(e.target.value)}
-                        className="w-full h-11 bg-slate-50 border border-gray-200 rounded-xl px-3 text-[12px] font-bold text-gray-800 outline-none focus:bg-white focus:border-emerald-500 appearance-none cursor-pointer"
+                        className="w-full h-13 bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 text-[13.5px] font-bold text-slate-800 outline-none focus:bg-white focus:border-emerald-600 appearance-none cursor-pointer"
                       >
                         <option value="">Select Official Handbook Rule...</option>
                         {handbookRules.map(r => (
                           <option key={r.id} value={r.rule_code}>
-                            [{r.rule_code}] {r.description ? r.description.substring(0, 45) : 'Rule'}...
+                            [{r.rule_code}] {r.description ? r.description.substring(0, 50) : 'Rule'}...
                           </option>
                         ))}
                       </select>
-                      <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[18px]">
+                      <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[20px]">
                         expand_more
                       </span>
                     </div>
@@ -1637,66 +1669,133 @@ export default function RecordViolation() {
               )}
             </div>
 
-            {/* Timing & Location Card */}
-            <div className="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 space-y-3">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Date, Time & Location</span>
-
-              {/* Date & Time Row */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[9px] font-bold text-gray-500 block mb-1">Date</label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      name="incidentDate"
-                      value={formData.incidentDate || ''}
-                      onChange={handleInputChange}
-                      className="w-full h-10 bg-slate-50 border border-gray-200 rounded-xl px-2.5 text-[11.5px] font-bold text-gray-800 outline-none"
-                    />
+            {/* ── CARD 3: DATE, TIME & CAMPUS LOCATION (UPGRADED INTERACTIVE TILES) ── */}
+            <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-emerald-950/5 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#003624] to-[#005a3c] text-white flex items-center justify-center shadow-md shadow-emerald-950/20">
+                    <span className="material-symbols-outlined text-[20px]">schedule</span>
+                  </div>
+                  <div>
+                    <h3 className="text-[14px] font-black text-[#003624] tracking-tight">Time & Campus Location</h3>
+                    <p className="text-[11px] font-semibold text-slate-400">Incident timestamp & verification zone</p>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const now = new Date();
+                    setFormData(prev => ({
+                      ...prev,
+                      incidentDate: now.toISOString().split('T')[0],
+                      incidentTime: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+                    }));
+                  }}
+                  className="text-[11px] font-extrabold text-[#003624] bg-emerald-50 hover:bg-emerald-100/80 active:scale-95 px-3 py-1.5 rounded-xl border border-emerald-200/80 transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                  title="Synchronize to current system time"
+                >
+                  <span className="material-symbols-outlined text-[15px] text-emerald-700">bolt</span>
+                  <span>Now</span>
+                </button>
+              </div>
 
-                <div>
-                  <label className="text-[9px] font-bold text-gray-500 block mb-1">Time</label>
-                  <div className="relative">
-                    <input
-                      type="time"
-                      name="incidentTime"
-                      value={formData.incidentTime || ''}
-                      onChange={handleInputChange}
-                      className="w-full h-10 bg-slate-50 border border-gray-200 rounded-xl px-2.5 text-[11.5px] font-bold text-gray-800 outline-none"
-                    />
+              {/* Date & Time Row - Modern Interactive Tiles */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Date Tile */}
+                <div className="relative bg-gradient-to-b from-slate-50 to-white hover:border-emerald-500/50 focus-within:border-emerald-600 focus-within:ring-4 focus-within:ring-emerald-500/10 border-2 border-slate-100 rounded-2xl p-3 transition-all shadow-xs">
+                  <div className="flex items-center gap-1.5 text-slate-400 mb-1.5">
+                    <span className="material-symbols-outlined text-[15px] text-emerald-700">calendar_today</span>
+                    <span className="text-[10.5px] font-black uppercase tracking-wider">Date</span>
                   </div>
+                  <input
+                    type="date"
+                    name="incidentDate"
+                    value={formData.incidentDate || ''}
+                    onChange={handleInputChange}
+                    className="w-full bg-transparent text-[15px] font-black text-slate-800 outline-none cursor-pointer"
+                  />
+                </div>
+
+                {/* Time Tile */}
+                <div className="relative bg-gradient-to-b from-slate-50 to-white hover:border-emerald-500/50 focus-within:border-emerald-600 focus-within:ring-4 focus-within:ring-emerald-500/10 border-2 border-slate-100 rounded-2xl p-3 transition-all shadow-xs">
+                  <div className="flex items-center gap-1.5 text-slate-400 mb-1.5">
+                    <span className="material-symbols-outlined text-[15px] text-emerald-700">access_time</span>
+                    <span className="text-[10.5px] font-black uppercase tracking-wider">Time</span>
+                  </div>
+                  <input
+                    type="time"
+                    name="incidentTime"
+                    value={formData.incidentTime || ''}
+                    onChange={handleInputChange}
+                    className="w-full bg-transparent text-[15px] font-black text-slate-800 outline-none cursor-pointer"
+                  />
                 </div>
               </div>
 
-              {/* Specific Location */}
-              <div className="space-y-1.5" ref={locationRef}>
-                <label className="text-[9px] font-bold text-gray-500 block">Specific Campus Facility / Spot</label>
-                
-                {/* Quick Facility Chips */}
-                <div className="flex flex-wrap gap-1 mb-1">
-                  {['Gate 3', 'ICTC Building', 'Food Square', 'Ugnayang La Salle', 'Oval / Track'].map((locName) => (
-                    <button
-                      key={locName}
-                      type="button"
-                      onClick={() => {
-                        setFormData(prev => ({ ...prev, location: locName }));
-                        setLocationSearchQuery(locName);
-                      }}
-                      className={`text-[9.5px] font-bold px-2 py-0.5 rounded-lg border transition-colors cursor-pointer ${
-                        formData.location === locName
-                          ? 'bg-emerald-600 text-white border-emerald-600'
-                          : 'bg-slate-50 text-gray-600 border-gray-200 hover:bg-emerald-50'
-                      }`}
-                    >
-                      {locName}
-                    </button>
-                  ))}
+              {/* Specific Location - Quick Interactive Tiles & Search */}
+              <div className="space-y-2.5" ref={locationRef}>
+                <div className="flex items-center justify-between">
+                  <label className="text-[11.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[17px] text-emerald-700">pin_drop</span>
+                    <span>Campus Facility / Spot *</span>
+                  </label>
+                  {formData.location && (
+                    <span className="text-[11px] font-black text-[#003624] bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200/70 flex items-center gap-1 truncate max-w-[170px]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                      {formData.location}
+                    </span>
+                  )}
                 </div>
 
+                {/* Engaging Visual Facility Chips */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[
+                    { name: 'Gate 3', icon: 'sensor_door', subtitle: 'Main Entry / Exit' },
+                    { name: 'ICTC Building', icon: 'domain', subtitle: 'Labs & IT Center' },
+                    { name: 'Food Square', icon: 'restaurant', subtitle: 'Main Dining Area' },
+                    { name: 'Ugnayang La Salle', icon: 'sports_basketball', subtitle: 'Sports Complex' },
+                    { name: 'Oval / Track', icon: 'stadium', subtitle: 'Athletics & Bleachers' },
+                    { name: 'Rotunda / Plaza', icon: 'park', subtitle: 'Central Promenade' },
+                  ].map((loc) => {
+                    const isSelected = formData.location === loc.name;
+                    return (
+                      <button
+                        key={loc.name}
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, location: loc.name }));
+                          setLocationSearchQuery(loc.name);
+                          setShowLocationDropdown(false);
+                        }}
+                        className={`flex items-center gap-2.5 p-3 rounded-2xl border-2 text-left transition-all active:scale-95 cursor-pointer ${
+                          isSelected
+                            ? 'bg-gradient-to-r from-[#003624] to-[#004d35] text-white border-[#003624] shadow-md shadow-emerald-950/20 ring-2 ring-emerald-500/20'
+                            : 'bg-white hover:bg-slate-50 border-slate-100 hover:border-emerald-200 text-slate-800 shadow-2xs'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-emerald-50 text-[#003624]'
+                        }`}>
+                          <span className="material-symbols-outlined text-[18px]">{loc.icon}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`text-[12.5px] font-black leading-tight truncate ${isSelected ? 'text-white' : 'text-slate-800'}`}>
+                            {loc.name}
+                          </p>
+                          <p className={`text-[10px] font-semibold leading-tight mt-0.5 truncate ${isSelected ? 'text-emerald-200' : 'text-slate-400'}`}>
+                            {loc.subtitle}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Search or Enter Other Facility */}
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[16px]">location_on</span>
+                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-800 text-[20px]">
+                    search
+                  </span>
                   <input
                     type="text"
                     value={locationSearchQuery || formData.location || ''}
@@ -1706,14 +1805,30 @@ export default function RecordViolation() {
                       setFormData(prev => ({ ...prev, location: e.target.value }));
                       setShowLocationDropdown(true);
                     }}
-                    placeholder="Search campus facility or enter location..."
-                    className="w-full h-10 bg-slate-50 border border-gray-200 rounded-xl pl-8 pr-3 text-[12px] font-bold text-gray-800 outline-none focus:bg-white focus:border-emerald-500 transition-colors"
+                    placeholder="Search all 30+ campus buildings or enter spot..."
+                    className="w-full h-12 bg-slate-50/90 border-2 border-slate-100 focus:border-emerald-600 focus:bg-white rounded-2xl pl-11 pr-10 text-[14px] font-bold text-slate-800 outline-none transition-all shadow-inner placeholder:text-slate-400 placeholder:font-medium"
                   />
+                  {(locationSearchQuery || formData.location) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLocationSearchQuery('');
+                        setFormData(prev => ({ ...prev, location: '' }));
+                      }}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">cancel</span>
+                    </button>
+                  )}
+
                   {showLocationDropdown && (
-                    <div className="absolute top-11 left-0 right-0 z-40 bg-white rounded-xl shadow-xl border border-gray-200 max-h-44 overflow-y-auto divide-y divide-gray-50">
+                    <div className="absolute top-[54px] left-0 right-0 z-50 bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-emerald-100 max-h-60 overflow-y-auto divide-y divide-slate-100 animate-in fade-in slide-in-from-top-2">
                       {Object.entries(filteredLocations()).map(([group, locs]) => (
                         <div key={group}>
-                          <p className="text-[8.5px] font-black uppercase tracking-wider text-gray-400 bg-slate-50 px-3 py-1">{group}</p>
+                          <div className="bg-emerald-50/70 px-4 py-2 flex items-center justify-between sticky top-0 backdrop-blur-xs">
+                            <span className="text-[10.5px] font-black uppercase tracking-wider text-emerald-800">{group}</span>
+                            <span className="text-[9.5px] font-bold text-emerald-600/70">{locs.length} zones</span>
+                          </div>
                           {locs.map(loc => (
                             <button
                               key={loc}
@@ -1723,9 +1838,12 @@ export default function RecordViolation() {
                                 locationSearchQuery && setLocationSearchQuery(loc);
                                 setShowLocationDropdown(false);
                               }}
-                              className="w-full text-left px-3 py-1.5 text-[11.5px] font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-900 transition-colors"
+                              className="w-full text-left px-4 py-3 text-[13px] font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-950 active:bg-emerald-100 transition-colors flex items-center justify-between cursor-pointer"
                             >
-                              {loc}
+                              <span>{loc}</span>
+                              {formData.location === loc && (
+                                <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
+                              )}
                             </button>
                           ))}
                         </div>
@@ -1736,9 +1854,17 @@ export default function RecordViolation() {
               </div>
             </div>
 
-            {/* Narrative & Evidence Card */}
-            <div className="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 space-y-3">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Contextual Remarks & Evidence</span>
+            {/* ── CARD 4: NARRATIVE & PHOTO EVIDENCE ── */}
+            <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-emerald-950/5 space-y-4">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#003624] to-[#005a3c] text-white flex items-center justify-center shadow-md shadow-emerald-950/20">
+                  <span className="material-symbols-outlined text-[20px]">notes</span>
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-black text-[#003624] tracking-tight">Contextual Remarks & Evidence</h3>
+                  <p className="text-[11px] font-semibold text-slate-400">Objective narrative & supporting attachments</p>
+                </div>
+              </div>
 
               <div>
                 <textarea
@@ -1747,11 +1873,11 @@ export default function RecordViolation() {
                   onChange={handleInputChange}
                   rows="3"
                   placeholder="Provide brief objective narrative of the incident..."
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl p-3 text-[12px] font-medium text-gray-800 outline-none focus:bg-white focus:border-emerald-500 resize-none transition-colors"
+                  className="w-full bg-slate-50/90 border-2 border-slate-100 focus:border-emerald-600 focus:bg-white rounded-2xl p-4 text-[14px] font-medium text-slate-800 outline-none resize-none transition-all placeholder:text-slate-400 shadow-inner min-h-[105px]"
                 />
               </div>
 
-              {/* Photo Evidence Upload */}
+              {/* Photo Evidence Upload Dropzone */}
               <div>
                 <input
                   type="file"
@@ -1763,23 +1889,24 @@ export default function RecordViolation() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full py-3 bg-slate-50 hover:bg-emerald-50/50 border border-dashed border-gray-300 hover:border-emerald-400 rounded-xl flex items-center justify-center gap-2 text-gray-600 transition-colors cursor-pointer"
+                  className="w-full h-14 bg-emerald-50/40 hover:bg-emerald-100/50 border-2 border-dashed border-emerald-300 hover:border-emerald-500 rounded-2xl flex items-center justify-center gap-2.5 text-[#003624] transition-all cursor-pointer active:scale-98 shadow-2xs"
                 >
-                  <span className="material-symbols-outlined text-[18px] text-emerald-700">add_a_photo</span>
-                  <span className="text-[11.5px] font-bold">Attach Photo Evidence</span>
+                  <span className="material-symbols-outlined text-[22px] text-emerald-700">add_a_photo</span>
+                  <span className="text-[13px] font-black">Attach Photo Evidence</span>
                 </button>
 
                 {evidenceFiles.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
+                  <div className="flex flex-wrap gap-2 mt-3">
                     {evidenceFiles.map((file, idx) => (
-                      <div key={idx} className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5">
-                        <span className="truncate max-w-[120px]">{file.name}</span>
+                      <div key={idx} className="bg-emerald-50 text-emerald-900 border border-emerald-200 px-3 py-1.5 rounded-xl text-[11.5px] font-bold flex items-center gap-2 shadow-2xs">
+                        <span className="material-symbols-outlined text-[16px] text-emerald-700">image</span>
+                        <span className="truncate max-w-[130px]">{file.name}</span>
                         <button
                           type="button"
                           onClick={() => setEvidenceFiles(prev => prev.filter((_, i) => i !== idx))}
-                          className="hover:text-rose-600"
+                          className="hover:text-rose-600 p-0.5"
                         >
-                          <span className="material-symbols-outlined text-[13px]">close</span>
+                          <span className="material-symbols-outlined text-[15px]">close</span>
                         </button>
                       </div>
                     ))}
@@ -1788,21 +1915,21 @@ export default function RecordViolation() {
               </div>
             </div>
 
-            {/* Run Assessment Button */}
+            {/* ── CARD 5: RUN ASSESSMENT ENGINE HERO BUTTON ── */}
             <button
               type="button"
               onClick={handleGenerateRecommendation}
               disabled={isGenerating || !formData.violationType}
-              className="w-full h-13 bg-[#003624] hover:bg-[#004d35] text-white rounded-xl font-bold text-[13px] uppercase tracking-wider flex items-center justify-center gap-2 active:scale-98 transition-all shadow-md cursor-pointer disabled:opacity-40"
+              className="w-full h-15 bg-gradient-to-r from-[#003624] via-[#004d35] to-[#003624] hover:bg-[#004d35] text-white rounded-2xl font-black text-[15px] uppercase tracking-wider flex items-center justify-center gap-3 active:scale-98 transition-all shadow-[0_16px_40px_rgba(0,54,36,0.25)] cursor-pointer disabled:opacity-40"
             >
               {isGenerating ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  <span>Computing Escalation...</span>
+                  <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  <span>Computing Escalation Engine...</span>
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-emerald-400 text-[18px]">gavel</span>
+                  <span className="material-symbols-outlined text-emerald-400 text-[22px]">gavel</span>
                   <span>Run Assessment Engine</span>
                 </>
               )}
@@ -1815,23 +1942,23 @@ export default function RecordViolation() {
         {mobileStep === 'sanction' && assessment && (
           <div className="space-y-4 animate-in fade-in duration-200">
             
-            {/* Student & Violation Recap Card (Portal theme) */}
-            <div className="bg-white rounded-2xl p-4 shadow-xs border border-emerald-100 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[9.5px] font-black text-emerald-800 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+            {/* Student & Violation Recap Card */}
+            <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-emerald-950/5 space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/60">
                   Policy v2.4 Verified
                 </span>
-                <span className="text-[10.5px] font-extrabold text-[#003624]">
+                <span className="text-[12px] font-black text-[#003624]">
                   {assessment.rule_code?.startsWith('27.1') ? `Violation #${(assessment.total_minor_count || 0) + 1}` : `Instance #${assessment.instance_number}`}
                 </span>
               </div>
               <div>
-                <p className="text-[15px] font-extrabold text-gray-900 leading-tight">{foundStudent.user_details?.full_name}</p>
-                <p className="text-[11px] text-gray-500 font-bold">{foundStudent.student_number} • {foundStudent.course}</p>
+                <p className="text-[17px] font-black text-slate-900 leading-tight">{foundStudent.user_details?.full_name}</p>
+                <p className="text-[12px] text-slate-500 font-bold mt-0.5">{foundStudent.student_number} • {foundStudent.course}</p>
               </div>
-              <div className="bg-slate-50 rounded-xl p-2.5 text-[11.5px] font-bold text-gray-800 flex items-center justify-between border border-gray-100">
+              <div className="bg-slate-50 rounded-2xl p-3 text-[13px] font-bold text-slate-800 flex items-center justify-between border border-slate-100">
                 <span>Rule: <strong className="text-emerald-800">[{assessment.rule_code}]</strong></span>
-                <span className="text-[10px] uppercase font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                <span className="text-[10.5px] uppercase font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
                   {assessment.rule_code?.startsWith('27.1') ? 'Minor Escalation' : 'Major Offense'}
                 </span>
               </div>
@@ -1839,11 +1966,11 @@ export default function RecordViolation() {
 
             {/* Duplicate Warning */}
             {assessment.is_duplicate && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2.5 text-amber-900">
-                <span className="material-symbols-outlined text-amber-600 text-[18px] shrink-0 mt-0.5">warning</span>
+              <div className="bg-amber-50 border-2 border-amber-200 rounded-3xl p-4 flex items-start gap-3 text-amber-900">
+                <span className="material-symbols-outlined text-amber-600 text-[22px] shrink-0 mt-0.5">warning</span>
                 <div>
-                  <p className="text-[11.5px] font-extrabold leading-tight">Duplicate Incident Notice</p>
-                  <p className="text-[10.5px] font-medium text-amber-700 leading-snug mt-0.5">
+                  <p className="text-[13px] font-black leading-tight">Duplicate Incident Notice</p>
+                  <p className="text-[11.5px] font-medium text-amber-800 leading-snug mt-1">
                     This violation was already logged for this student recently. Please verify before committing.
                   </p>
                 </div>
@@ -1851,42 +1978,45 @@ export default function RecordViolation() {
             )}
 
             {/* Mandated Sanction Card */}
-            <div className="bg-white rounded-2xl p-4 shadow-xs border-2 border-emerald-500/40 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-black text-emerald-800 uppercase tracking-widest">Official Mandated Sanction</span>
+            <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-2 border-emerald-500/30 space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <span className="text-[11px] font-black text-emerald-800 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[17px] text-emerald-700">gavel</span>
+                  Official Mandated Sanction
+                </span>
                 {assessment.is_escalated && (
-                  <span className="text-[8.5px] font-black bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  <span className="text-[9.5px] font-black bg-orange-100 text-orange-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                     Escalated
                   </span>
                 )}
               </div>
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 space-y-2">
-                <p className="text-[16px] font-black text-[#003624] leading-snug">
+              <div className="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-100 space-y-2.5">
+                <p className="text-[18px] font-black text-[#003624] leading-snug">
                   {assessment.recommendation}
                 </p>
                 {assessment.escalation_reason && (
-                  <p className="text-[10.5px] font-semibold text-emerald-900/80 leading-tight">
+                  <p className="text-[12px] font-semibold text-emerald-900/80 leading-relaxed">
                     {assessment.escalation_reason}
                   </p>
                 )}
                 {assessment.monetary_fine ? (
-                  <p className="text-[11px] font-bold text-amber-800">
+                  <p className="text-[12.5px] font-black text-amber-800">
                     Accounting Fine: Php {assessment.monetary_fine.toLocaleString()}
                   </p>
                 ) : null}
-                <div className="flex flex-wrap gap-1.5 pt-1">
+                <div className="flex flex-wrap gap-2 pt-1">
                   {assessment.mandatory_formation && (
-                    <span className="bg-[#003624] text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase">
+                    <span className="bg-[#003624] text-white text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider">
                       Formation §26.4
                     </span>
                   )}
                   {assessment.requires_director_decision && (
-                    <span className="bg-rose-700 text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase">
+                    <span className="bg-rose-700 text-white text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider">
                       Director / SDB
                     </span>
                   )}
                   {assessment.vehicle_pass_cancelled && (
-                    <span className="bg-amber-600 text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase">
+                    <span className="bg-amber-600 text-white text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider">
                       Pass Revoked
                     </span>
                   )}
@@ -1894,12 +2024,12 @@ export default function RecordViolation() {
               </div>
 
               {/* Mobile Privileges Stakes */}
-              <div className="pt-2 border-t border-gray-100 space-y-1.5">
-                <span className="text-[8.5px] font-black text-gray-400 uppercase tracking-wider block">Projected Student Privileges</span>
-                <div className="grid grid-cols-3 gap-1.5 text-center">
-                  <div className="bg-slate-50 p-2 rounded-xl border border-gray-100">
-                    <span className="text-[8px] font-bold text-gray-400 uppercase block mb-0.5">Clearance</span>
-                    <span className={`text-[9.5px] font-black px-1.5 py-0.5 rounded block uppercase ${
+              <div className="pt-2 border-t border-slate-100 space-y-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Projected Student Privileges</span>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100">
+                    <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">Clearance</span>
+                    <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-lg block uppercase ${
                       assessment.clearance_impact === 'HOLD' ? 'bg-rose-100 text-rose-800' :
                       assessment.clearance_impact === 'RESTRICTED' ? 'bg-orange-100 text-orange-800' :
                       assessment.clearance_impact === 'CONDITIONAL' ? 'bg-amber-100 text-amber-800' :
@@ -1909,9 +2039,9 @@ export default function RecordViolation() {
                     </span>
                   </div>
 
-                  <div className="bg-slate-50 p-2 rounded-xl border border-gray-100">
-                    <span className="text-[8px] font-bold text-gray-400 uppercase block mb-0.5">Honors</span>
-                    <span className={`text-[9.5px] font-black px-1.5 py-0.5 rounded block uppercase ${
+                  <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100">
+                    <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">Honors</span>
+                    <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-lg block uppercase ${
                       assessment.honors_eligibility === 'FORFEITED' || assessment.honors_eligibility === 'DISQUALIFIED' ? 'bg-rose-100 text-rose-800' :
                       assessment.honors_eligibility === 'UNDER_REVIEW' ? 'bg-amber-100 text-amber-800' :
                       'bg-emerald-100 text-emerald-800'
@@ -1920,9 +2050,9 @@ export default function RecordViolation() {
                     </span>
                   </div>
 
-                  <div className="bg-slate-50 p-2 rounded-xl border border-gray-100">
-                    <span className="text-[8px] font-bold text-gray-400 uppercase block mb-0.5">Good Moral</span>
-                    <span className={`text-[9.5px] font-black px-1.5 py-0.5 rounded block uppercase ${
+                  <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100">
+                    <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">Good Moral</span>
+                    <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-lg block uppercase ${
                       assessment.gmc_status === 'DENIED' ? 'bg-rose-100 text-rose-800' :
                       assessment.gmc_status === 'WITHHELD' ? 'bg-orange-100 text-orange-800' :
                       assessment.gmc_status === 'DEFERRED' ? 'bg-amber-100 text-amber-800' :
@@ -1936,21 +2066,21 @@ export default function RecordViolation() {
             </div>
 
             {/* Action Buttons */}
-            <div className="space-y-2 pt-2">
+            <div className="space-y-3 pt-2">
               <button
                 type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="w-full h-13 bg-[#003624] hover:bg-[#004d35] text-white rounded-xl font-bold text-[13px] uppercase tracking-wider flex items-center justify-center gap-2 active:scale-98 transition-all shadow-md cursor-pointer disabled:opacity-50"
+                className="w-full h-15 bg-gradient-to-r from-[#003624] via-[#004d35] to-[#003624] hover:bg-[#004d35] text-white rounded-2xl font-black text-[15px] uppercase tracking-wider flex items-center justify-center gap-2.5 active:scale-98 transition-all shadow-[0_16px_40px_rgba(0,54,36,0.25)] cursor-pointer disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                     <span>Committing Record...</span>
                   </>
                 ) : (
                   <>
-                    <span className="material-symbols-outlined text-emerald-400 text-[18px]">verified</span>
+                    <span className="material-symbols-outlined text-emerald-400 text-[20px]">verified</span>
                     <span>Commit Violation to Record</span>
                   </>
                 )}
@@ -1959,9 +2089,9 @@ export default function RecordViolation() {
               <button
                 type="button"
                 onClick={() => setMobileStep('details')}
-                className="w-full h-11 bg-white hover:bg-slate-50 text-gray-700 border border-gray-200 rounded-xl font-bold text-[12px] transition-colors cursor-pointer"
+                className="w-full h-13 bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 rounded-2xl font-black text-[13px] transition-colors cursor-pointer active:scale-98"
               >
-                Edit Parameters
+                Edit Incident Parameters
               </button>
             </div>
 
