@@ -425,7 +425,7 @@ class ViolationStatisticsView(APIView):
             }
         })
 
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework import permissions, authentication
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db.models import Q
@@ -443,6 +443,24 @@ class SafeJWTAuthentication(JWTAuthentication):
             return self.get_user(validated_token), validated_token
         except Exception:
             return None
+
+# Appeal types (the "subject" chosen by the student) that never change the case itself
+APPEAL_TYPES_WITHOUT_CASE_CHANGE = {'Request for Clarification'}
+
+
+def appeal_owner(request, serializer):
+    """An appeal always belongs to the student of the violation it is about.
+    A logged-in student may only appeal their own violation."""
+    violation = serializer.validated_data.get('violation')
+    if not violation or not violation.student_id:
+        raise ValidationError({'violation': 'Choose the violation this appeal is about.'})
+    user = getattr(request, 'user', None)
+    if user and user.is_authenticated and getattr(user, 'role', None) == 'STUDENT':
+        own = getattr(user, 'student_profile', None) or getattr(user, 'studentprofile', None)
+        if own and own.pk != violation.student_id:
+            raise PermissionDenied('You can only appeal your own violation.')
+    return violation.student
+
 
 class IsStudentOrDirector(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -495,20 +513,7 @@ class AppealListView(generics.ListCreateAPIView):
         return qs.order_by('-created_at')
 
     def perform_create(self, serializer):
-        user = getattr(self.request, 'user', None)
-        student_profile = None
-
-        if user and user.is_authenticated and getattr(user, 'role', None) == 'STUDENT':
-            student_profile = getattr(user, 'student_profile', None) or getattr(user, 'studentprofile', None)
-
-        violation = serializer.validated_data.get('violation')
-        if not student_profile and violation and violation.student:
-            student_profile = violation.student
-
-        if not student_profile:
-            student_profile = StudentProfile.objects.first()
-
-        serializer.save(student=student_profile, status=Appeal.Status.PENDING)
+        serializer.save(student=appeal_owner(self.request, serializer), status=Appeal.Status.PENDING)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class AppealPendingListView(generics.ListAPIView):
@@ -531,20 +536,7 @@ class AppealCreateView(generics.CreateAPIView):
     serializer_class = AppealSerializer
 
     def perform_create(self, serializer):
-        user = getattr(self.request, 'user', None)
-        student_profile = None
-
-        if user and user.is_authenticated and getattr(user, 'role', None) == 'STUDENT':
-            student_profile = getattr(user, 'student_profile', None) or getattr(user, 'studentprofile', None)
-
-        violation = serializer.validated_data.get('violation')
-        if not student_profile and violation and violation.student:
-            student_profile = violation.student
-
-        if not student_profile:
-            student_profile = StudentProfile.objects.first()
-
-        serializer.save(student=student_profile, status=Appeal.Status.PENDING)
+        serializer.save(student=appeal_owner(self.request, serializer), status=Appeal.Status.PENDING)
 
 
 from apps.users.models import Notification
@@ -558,7 +550,22 @@ class AppealUpdateView(generics.UpdateAPIView):
     permission_classes = [permissions.AllowAny]
 
     def perform_update(self, serializer):
-        appeal = serializer.save()
+        from django.db import transaction
+        previous_status = serializer.instance.status
+        with transaction.atomic():
+            appeal = serializer.save()
+            # An approved Formal Appeal or Report Error dismisses the case it is about.
+            # A Request for Clarification is answered without changing the case.
+            if (
+                appeal.status == Appeal.Status.APPROVED
+                and previous_status != Appeal.Status.APPROVED
+                and appeal.subject not in APPEAL_TYPES_WITHOUT_CASE_CHANGE
+                and appeal.violation.status != Violation.Status.DISMISSED
+            ):
+                violation = appeal.violation
+                violation.status = Violation.Status.DISMISSED
+                violation.director_remarks = f"Dismissed on appeal: {appeal.reviewer_remarks}"
+                violation.save(update_fields=['status', 'director_remarks', 'updated_at'])
 
         # Trigger notification to student
         notification_type = 'APPEAL_REPLY' if appeal.status == 'AWAITING_INFO' else 'APPEAL_UPDATE'

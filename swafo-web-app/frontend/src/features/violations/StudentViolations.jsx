@@ -72,7 +72,10 @@ export default function StudentViolations() {
           const results = Array.isArray(data) ? data : (data.results || []);
           const transformed = results.map(v => {
             const isClosed = ['CLOSED', 'DISMISSED'].includes(v.status);
-            const sanctionText = v.director_sanction || v.prescribed_sanction || v.corrective_action || (isClosed ? 'This incident record is officially resolved and closed.' : 'Under Institutional Board Review');
+            const engineText = [v.prescribed_sanction, v.corrective_action].find(t => t && !t.toUpperCase().startsWith('FOR SWAFO DIRECTOR DECISION'));
+            const sanctionText = v.status === 'DISMISSED'
+              ? 'No sanction. This case was dismissed.'
+              : (v.director_sanction || engineText || (isClosed ? 'This incident record is officially resolved and closed.' : 'Under Institutional Board Review'));
             
             return {
               id: `VR-${new Date(v.timestamp).getFullYear()}-${v.id.toString().padStart(3, '0')}`,

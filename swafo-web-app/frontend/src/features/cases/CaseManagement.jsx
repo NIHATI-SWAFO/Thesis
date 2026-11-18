@@ -183,7 +183,14 @@ export default function CaseManagement({ role }) {
         director_remarks: remarks
       })
     })
-      .then(res => res.json())
+      .then(res => res.json().catch(() => ({})).then(data => {
+        // Keep the case unchanged if the server rejected the decision
+        if (!res.ok) {
+          const msg = data?.director_sanction?.[0] || data?.director_remarks?.[0] || 'The decision could not be saved.';
+          throw new Error(msg);
+        }
+        return data;
+      }))
       .then(updated => {
         setViolations(prev => prev.map(v => v.id === caseId ? updated : v));
         setSelectedCase(updated);
@@ -191,6 +198,7 @@ export default function CaseManagement({ role }) {
       })
       .catch(err => {
         console.error("Adjudication error:", err);
+        alert(err.message || 'The decision could not be saved.');
         setIsUpdating(false);
       });
   };
@@ -996,7 +1004,8 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                     className="w-full bg-white border-2 border-rose-200 rounded-xl px-3.5 py-2.5 text-[12px] sm:text-[13.5px] font-bold text-rose-900 outline-none focus:border-rose-500 transition-all cursor-pointer"
                   >
                     <option value="">Select Formal Sanction...</option>
-                    {caseData.prescribed_sanction && (
+                    {/* Skip the engine placeholder "FOR SWAFO DIRECTOR DECISION ...": it is not a sanction */}
+                    {caseData.prescribed_sanction && !caseData.prescribed_sanction.toUpperCase().startsWith('FOR SWAFO DIRECTOR DECISION') && (
                       <option value={caseData.prescribed_sanction}>Recommended: {caseData.prescribed_sanction}</option>
                     )}
                     <option value="Sanction 1: Written Reprimand & Community Service">Sanction 1: Written Reprimand & Community Service</option>
@@ -1052,7 +1061,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
             </div>
           )}
 
-          {(caseData.status === 'DECISION_RENDERED' || isTerminal) && caseData.director_sanction && (
+          {(caseData.status === 'DECISION_RENDERED' || caseData.status === 'CLOSED') && caseData.director_sanction && (
             <div className="bg-emerald-50 border-2 border-emerald-100 rounded-xl sm:rounded-2xl p-4 sm:p-6">
               <div className="flex items-center gap-2.5 mb-2.5 sm:mb-3">
                 <span className="material-symbols-outlined text-emerald-600 fill-1 text-[20px]">verified</span>
@@ -1080,6 +1089,11 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
               <p className="text-[12.5px] sm:text-[14px] font-medium text-slate-700 bg-white p-3 sm:p-4 rounded-xl border border-slate-200 whitespace-pre-line">
                 {caseData.director_remarks || 'No reason was recorded for this dismissal.'}
               </p>
+              {caseData.director_sanction && (
+                <p className="mt-2.5 text-[11px] sm:text-[12px] font-medium text-slate-500">
+                  Sanction lifted: <span className="line-through">{caseData.director_sanction}</span>
+                </p>
+              )}
             </div>
           )}
 

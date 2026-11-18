@@ -128,16 +128,23 @@ export default function AppealThreadModal({ appeal, onClose, onAction, isUpdatin
               />
             </div>
             <div className="flex flex-col gap-3">
+              {/* What approving does to the case */}
+              <p className="text-[11.5px] font-medium text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3.5 py-2.5 leading-relaxed">
+                {appeal.subject === 'Request for Clarification'
+                  ? 'Approving answers this clarification request. The case itself is not changed.'
+                  : `Approving this appeal dismisses case ${appeal.reference_id || ''}, and your remarks are saved as the dismissal reason.`}
+                {isRemarksEmpty && ' Remarks are required to approve.'}
+              </p>
               <div className="flex gap-3">
-                <button 
-                  onClick={onClose} 
+                <button
+                  onClick={onClose}
                   className="flex-1 py-3 border border-slate-300 text-slate-500 rounded-xl font-semibold text-[13px] hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
                 >
                   IGNORE
                 </button>
-                <button 
-                  disabled={isUpdating} 
-                  onClick={() => onAction('APPROVED', remarks)} 
+                <button
+                  disabled={isUpdating || isRemarksEmpty}
+                  onClick={() => onAction('APPROVED', remarks)}
                   className="flex-[1.5] py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-[13px] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
                 >
                   {isUpdating && <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>}
