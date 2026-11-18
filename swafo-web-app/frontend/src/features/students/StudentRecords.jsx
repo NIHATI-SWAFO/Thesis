@@ -63,7 +63,8 @@ export default function StudentRecords({ role = 'officer' }) {
   const stats = useMemo(() => {
     return {
       total: students.length,
-      compliant: students.filter(s => s.violation_count === 0).length,
+      // Same rule as the row label: not a repeat offender and no active case
+      compliant: students.filter(s => !s.is_repeat_offender && !(s.violation_count > 0 && s.has_pending_violations)).length,
       underReview: students.filter(s => (s.violation_count > 0 && s.has_pending_violations && !s.is_repeat_offender)).length,
       nonCompliant: students.filter(s => s.is_repeat_offender).length
     };
