@@ -357,17 +357,21 @@ class UpdateBarcodeView(APIView):
             clean_sn_candidate = clean_sn_candidate[2:]
 
         student = None
-        # Try candidate student numbers in order of specificity
-        candidates = [c for c in [clean_sn_candidate, raw_student_number, extracted_from_barcode, extracted_sn] if c]
-        for cand in candidates:
-            student = StudentProfile.objects.filter(
-                Q(student_number__iexact=cand) | Q(barcode_value__iexact=cand)
-            ).first()
-            if student:
-                break
-
-        if not student and email:
+        # A logged-in student (email sent) always links the barcode to THEIR OWN
+        # account, never to whichever profile the scanned number happens to match.
+        own_account = bool(email)
+        if own_account:
             student = StudentProfile.objects.filter(user__email__iexact=email).first()
+
+        if not student and not own_account:
+            # No email (e.g. the "remove barcode" button): find by number as before
+            candidates = [c for c in [clean_sn_candidate, raw_student_number, extracted_from_barcode, extracted_sn] if c]
+            for cand in candidates:
+                student = StudentProfile.objects.filter(
+                    Q(student_number__iexact=cand) | Q(barcode_value__iexact=cand)
+                ).first()
+                if student:
+                    break
 
         # If student record is not found in database, auto-provision official student account
         if not student:
@@ -380,6 +384,24 @@ class UpdateBarcodeView(APIView):
 
         if not student:
             return Response({"error": "Student record not found. Please verify your student number or institutional email."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Refuse if this barcode / student number already belongs to another real,
+        # confirmed student (placeholder demo records are still reassigned below).
+        if own_account and barcode_value:
+            owned_by_other = Q(barcode_value__iexact=barcode_value)
+            if len(clean_sn_candidate) == 9:
+                owned_by_other |= Q(student_number=clean_sn_candidate)
+            taken = (
+                StudentProfile.objects.exclude(id=student.id)
+                .filter(owned_by_other, is_id_confirmed=True, user__is_active=True)
+                .exclude(user__email__startswith='student_')
+                .first()
+            )
+            if taken:
+                return Response(
+                    {"error": "This barcode is already linked to another student. Please check that you scanned your own ID."},
+                    status=status.HTTP_409_CONFLICT,
+                )
 
         student.barcode_value = barcode_value
         student.is_id_confirmed = True
