@@ -5,6 +5,102 @@ import { API_ENDPOINTS } from '../../api/config';
 import { useAuth } from '../../context/AuthContext';
 import BarcodeScanner from '../../components/BarcodeScanner';
 
+// Domain semantic synonyms & aliases for handbook queries
+const KEYWORD_ALIASES = {
+  smoke: ['smoking', 'e-cigarette', 'vape', 'vaporizer', 'tobacco'],
+  smoking: ['smoke', 'e-cigarette', 'vape', 'vaporizer', 'tobacco'],
+  vape: ['smoking', 'smoke', 'e-cigarette', 'vaporizer', 'vaporizers'],
+  vaping: ['smoking', 'smoke', 'e-cigarette', 'vaporizer', 'vaporizers'],
+  uniform: ['dress', 'clothes', 'attire', 'clothing', 'blouses', 'jeans', 'shorts', 'slippers'],
+  attire: ['dress', 'clothes', 'uniform', 'clothing', 'blouses', 'jeans', 'shorts', 'slippers'],
+  dress: ['uniform', 'attire', 'clothes', 'clothing', 'blouses', 'jeans', 'shorts', 'slippers'],
+  haircut: ['hair', 'grooming', 'earrings', 'piercing'],
+  hair: ['haircut', 'grooming', 'earrings', 'piercing'],
+  piercing: ['earrings', 'piercings', 'grooming'],
+  earring: ['earrings', 'piercing', 'grooming'],
+  earrings: ['earring', 'piercing', 'grooming'],
+  id: ['identification', 'school id', 'id card'],
+  alcohol: ['liquor', 'intoxication', 'beer', 'drinking'],
+  liquor: ['alcohol', 'intoxication', 'drinking'],
+  drunk: ['intoxication', 'liquor', 'alcohol'],
+  cheat: ['cheating', 'dishonesty', 'plagiarism'],
+  cheating: ['cheat', 'dishonesty', 'plagiarism'],
+  fight: ['brawls', 'attacking', 'assaulting', 'physical confrontation'],
+  trash: ['littering', 'garbage', 'waste'],
+  litter: ['littering', 'trash', 'garbage', 'waste'],
+  littering: ['litter', 'trash', 'garbage', 'waste'],
+  gambling: ['gamble', 'betting'],
+  gamble: ['gambling', 'betting'],
+  games: ['game', 'pc games', 'playing'],
+  game: ['games', 'pc games', 'playing'],
+};
+
+const filterHandbookRules = (rules, query) => {
+  const q = (query || '').trim().toLowerCase();
+  if (!q) return [];
+
+  const STOP = new Set(['in', 'on', 'at', 'to', 'for', 'of', 'a', 'an', 'the', 'and', 'or', 'by', 'with', 'from', 'as', 'is', 'it']);
+  const cleanQ = q.replace(/[\s\.]+/g, '');
+
+  return (rules || []).filter(r => {
+    const code = (r.rule_code || '').toLowerCase();
+    const cleanCode = code.replace(/[\s\.]+/g, '');
+    const desc = (r.description || '').toLowerCase();
+    const fullText = `${desc} (${code})`;
+
+    // Match rule code prefix or direct code (e.g. "27.3.1.31" or "27.3")
+    if (code.includes(q) || cleanCode.includes(cleanQ)) return true;
+
+    // Word boundary match for short queries (like "id" or "pc")
+    if (q.length <= 3) {
+      const wordRegex = new RegExp(`\\b${q}\\b`, 'i');
+      if (wordRegex.test(fullText)) return true;
+    } else {
+      if (fullText.includes(q)) return true;
+    }
+
+    // Tokenized keyword checking
+    const tokens = q.split(/\s+/).filter(t => t.length > 1 && !STOP.has(t));
+    if (tokens.length === 0) return false;
+
+    let matchedCount = 0;
+    for (const t of tokens) {
+      if (t.length <= 3) {
+        if (new RegExp(`\\b${t}\\b`, 'i').test(fullText)) {
+          matchedCount++;
+          continue;
+        }
+      } else {
+        if (fullText.includes(t)) {
+          matchedCount++;
+          continue;
+        }
+        // Root / prefix match for words >= 4 chars (e.g. "smoking" -> "smoke")
+        const descWords = desc.split(/[^a-zA-Z0-9]+/);
+        if (descWords.some(w => w.length >= 4 && (w.startsWith(t) || t.startsWith(w)))) {
+          matchedCount++;
+          continue;
+        }
+      }
+
+      // Check synonym aliases
+      const aliases = KEYWORD_ALIASES[t] || [];
+      let foundAlias = false;
+      for (const alias of aliases) {
+        if (new RegExp(`\\b${alias}\\b`, 'i').test(fullText)) {
+          foundAlias = true;
+          break;
+        }
+      }
+      if (foundAlias) {
+        matchedCount++;
+      }
+    }
+
+    return matchedCount > 0;
+  });
+};
+
 export default function RecordViolation() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -229,22 +325,54 @@ export default function RecordViolation() {
     }
   };
 
+  const handleSelectRule = (ruleCode) => {
+    setFormData(prev => ({ ...prev, violationType: ruleCode || '' }));
+    setSmartSearchQuery('');
+    setSmartSearchResults([]);
+  };
+
   const handleSmartSearch = async (val) => {
     setSmartSearchQuery(val);
-    const query = val.trim();
-    if (query.length < 3) {
+    const query = (val || '').trim();
+    if (query.length < 2) {
       setSmartSearchResults([]);
       return;
     }
+
+    // 1. Instant local match from preloaded handbook rules (0ms latency)
+    const localMatches = filterHandbookRules(handbookRules, query).map(r => ({
+      id: r.id,
+      rule_code: r.rule_code,
+      description: r.description,
+      score: 1.0,
+    }));
+    setSmartSearchResults(localMatches);
+
+    // 2. Query backend Smart Search
     setSmartSearchLoading(true);
     try {
-      const resp = await fetch(`${API_ENDPOINTS.SMART_SEARCH}?q=${encodeURIComponent(query)}`);
+      const resp = await fetchWithTimeout(`${API_ENDPOINTS.SMART_SEARCH}?q=${encodeURIComponent(query)}`, {}, 3500);
       if (resp.ok) {
         const data = await resp.json();
-        setSmartSearchResults(data);
+        if (Array.isArray(data)) {
+          // Keep only candidates that strictly match query relevance
+          const relevantBackend = data.filter(d => {
+            const m = filterHandbookRules([d], query);
+            return m.length > 0 || (d.score && d.score >= 0.7);
+          });
+          const seen = new Set(localMatches.map(m => m.rule_code));
+          const merged = [...localMatches];
+          for (const item of relevantBackend) {
+            if (!seen.has(item.rule_code)) {
+              seen.add(item.rule_code);
+              merged.push(item);
+            }
+          }
+          setSmartSearchResults(merged);
+        }
       }
     } catch (error) {
-      console.error("Smart search failed:", error);
+      console.warn("Smart search backend:", error);
     } finally {
       setSmartSearchLoading(false);
     }
@@ -601,7 +729,7 @@ export default function RecordViolation() {
               </div>
 
               <div className="space-y-8">
-                {/* Rule Search */}
+                {/* Rule Search Header */}
                 <div className="flex items-center justify-between mb-4">
                   <label className="block text-[11px] font-black text-[#003624]/40 uppercase tracking-[0.2em] flex items-center gap-2">
                     <span className="material-symbols-outlined text-[16px]">policy</span>
@@ -623,29 +751,85 @@ export default function RecordViolation() {
                   </div>
                 </div>
 
+                {/* Selected Rule Banner in Desktop */}
+                {formData.violationType && (
+                  <div className="bg-emerald-50 border-2 border-emerald-500/20 rounded-2xl p-4 flex items-center justify-between gap-4 animate-in fade-in">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-[#003624] text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <span className="material-symbols-outlined text-[20px]">verified</span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-emerald-800 text-white px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                            {formData.violationType}
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-800 uppercase">
+                            {formData.violationType.startsWith('27.1') ? 'Minor Offense' : formData.violationType.startsWith('27.4') ? 'Vehicle Violation' : 'Major Offense'}
+                          </span>
+                        </div>
+                        <p className="text-[14px] font-bold text-slate-800 mt-1 leading-snug">
+                          {handbookRules.find(r => r.rule_code === formData.violationType)?.description || 'Selected Handbook Violation Rule'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectRule('')}
+                      className="text-slate-400 hover:text-rose-600 bg-white border border-slate-200 p-2 rounded-xl transition-colors shrink-0 cursor-pointer"
+                      title="Change selected rule"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  </div>
+                )}
+
                 {searchMode === 'smart' ? (
                   <div className="relative group">
                     <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors">auto_fix_high</span>
                     <input
                       type="text"
-                      placeholder="Smart search (e.g. 'smoking', 'uniform', 'noise')..."
+                      placeholder="Smart search (e.g. 'smoking', 'uniform', 'haircut', 'id')..."
                       value={smartSearchQuery || ""}
                       onChange={(e) => handleSmartSearch(e.target.value)}
-                      className="w-full bg-slate-50 border-2 border-transparent rounded-2xl h-[64px] pl-14 pr-4 text-[15px] font-bold text-slate-700 outline-none focus:bg-white focus:border-emerald-100 focus:shadow-lg focus:shadow-emerald-950/5 transition-all"
+                      className="w-full bg-slate-50 border-2 border-transparent rounded-2xl h-[64px] pl-14 pr-12 text-[15px] font-bold text-slate-700 outline-none focus:bg-white focus:border-emerald-100 focus:shadow-lg focus:shadow-emerald-950/5 transition-all"
                     />
+                    {smartSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => { setSmartSearchQuery(''); setSmartSearchResults([]); }}
+                        className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">cancel</span>
+                      </button>
+                    )}
                     {smartSearchResults.length > 0 && (
                       <div className="absolute top-[75px] left-0 right-0 z-[110] bg-white rounded-3xl shadow-[0_30px_80px_rgba(0,0,0,0.2)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
-                        <div className="max-h-[400px] overflow-y-auto custom-scrollbar-emerald">
-                          {(Array.isArray(smartSearchResults) ? smartSearchResults : []).map(res => (
-                            <button key={res.id} onClick={() => { setFormData(prev => ({ ...prev, violationType: res.rule_code })); setSmartSearchQuery(res.rule_code); setSmartSearchResults([]); }} className="w-full p-6 hover:bg-emerald-50 text-left border-b border-slate-50 last:border-0 group transition-all">
-                              <div className="flex justify-between items-start mb-2">
-                                <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{res.rule_code}</span>
-                                <span className="text-[10px] font-bold text-slate-300 uppercase">{Math.round(res.score * 100)}% Match</span>
+                        <div className="bg-emerald-50/70 px-6 py-2.5 border-b border-emerald-100 flex items-center justify-between text-[11px] font-black text-emerald-800 uppercase tracking-wider">
+                          <span>{smartSearchResults.length} violation{smartSearchResults.length > 1 ? 's' : ''} found</span>
+                          <span>Click to select</span>
+                        </div>
+                        <div className="max-h-[350px] overflow-y-auto custom-scrollbar-emerald divide-y divide-slate-50">
+                          {smartSearchResults.map(res => (
+                            <button
+                              key={res.id || res.rule_code}
+                              type="button"
+                              onClick={() => handleSelectRule(res.rule_code)}
+                              className="w-full p-5 hover:bg-emerald-50 text-left group transition-all cursor-pointer"
+                            >
+                              <div className="flex justify-between items-start mb-1.5">
+                                <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{res.rule_code}</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">{res.rule_code?.startsWith('27.1') ? 'Minor Offense' : res.rule_code?.startsWith('27.4') ? 'Vehicle Violation' : 'Major Offense'}</span>
                               </div>
-                              <p className="text-[14px] font-bold text-slate-700 leading-tight group-hover:text-[#003624] transition-colors">{res.description}</p>
+                              <p className="text-[14px] font-bold text-slate-700 leading-snug group-hover:text-[#003624] transition-colors">{res.description}</p>
                             </button>
                           ))}
                         </div>
+                      </div>
+                    )}
+                    {smartSearchQuery.trim().length >= 2 && smartSearchResults.length === 0 && !smartSearchLoading && (
+                      <div className="absolute top-[75px] left-0 right-0 z-[110] bg-white rounded-2xl shadow-xl border border-slate-100 p-5 text-center animate-in fade-in">
+                        <p className="text-[14px] font-bold text-slate-700">No violations found matching "{smartSearchQuery}"</p>
+                        <p className="text-[11px] text-slate-400 mt-1">Try keywords like "uniform", "smoking", "id", "haircut", "littering", or switch to Manual.</p>
                       </div>
                     )}
                   </div>
@@ -655,8 +839,8 @@ export default function RecordViolation() {
                     <select
                       name="violationType"
                       value={formData.violationType || ''}
-                      onChange={handleInputChange}
-                      className="w-full bg-slate-50 border-2 border-transparent rounded-2xl h-[64px] pl-14 pr-4 text-[15px] font-bold text-slate-700 outline-none focus:bg-white focus:border-emerald-100 focus:shadow-lg focus:shadow-emerald-950/5 transition-all appearance-none"
+                      onChange={(e) => handleSelectRule(e.target.value)}
+                      className="w-full bg-slate-50 border-2 border-transparent rounded-2xl h-[64px] pl-14 pr-4 text-[15px] font-bold text-slate-700 outline-none focus:bg-white focus:border-emerald-100 focus:shadow-lg focus:shadow-emerald-950/5 transition-all appearance-none cursor-pointer"
                     >
                       <option value="">Select Handbook Rule...</option>
                       {handbookRules.map(rule => (
@@ -1280,7 +1464,9 @@ export default function RecordViolation() {
             {/* Violation Rule Picker Card */}
             <div className="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Handbook Violation Rule *</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                  Handbook Violation Rule *
+                </label>
                 <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
                   <button
                     type="button"
@@ -1299,112 +1485,155 @@ export default function RecordViolation() {
                 </div>
               </div>
 
-              {/* Selected Rule Banner */}
-              {formData.violationType && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start justify-between gap-2 animate-in fade-in">
-                  <div>
-                    <span className="text-[9px] font-black bg-emerald-700 text-white px-2 py-0.5 rounded uppercase tracking-wider">
-                      {formData.violationType}
-                    </span>
-                    <p className="text-[11.5px] font-bold text-emerald-950 mt-1 leading-snug">
-                      {handbookRules.find(r => r.rule_code === formData.violationType)?.description || 'Selected Handbook Violation Rule'}
-                    </p>
+              {/* ── CASE 1: RULE ALREADY SELECTED ── */}
+              {formData.violationType ? (
+                <div className="bg-emerald-50/90 border-2 border-emerald-500/30 rounded-2xl p-3.5 flex items-start justify-between gap-3 animate-in zoom-in-95 duration-200">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-[#003624] text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                      <span className="material-symbols-outlined text-[18px]">verified</span>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-black bg-[#003624] text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
+                          {formData.violationType}
+                        </span>
+                        <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded uppercase">
+                          {formData.violationType.startsWith('27.1') ? 'Minor Offense' : formData.violationType.startsWith('27.4') ? 'Vehicle Violation' : 'Major Offense'}
+                        </span>
+                      </div>
+                      <p className="text-[12.5px] font-extrabold text-emerald-950 mt-1.5 leading-snug">
+                        {handbookRules.find(r => r.rule_code === formData.violationType)?.description || 'Selected Handbook Violation Rule'}
+                      </p>
+                    </div>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, violationType: '' }))}
-                    className="text-emerald-700 hover:text-rose-600 p-1"
+                    onClick={() => handleSelectRule('')}
+                    className="text-emerald-800 hover:text-rose-600 bg-white border border-emerald-200 p-1.5 rounded-xl shadow-2xs transition-colors shrink-0 cursor-pointer"
                     title="Change rule"
                   >
                     <span className="material-symbols-outlined text-[16px]">close</span>
                   </button>
                 </div>
-              )}
-
-              {/* Rule Search / Selection Input */}
-              {searchMode === 'smart' ? (
-                <div className="space-y-2">
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[18px]">search</span>
-                    <input
-                      type="text"
-                      placeholder="Type keyword (e.g. uniform, smoking, haircut)..."
-                      value={smartSearchQuery || ""}
-                      onChange={(e) => handleSmartSearch(e.target.value)}
-                      className="w-full h-11 bg-slate-50 border border-gray-200 rounded-xl pl-9 pr-3 text-[12.5px] font-bold text-gray-800 outline-none focus:bg-white focus:border-emerald-500 transition-colors"
-                    />
-                  </div>
-
-                  {/* Preset Rule Quick Chips (Shown when input is empty) */}
-                  {!smartSearchQuery && !formData.violationType && (
-                    <div>
-                      <p className="text-[9.5px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Common Violations:</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {[
-                          { code: '27.1.a', label: 'Uniform / Dress Code' },
-                          { code: '27.1.c', label: 'Student ID Validation' },
-                          { code: '27.1.f', label: 'Prescribed Haircut' },
-                          { code: '27.1.n', label: 'Littering' },
-                          { code: '27.2.d', label: 'Smoking / Vaping' },
-                        ].map((chip) => (
+              ) : (
+                /* ── CASE 2: NO RULE SELECTED YET ── */
+                <>
+                  {searchMode === 'smart' ? (
+                    <div className="space-y-2.5">
+                      <div className="relative">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[18px]">search</span>
+                        <input
+                          type="text"
+                          placeholder="Type keyword (e.g. smoking, uniform, id, haircut)..."
+                          value={smartSearchQuery || ""}
+                          onChange={(e) => handleSmartSearch(e.target.value)}
+                          className="w-full h-11 bg-slate-50 border border-gray-200 rounded-xl pl-9 pr-8 text-[12.5px] font-bold text-gray-800 outline-none focus:bg-white focus:border-emerald-500 transition-colors shadow-2xs"
+                        />
+                        {smartSearchQuery && (
                           <button
-                            key={chip.code}
                             type="button"
                             onClick={() => {
-                              setFormData(prev => ({ ...prev, violationType: chip.code }));
-                              setSmartSearchQuery(chip.code);
+                              setSmartSearchQuery('');
+                              setSmartSearchResults([]);
                             }}
-                            className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-gray-700 transition-colors border border-gray-200/80 cursor-pointer"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
                           >
-                            [{chip.code}] {chip.label}
+                            <span className="material-symbols-outlined text-[16px]">cancel</span>
                           </button>
-                        ))}
+                        )}
                       </div>
-                    </div>
-                  )}
 
-                  {/* Smart Search Results */}
-                  {smartSearchResults.length > 0 && (
-                    <div className="border border-emerald-100 rounded-xl divide-y divide-gray-100 max-h-48 overflow-y-auto bg-white shadow-md">
-                      {smartSearchResults.map(res => (
-                        <button
-                          key={res.id}
-                          type="button"
-                          onClick={() => {
-                            setFormData(prev => ({ ...prev, violationType: res.rule_code }));
-                            setSmartSearchQuery(res.rule_code);
-                            setSmartSearchResults([]);
-                          }}
-                          className="w-full p-2.5 text-left hover:bg-emerald-50 transition-colors cursor-pointer"
-                        >
-                          <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
-                            {res.rule_code}
-                          </span>
-                          <p className="text-[11.5px] font-bold text-gray-800 leading-snug mt-0.5">{res.description}</p>
-                        </button>
-                      ))}
+                      {/* Preset Rule Quick Chips (Only shown when input is empty) */}
+                      {!smartSearchQuery && (
+                        <div>
+                          <p className="text-[9.5px] font-black text-gray-400 uppercase tracking-wider mb-1.5">Common Violations:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {[
+                              { code: '27.1.4', label: 'Student ID' },
+                              { code: '27.1.2.1', label: 'Dress Code' },
+                              { code: '27.1.6', label: 'Haircut / Piercings' },
+                              { code: '27.3.1.30', label: 'Littering' },
+                              { code: '27.3.1.31', label: 'Smoking / Vaping' },
+                            ].map((chip) => (
+                              <button
+                                key={chip.code}
+                                type="button"
+                                onClick={() => handleSelectRule(chip.code)}
+                                className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-gray-700 transition-colors border border-gray-200/80 cursor-pointer active:scale-95"
+                              >
+                                <span className="text-emerald-700 font-extrabold mr-1">[{chip.code}]</span>
+                                {chip.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Smart Search Results Dropdown List */}
+                      {smartSearchQuery.trim().length >= 2 && (
+                        <>
+                          {smartSearchResults.length > 0 ? (
+                            <div className="border border-emerald-100 rounded-xl overflow-hidden bg-white shadow-md divide-y divide-gray-100 max-h-56 overflow-y-auto">
+                              <div className="bg-emerald-50/70 px-3 py-1.5 flex items-center justify-between text-[10px] font-black text-emerald-800 uppercase tracking-wider">
+                                <span>{smartSearchResults.length} violation{smartSearchResults.length > 1 ? 's' : ''} found</span>
+                                <span>Tap to select</span>
+                              </div>
+                              {smartSearchResults.map(res => (
+                                <button
+                                  key={res.id || res.rule_code}
+                                  type="button"
+                                  onClick={() => handleSelectRule(res.rule_code)}
+                                  className="w-full p-2.5 text-left hover:bg-emerald-50 active:bg-emerald-100/50 transition-colors cursor-pointer group"
+                                >
+                                  <div className="flex items-center gap-1.5 mb-0.5">
+                                    <span className="text-[9.5px] font-black bg-emerald-700 text-white px-1.5 py-0.5 rounded">
+                                      {res.rule_code}
+                                    </span>
+                                    <span className="text-[8.5px] font-extrabold text-gray-400 uppercase">
+                                      {res.rule_code?.startsWith('27.1') ? 'Minor Offense' : res.rule_code?.startsWith('27.4') ? 'Vehicle Violation' : 'Major Offense'}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11.5px] font-bold text-gray-800 leading-snug group-hover:text-[#003624]">
+                                    {res.description}
+                                  </p>
+                                </button>
+                              ))}
+                            </div>
+                          ) : !smartSearchLoading ? (
+                            <div className="p-3 bg-slate-50 border border-gray-200/80 rounded-xl text-center space-y-1">
+                              <p className="text-[11.5px] font-extrabold text-gray-700">No violations found matching "{smartSearchQuery}"</p>
+                              <p className="text-[10px] text-gray-400">Try keywords like "smoking", "uniform", "id", "haircut", or switch to Browse mode.</p>
+                            </div>
+                          ) : (
+                            <div className="p-3 text-center text-emerald-800 text-[11px] font-bold flex items-center justify-center gap-2">
+                              <div className="w-3.5 h-3.5 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin" />
+                              Searching handbook rules...
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <select
+                        name="violationType"
+                        value={formData.violationType || ''}
+                        onChange={(e) => handleSelectRule(e.target.value)}
+                        className="w-full h-11 bg-slate-50 border border-gray-200 rounded-xl px-3 text-[12px] font-bold text-gray-800 outline-none focus:bg-white focus:border-emerald-500 appearance-none cursor-pointer"
+                      >
+                        <option value="">Select Official Handbook Rule...</option>
+                        {handbookRules.map(r => (
+                          <option key={r.id} value={r.rule_code}>
+                            [{r.rule_code}] {r.description ? r.description.substring(0, 45) : 'Rule'}...
+                          </option>
+                        ))}
+                      </select>
+                      <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[18px]">
+                        expand_more
+                      </span>
                     </div>
                   )}
-                </div>
-              ) : (
-                <div className="relative">
-                  <select
-                    name="violationType"
-                    value={formData.violationType || ''}
-                    onChange={handleInputChange}
-                    className="w-full h-11 bg-slate-50 border border-gray-200 rounded-xl px-3 text-[12px] font-bold text-gray-800 outline-none focus:bg-white focus:border-emerald-500 appearance-none cursor-pointer"
-                  >
-                    <option value="">Select Official Handbook Rule...</option>
-                    {handbookRules.map(r => (
-                      <option key={r.id} value={r.rule_code}>
-                        [{r.rule_code}] {r.description ? r.description.substring(0, 45) : 'Rule'}...
-                      </option>
-                    ))}
-                  </select>
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[18px]">
-                    expand_more
-                  </span>
-                </div>
+                </>
               )}
             </div>
 
