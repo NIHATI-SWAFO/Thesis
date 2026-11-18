@@ -27,7 +27,7 @@ _CANDIDATES = [
     BASE_DIR / "results" / "enhanced-uwear-dev" / "weights" / "best.pt",
 ]
 MODEL_PATH = next((p for p in _CANDIDATES if p.exists()), None)
-CONFIDENCE_THRESHOLD = 0.35
+CONFIDENCE_THRESHOLD = 0.406
 
 # Default settings (you can change these in the UI by pressing keys)
 CURRENT_MODE = "CIVILIAN_MODE"
@@ -115,9 +115,9 @@ def main():
             YEAR_LEVEL = 1
             print(f"Year Level set to 1")
         elif key == ord('4'):
+            # No 4th-year exemption: 4th years follow the same uniform schedule
             YEAR_LEVEL = 4
-            CURRENT_MODE = "CIVILIAN_MODE"  # Auto switch for 4th years
-            print(f"Year Level set to 4 (Auto-switched to CIVILIAN_MODE)")
+            print(f"Year Level set to 4")
 
     cap.release()
     cv2.destroyAllWindows()

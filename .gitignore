@@ -46,3 +46,4 @@ FILES_TO_UPLOAD_TO_DRIVE/
 *.pth
 *.onnx
 dresscode-detection/models/
+Run_Dress_Code_Detector.command

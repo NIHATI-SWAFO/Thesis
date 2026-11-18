@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import threading
 import cv2
 import numpy as np
 from pathlib import Path
@@ -29,7 +30,7 @@ _CANDIDATES = [
     ROOT_DIR / "best.pt",
 ]
 MODEL_PATH = next((p for p in _CANDIDATES if p.exists()), None)
-CONFIDENCE_THRESHOLD = 0.35
+CONFIDENCE_THRESHOLD = 0.406
 
 # Global state for the web controls
 CURRENT_MODE = "CIVILIAN_MODE"
@@ -52,26 +53,74 @@ camera = None
 def get_camera():
     global camera
     if camera is None or not camera.isOpened():
-        # Prefer DirectShow on Windows to avoid MSMF grab frame errors (-1072873822)
-        camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-        if not camera.isOpened():
+        camera = None
+        if sys.platform == "win32":
+            # Prefer DirectShow on Windows to avoid MSMF grab frame errors (-1072873822)
+            camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        if camera is None or not camera.isOpened():
             camera = cv2.VideoCapture(0)
         camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     return camera
 
 
+# Latest annotated JPEG, produced by one background worker and shared by every
+# viewer. Only the worker touches the camera, so several open tabs can't fight
+# over cap.read().
+LATEST_JPEG = None
+FRAME_COND = threading.Condition()
+_worker_started = False
+_worker_lock = threading.Lock()
+
+
+def _publish(jpeg_bytes):
+    global LATEST_JPEG
+    with FRAME_COND:
+        LATEST_JPEG = jpeg_bytes
+        FRAME_COND.notify_all()
+
+
+def _placeholder(text, x):
+    frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+    cv2.putText(frame, text, (x, 360), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (200, 200, 200), 2)
+    return cv2.imencode('.jpg', frame)[1].tobytes()
+
+
+def ensure_worker():
+    global _worker_started
+    with _worker_lock:
+        if not _worker_started:
+            threading.Thread(target=_capture_loop, daemon=True).start()
+            _worker_started = True
+
+
+def _capture_loop():
+    for jpeg in _frame_source():
+        _publish(jpeg)
+
+
 def generate_frames():
+    """MJPEG stream of the shared latest frame (kept for /video_feed)."""
+    ensure_worker()
+    last = None
+    while True:
+        with FRAME_COND:
+            FRAME_COND.wait_for(lambda: LATEST_JPEG is not None and LATEST_JPEG is not last, timeout=2)
+            jpeg = LATEST_JPEG
+        if jpeg is None or jpeg is last:
+            continue
+        last = jpeg
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + jpeg + b'\r\n')
+
+
+def _frame_source():
     global LATEST_COMPLIANCE, camera
     fail_count = 0
     while True:
         cap = get_camera()
         if cap is None or not cap.isOpened():
-            frame = np.zeros((720, 1280, 3), dtype=np.uint8)
-            cv2.putText(frame, "Camera not detected / in use by another app", (280, 360), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (200, 200, 200), 2)
-            ret, buffer = cv2.imencode('.jpg', frame)
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+            yield _placeholder("Camera not detected / in use by another app", 280)
             time.sleep(0.5)
             continue
 
@@ -83,11 +132,7 @@ def generate_frames():
                     camera.release()
                 camera = None
                 fail_count = 0
-            frame = np.zeros((720, 1280, 3), dtype=np.uint8)
-            cv2.putText(frame, "Waiting for video frame...", (380, 360), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (200, 200, 200), 2)
-            ret, buffer = cv2.imencode('.jpg', frame)
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+            yield _placeholder("Waiting for video frame...", 380)
             time.sleep(0.1)
             continue
         
@@ -112,7 +157,7 @@ def generate_frames():
 
         # 3. Assess Compliance
         compliance = assess_compliance(detections, CURRENT_MODE, YEAR_LEVEL)
-        compliance["detection_mode"] = f"{CURRENT_MODE} (Yr {YEAR_LEVEL})"
+        compliance["detection_mode"] = f"{CURRENT_MODE} (All Years)"
 
         global LATEST_COMPLIANCE
         LATEST_COMPLIANCE = compliance
@@ -121,12 +166,8 @@ def generate_frames():
         annotated_frame = draw_detections(frame, detections, compliance)
 
         # 5. Convert to JPEG for web streaming
-        ret, buffer = cv2.imencode('.jpg', annotated_frame)
-        frame_bytes = buffer.tobytes()
-
-        # Yield frame in MJPEG format
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+        ret, buffer = cv2.imencode('.jpg', annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        yield buffer.tobytes()
 
 
 # ============================================================
@@ -452,6 +493,7 @@ HTML_TEMPLATE = """
             display: block;
             width: 100%;
             height: auto;
+            aspect-ratio: 16 / 9;
             max-height: calc(100vh - 200px);
             object-fit: contain;
         }
@@ -956,14 +998,13 @@ HTML_TEMPLATE = """
 
                 <div class="custom-select-wrap">
                     <select name="year" id="year" onchange="this.form.submit()">
-                        <option value="1" {% if year_level == 1 %}selected{% endif %}>Year Level: 1st – 3rd Year</option>
-                        <option value="4" {% if year_level == 4 %}selected{% endif %}>Year Level: 4th Year (Graduating)</option>
+                        <option value="1" selected>Year Level: All Years (1st – 4th)</option>
                     </select>
                     <span class="material-symbols-outlined select-icon">expand_more</span>
                 </div>
             </form>
 
-            <a href="http://localhost:5173" target="_blank" class="portal-link-btn" title="Open SWAFO Web Application">
+            <a href="https://swafo-thesis.vercel.app" target="_blank" class="portal-link-btn" title="Open SWAFO Web Application">
                 <span class="material-symbols-outlined" style="font-size: 18px;">open_in_new</span>
                 <span>SWAFO Portal</span>
             </a>
@@ -982,7 +1023,7 @@ HTML_TEMPLATE = """
                         <span>OPTICAL ENTRANCE CAMERA • FEED 01</span>
                     </div>
                     <div class="model-spec">
-                        <span>MODEL: YOLO11s (88.9% mAP) • CONF: 35%</span>
+                        <span>MODEL: YOLO11s (88.9% mAP) • CONF: 40.6%</span>
                     </div>
                 </div>
 
@@ -993,7 +1034,7 @@ HTML_TEMPLATE = """
                     <div class="hud-bracket bracket-bl"></div>
                     <div class="hud-bracket bracket-br"></div>
 
-                    <img src="/video_feed" alt="SWAFOTECH Live Inference Stream">
+                    <img id="live-feed" alt="SWAFOTECH Live Inference Stream">
                 </div>
             </div>
 
@@ -1170,7 +1211,7 @@ HTML_TEMPLATE = """
 
         function recordViolation() {
             // Lock and open SWAFO Module 2 Record Violation in new tab
-            const targetUrl = "http://localhost:5173/violations/record";
+            const targetUrl = "https://swafo-thesis.vercel.app/officer/violations/new";
             const confirmRecord = confirm("Transfer this detected attire violation to the SWAFO Module 2 Violation Adjudication Portal?");
             if (confirmRecord) {
                 window.open(targetUrl, "_blank");
@@ -1179,6 +1220,26 @@ HTML_TEMPLATE = """
 
         // Poll status every 500ms
         setInterval(updateStatus, 500);
+
+        // Live feed: fetch the latest frame in a loop. Works in every browser,
+        // unlike an MJPEG <img src="/video_feed">, which Safari often won't paint.
+        (function pollFeed() {
+            const img = document.getElementById('live-feed');
+            let lastUrl = null;
+            async function next() {
+                try {
+                    const res = await fetch('/frame.jpg?t=' + Date.now(), { cache: 'no-store' });
+                    if (res.ok) {
+                        const url = URL.createObjectURL(await res.blob());
+                        img.src = url;
+                        if (lastUrl) URL.revokeObjectURL(lastUrl);
+                        lastUrl = url;
+                    }
+                } catch (e) { /* server restarting; retry */ }
+                setTimeout(next, 66);
+            }
+            next();
+        })();
     </script>
 </body>
 </html>
@@ -1197,6 +1258,18 @@ def video_feed():
     # Returns the streaming response using our generator
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/frame.jpg')
+def frame_jpg():
+    # Single latest frame. The page polls this instead of the MJPEG stream,
+    # because Safari often won't paint multipart/x-mixed-replace in an <img>.
+    ensure_worker()
+    with FRAME_COND:
+        FRAME_COND.wait_for(lambda: LATEST_JPEG is not None, timeout=5)
+        jpeg = LATEST_JPEG
+    if jpeg is None:
+        return "Starting camera", 503
+    return Response(jpeg, mimetype='image/jpeg', headers={'Cache-Control': 'no-store'})
+
 @app.route('/api/status')
 def api_status():
     if LATEST_COMPLIANCE:
@@ -1207,13 +1280,8 @@ def api_status():
 def update_settings():
     global CURRENT_MODE, YEAR_LEVEL
     CURRENT_MODE = request.form.get('mode', CURRENT_MODE)
-    YEAR_LEVEL = int(request.form.get('year', YEAR_LEVEL))
-    
-    # Auto-switch to civilian mode if 4th year is selected
-    if YEAR_LEVEL == 4:
-        CURRENT_MODE = "CIVILIAN_MODE"
-        
-    print(f"[*] Settings updated: {CURRENT_MODE}, Year {YEAR_LEVEL}")
+    # All year levels (1st–4th) follow the same schedule; no 4th-year exemption.
+    print(f"[*] Settings updated: {CURRENT_MODE}, All Years")
     return "OK", 200
 
 if __name__ == "__main__":

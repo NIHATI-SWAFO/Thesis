@@ -4,9 +4,9 @@ SWAFOTECH Dress Code Detection — Dress Code Detection & Compliance Module
 Standalone inference module aligned with the DLSU-D School Uniform
 and Dress Code Policy (effective September 1, 2025).
 
-Supports two compliance modes:
-  • UNIFORM_MODE  — Mon/Tue/Thu for 1st–3rd year students
-  • CIVILIAN_MODE — Wed/Fri/Sat (all) + Mon–Sat for 4th year students
+Supports two compliance modes (same schedule for all year levels, 1st–4th):
+  • UNIFORM_MODE  — Mon/Tue/Thu
+  • CIVILIAN_MODE — Wed/Fri/Sat (wash days)
 
 Usage:
   .venv\\Scripts\\python.exe inference/detect.py --image path/to/image.jpg
@@ -51,7 +51,7 @@ _CANDIDATES = [
 DEFAULT_MODEL = next((p for p in _CANDIDATES if p.exists()), _CANDIDATES[0])
 OUTPUT_DIR = BASE_DIR / "results" / "detections"
 
-CONFIDENCE_THRESHOLD = 0.35
+CONFIDENCE_THRESHOLD = 0.406
 
 # ── Class definitions ────────────────────────────────────────
 CLASS_NAMES = {
@@ -123,9 +123,9 @@ def assess_compliance(detected_classes: list[dict], mode: str, year_level: int) 
     """
     Evaluate dress code compliance based on detected garments.
 
-    Modes:
-      UNIFORM_MODE  — 1st–3rd year on Mon/Tue/Thu
-      CIVILIAN_MODE — Wed/Fri/Sat (all) + 4th year (all weekdays)
+    Modes (all year levels, 1st–4th):
+      UNIFORM_MODE  — Mon/Tue/Thu
+      CIVILIAN_MODE — Wed/Fri/Sat (wash days)
 
     Args:
         detected_classes: list of {"class_id": int, "class_name": str, "confidence": float, "bbox": list}
@@ -173,7 +173,7 @@ def assess_compliance(detected_classes: list[dict], mode: str, year_level: int) 
 
     # ── Mode-specific checks ─────────────────────────────────────────
     if mode == "UNIFORM_MODE":
-        # 1st–3rd year on uniform days MUST wear uniform
+        # All year levels on uniform days MUST wear uniform
 
         has_uniform_top = bool(detected_ids & UNIFORM_TOPS)
         has_uniform_bottom = bool(detected_ids & UNIFORM_BOTTOMS)
@@ -213,18 +213,16 @@ def assess_compliance(detected_classes: list[dict], mode: str, year_level: int) 
 
         if has_civilian_bottom and not has_uniform_bottom:
             ref = VIOLATION_REFS["civilian_on_uniform_day"]
-            # Avoid duplicate violation description
-            if not any(v["class"] == "civilian_top_on_uniform_day" for v in violations):
-                violations.append({
-                    "class": "civilian_bottom_on_uniform_day",
-                    "handbook_ref": ref["code"],
-                    "description": "Wearing civilian bottom on designated uniform day",
-                    "confidence": None,
-                    "severity": "MINOR_OFFENSE",
-                })
+            violations.append({
+                "class": "civilian_bottom_on_uniform_day",
+                "handbook_ref": ref["code"],
+                "description": "Wearing civilian bottom on designated uniform day",
+                "confidence": None,
+                "severity": "MINOR_OFFENSE",
+            })
 
     elif mode == "CIVILIAN_MODE":
-        # Wash days or 4th year — civilian clothing allowed
+        # Wash days — civilian clothing allowed
         # Wearing uniform on civilian day is STILL COMPLIANT (opt-in)
         # Only prohibited items and slippers cause violations
         # (Already handled above)
@@ -327,6 +325,7 @@ def run_detection(
     mode: str = "CIVILIAN_MODE",
     year_level: int = 1,
     save: bool = True,
+    conf: float = CONFIDENCE_THRESHOLD,
 ) -> dict:
     """
     Full pipeline: detect → assess compliance → annotate → save.
@@ -347,7 +346,7 @@ def run_detection(
         return {}
 
     # ── Run YOLO inference ───────────────────────────────────────────
-    results = model(str(image_path), conf=CONFIDENCE_THRESHOLD, verbose=False)
+    results = model(str(image_path), conf=conf, verbose=False)
     result = results[0]
 
     # ── Parse detections ─────────────────────────────────────────────
@@ -414,13 +413,9 @@ def auto_detect_mode(year_level: int) -> str:
     Determine UNIFORM_MODE or CIVILIAN_MODE based on current
     day of the week and student year level.
 
-    Schedule (September 1, 2025 Policy):
-      1st–3rd Year: Mon/Tue/Thu = Uniform, Wed/Fri/Sat = Wash Day
-      4th Year:     All days = Civilian (may opt to wear uniform)
+    Schedule (applies to all year levels, 1st–4th; no 4th-year exemption):
+      Mon/Tue/Thu = Uniform, Wed/Fri/Sat = Wash Day
     """
-    if year_level >= 4:
-        return "CIVILIAN_MODE"
-
     day = datetime.now().weekday()  # 0=Mon, 6=Sun
     # Mon=0, Tue=1 → Uniform | Wed=2 → Wash | Thu=3 → Uniform | Fri=4 → Wash | Sat=5 → Wash | Sun=6 → N/A
     uniform_days = {0, 1, 3}
@@ -478,14 +473,11 @@ Examples:
     print(f"Loading model: {args.model}")
     model = YOLO(args.model)
 
-    # Update threshold for this run
-    conf_threshold = args.conf
-
     # ── Run on single image or folder ────────────────────────────────
     all_results = []
 
     if args.image:
-        result = run_detection(args.image, model, mode, args.year, save=not args.no_save)
+        result = run_detection(args.image, model, mode, args.year, save=not args.no_save, conf=args.conf)
         all_results.append(result)
 
     elif args.folder:
@@ -505,7 +497,7 @@ Examples:
 
         print(f"Processing {len(image_files)} images from {folder}...")
         for img_path in image_files:
-            result = run_detection(str(img_path), model, mode, args.year, save=not args.no_save)
+            result = run_detection(str(img_path), model, mode, args.year, save=not args.no_save, conf=args.conf)
             all_results.append(result)
 
     # ── Summary ──────────────────────────────────────────────────────
