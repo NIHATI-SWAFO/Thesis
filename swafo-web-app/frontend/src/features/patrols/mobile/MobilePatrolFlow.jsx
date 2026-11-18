@@ -712,20 +712,28 @@ const DynamicSummaryScreen = ({ onSave, onBack, sessionData, isSaving, trailCoor
               </span>
             </div>
             <div className="space-y-2">
-              {checkpoints.map((cp, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50/70 border border-gray-100">
-                  <div className="w-6 h-6 rounded-full bg-[#1A5C3A] text-white flex items-center justify-center shrink-0">
-                    <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+              {checkpoints.map((cp, idx) => {
+                const bldgImg = cp.image || getBuildingImage(cp.name || cp.label || cp.building);
+                return (
+                  <div key={idx} className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50/70 border border-gray-100">
+                    <div className="w-6 h-6 rounded-full bg-[#1A5C3A] text-white flex items-center justify-center shrink-0">
+                      <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                    </div>
+                    {bldgImg && (
+                      <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-gray-200 bg-white shadow-sm">
+                        <img src={bldgImg} alt={cp.name || 'Checkpoint'} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-[13px] text-[#000] truncate leading-tight">{cp.name || cp.label || `Checkpoint ${idx + 1}`}</p>
+                      <p className="text-[10px] font-semibold text-emerald-600">Inspected & Verified</p>
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-400 shrink-0">
+                      {cp.time || formatDisplayTime(sessionData?.actual_end)}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-black text-[13px] text-[#000] truncate leading-tight">{cp.name || cp.label || `Checkpoint ${idx + 1}`}</p>
-                    <p className="text-[10px] font-semibold text-emerald-600">Inspected & Verified</p>
-                  </div>
-                  <span className="text-[10px] font-bold text-gray-400 shrink-0">
-                    {cp.time || formatDisplayTime(sessionData?.actual_end)}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
