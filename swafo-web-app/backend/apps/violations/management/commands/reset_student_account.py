@@ -4,7 +4,8 @@ for the first time, without changing the heatmap or patrol data.
 
 WHAT IT DOES
   * Moves each of the student's violations (with its appeals and the related
-    notifications) to a different generated demo student, fewest violations first.
+    notifications) to a different demo student (an account nobody has ever
+    logged into, not a team account), fewest violations first.
     Only the `student` link changes, through QuerySet.update(), so location,
     coordinates, timestamp, rule, status and updated_at stay exactly the same.
     The heatmap, campus map, patrol risk scores and totals are unchanged.
@@ -28,6 +29,9 @@ from django.db.models import Count
 from apps.users.models import Notification, StudentProfile
 from apps.violations.models import Appeal, Violation
 
+# Team demo accounts (same as repair_demo_data.TEAM_ROLES): never used as recipients
+TEAM_STUDENT_NUMBERS = ('202330395', '202330485', '202180379')
+
 HEATMAP_FIELDS = ('location', 'location_name', 'latitude', 'longitude', 'timestamp', 'rule_id', 'status')
 
 
@@ -49,11 +53,13 @@ class Command(BaseCommand):
 
         violations = list(Violation.objects.filter(student=target).order_by('id'))
 
-        # Generated demo students only (email starts with "student_"), the ones
-        # with the fewest violations first; each gets at most one moved case.
+        # Demo students only: accounts nobody has ever logged into (no last_login),
+        # not ID-confirmed, and not a team demo account. Fewest violations first;
+        # each gets at most one moved case.
         recipients = list(
             StudentProfile.objects.exclude(id=target.id)
-            .filter(user__is_active=True, user__email__startswith='student_')
+            .exclude(student_number__in=TEAM_STUDENT_NUMBERS)
+            .filter(user__is_active=True, user__last_login__isnull=True, is_id_confirmed=False)
             .annotate(n=Count('violations'))
             .order_by('n', 'id')[:len(violations)]
         )
