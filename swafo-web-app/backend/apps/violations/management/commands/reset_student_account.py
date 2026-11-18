@@ -98,8 +98,9 @@ class Command(BaseCommand):
             target.barcode_value = None
             target.is_id_confirmed = False
             target.clearance_status = 'CLEARED'
+            target.clearance_override = False
             target.risk_score = 0.0
-            target.save(update_fields=['barcode_value', 'is_id_confirmed', 'clearance_status', 'risk_score'])
+            target.save(update_fields=['barcode_value', 'is_id_confirmed', 'clearance_status', 'clearance_override', 'risk_score'])
 
             # Safety checks: heatmap fields and totals must be identical
             for v in Violation.objects.filter(id__in=before):

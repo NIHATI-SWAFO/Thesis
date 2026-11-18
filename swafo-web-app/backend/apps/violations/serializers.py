@@ -233,8 +233,11 @@ class ViolationSerializer(serializers.ModelSerializer):
                 manual_clearance_hold=(student.clearance_status == 'HOLD')
             )
             if standing['clearance_impact'] == 'HOLD' and student.clearance_status != 'HOLD':
+                # A new offense re-applies the handbook hold, even if the Director
+                # had lifted an earlier one; the Director can lift it again.
                 student.clearance_status = 'HOLD'
-                student.save(update_fields=['clearance_status'])
+                student.clearance_override = False
+                student.save(update_fields=['clearance_status', 'clearance_override'])
 
             # Automated Notification to the student
             from apps.users.models import Notification

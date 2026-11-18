@@ -60,6 +60,9 @@ class StudentProfile(models.Model):
         choices=[('CLEARED', 'Cleared'), ('HOLD', 'Hold')], 
         default='CLEARED'
     )
+    # True when the SWAFO Director lifted a handbook clearance HOLD by setting CLEARED.
+    # Reset automatically when a new violation puts the student back on HOLD.
+    clearance_override = models.BooleanField(default=False)
     risk_score = models.FloatField(default=0.0) # Temporal Decay Score
     
     # Future barcode mapping

@@ -25,7 +25,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'student_number', 'user_details', 'course', 'year_level',
             'violation_count', 'is_repeat_offender', 'has_pending_violations',
-            'clearance_status', 'risk_score', 'risk_standing', 'barcode_value',
+            'clearance_status', 'clearance_override', 'risk_score', 'risk_standing', 'barcode_value',
             'is_id_confirmed', 'needs_id_confirmation', 'profile_picture',
         ]
 
@@ -163,7 +163,17 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             gmc_status = 'WITHHELD'
             color = 'orange'
 
+        # Director override: the SWAFO Director lifted the clearance hold.
+        # Only the clearance changes; honors and GMC still follow the handbook.
+        director_override = bool(
+            obj.clearance_override and obj.clearance_status == 'CLEARED' and clearance_impact == 'HOLD'
+        )
+        if director_override:
+            clearance_impact = 'CLEARED'
+            consequence_summary = f"{consequence_summary} Clearance hold lifted by the SWAFO Director."
+
         return {
+            'director_override': director_override,
             'tier': tier,
             'standing': standing,
             'score': score,

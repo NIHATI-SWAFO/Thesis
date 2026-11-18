@@ -77,22 +77,46 @@ export default function StudentRecords({ role = 'officer' }) {
 
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
 
+  // Effective clearance: HOLD if the Director set it, or if the handbook puts the
+  // student on hold and the Director has not lifted it (backend applies the override).
+  const effectiveClearance = (student) =>
+    student?.clearance_status === 'HOLD' || student?.risk_standing?.clearance_impact === 'HOLD'
+      ? 'HOLD'
+      : 'CLEARED';
+
   const handleClearanceToggle = (studentId, currentStatus) => {
     if (role !== 'admin') return;
-    
+
     const newStatus = currentStatus === 'CLEARED' ? 'HOLD' : 'CLEARED';
-    
-    // In a real app, this would be an API call. For now, we update local state.
-    setStudents(prev => prev.map(s => 
-      s.id === studentId ? { ...s, clearance_status: newStatus } : s
+    // Setting CLEARED is a Director override of any handbook hold; HOLD removes it.
+    const payload = { clearance_status: newStatus, clearance_override: newStatus === 'CLEARED' };
+
+    // Optimistic update so the button flips right away
+    setStudents(prev => prev.map(s =>
+      s.id === studentId
+        ? {
+            ...s,
+            ...payload,
+            risk_standing: s.risk_standing
+              ? { ...s.risk_standing, clearance_impact: newStatus === 'CLEARED' && s.risk_standing.clearance_impact === 'HOLD' ? 'CLEARED' : s.risk_standing.clearance_impact }
+              : s.risk_standing,
+          }
+        : s
     ));
 
-    // Optional: Call API to persist
+    // Persist, then use the server's recalculated standing for the chips
     fetch(`${API_ENDPOINTS.USERS_LIST}${studentId}/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clearance_status: newStatus })
-    }).catch(err => console.error("Error updating clearance:", err));
+        body: JSON.stringify(payload)
+    })
+      .then(res => (res.ok ? res.json() : null))
+      .then(updated => {
+        if (updated && updated.id === studentId) {
+          setStudents(prev => prev.map(s => (s.id === studentId ? { ...s, ...updated } : s)));
+        }
+      })
+      .catch(err => console.error("Error updating clearance:", err));
   };
 
   const getRiskLevel = (studentOrScore, maybeStanding, maybeStudent) => {
@@ -144,7 +168,10 @@ export default function StudentRecords({ role = 'officer' }) {
         bar: 'bg-rose-500',
         badge: 'bg-rose-50 border-rose-200 text-rose-700',
         privilegePills: {
-          clearance: { label: 'HOLD', bg: 'bg-rose-100 text-rose-800 border-rose-200', icon: 'block' },
+          // The Director can lift the hold; honors and GMC still follow the handbook
+          clearance: studentStanding?.clearance_impact === 'CLEARED'
+            ? { label: 'CLEARED', bg: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: 'verified_user' }
+            : { label: 'HOLD', bg: 'bg-rose-100 text-rose-800 border-rose-200', icon: 'block' },
           honors: { label: 'FORFEITED', bg: 'bg-rose-100 text-rose-800 border-rose-200', icon: 'cancel' },
           gmc: { label: 'DENIED', bg: 'bg-rose-100 text-rose-800 border-rose-200', icon: 'do_not_disturb_on' },
         }
@@ -717,17 +744,17 @@ export default function StudentRecords({ role = 'officer' }) {
                     {isAdmin && (
                       <td className="py-8 px-8 lg:px-10">
                         <button 
-                          onClick={() => handleClearanceToggle(student.id, student.clearance_status)}
+                          onClick={() => handleClearanceToggle(student.id, effectiveClearance(student))}
                           className={`flex items-center gap-3 px-5 py-2.5 rounded-2xl border-2 transition-all group/btn ${
-                            student.clearance_status === 'CLEARED' 
+                            effectiveClearance(student) === 'CLEARED' 
                               ? 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100' 
                               : 'bg-rose-50 border-rose-100 text-rose-700 hover:bg-rose-100'
                           }`}
                         >
                            <span className="material-symbols-outlined text-[18px] transition-transform group-hover/btn:rotate-12">
-                             {student.clearance_status === 'CLEARED' ? 'verified_user' : 'block'}
+                             {effectiveClearance(student) === 'CLEARED' ? 'verified_user' : 'block'}
                            </span>
-                           <span className="text-[12px] font-black uppercase tracking-widest">{student.clearance_status}</span>
+                           <span className="text-[12px] font-black uppercase tracking-widest">{effectiveClearance(student)}</span>
                            <span className="material-symbols-outlined text-[16px] opacity-40">sync_alt</span>
                         </button>
                       </td>
@@ -853,19 +880,19 @@ export default function StudentRecords({ role = 'officer' }) {
                   {isAdmin && (
                     <div className="pt-1">
                       <button 
-                        onClick={() => handleClearanceToggle(student.id, student.clearance_status)}
+                        onClick={() => handleClearanceToggle(student.id, effectiveClearance(student))}
                         className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition-all ${
-                          student.clearance_status === 'CLEARED' 
+                          effectiveClearance(student) === 'CLEARED' 
                             ? 'bg-emerald-50/80 border-emerald-200 text-emerald-800 hover:bg-emerald-100' 
                             : 'bg-rose-50/80 border-rose-200 text-rose-800 hover:bg-rose-100'
                         }`}
                       >
                         <div className="flex items-center gap-2">
                           <span className="material-symbols-outlined text-[18px]">
-                            {student.clearance_status === 'CLEARED' ? 'verified_user' : 'block'}
+                            {effectiveClearance(student) === 'CLEARED' ? 'verified_user' : 'block'}
                           </span>
                           <span className="text-[11px] font-black uppercase tracking-wider">
-                            Clearance: {student.clearance_status}
+                            Clearance: {effectiveClearance(student)}
                           </span>
                         </div>
                         <span className="text-[10px] font-bold uppercase tracking-wider underline flex items-center gap-1 opacity-70">
