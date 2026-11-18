@@ -179,10 +179,10 @@ def generate_college_report(college: str) -> bytes:
             leaderboard.append({
                 'name': s.user.full_name,
                 'id': s.student_number,
-                'score': score,
                 'standing': standing_info.get('standing', 'Good Standing'),
                 'clearance': standing_info.get('clearance_impact', 'CLEARED'),
                 'tier': standing_info.get('tier', 'LOW'),
+                'score': score,
             })
     leaderboard = sorted(leaderboard, key=lambda x: x['score'], reverse=True)[:8]
 
@@ -200,16 +200,6 @@ def generate_college_report(college: str) -> bytes:
         elif mc == 3: tiers[3] += 1
         elif mc >= 4: tiers[4] += 1
 
-    # Recidivism
-    repeaters = students_qs.annotate(vc=Count('violations')).filter(vc__gt=1)
-    pmap = {}
-    for s in repeaters:
-        vlist = list(s.violations.select_related('rule').order_by('timestamp'))
-        for i in range(len(vlist) - 1):
-            key = (vlist[i].rule.description[:48], vlist[i+1].rule.description[:48])
-            pmap[key] = pmap.get(key, 0) + 1
-    patterns = sorted(pmap.items(), key=lambda x: x[1], reverse=True)[:3]
-
     # College position table
     by_college_totals = {r['student__course']: r['c']
                          for r in all_qs.values('student__course').annotate(c=Count('id'))}
@@ -219,32 +209,54 @@ def generate_college_report(college: str) -> bytes:
 
     # ── Header ────────────────────────────────────────────────────────────────
     hdr = Table([[
-        Paragraph(f'<font color="#009b69" size="22"><b>{acronym}</b></font><br/>'
-                  f'<font color="#ffffff" size="9">{college}</font>',
-                  _s('Normal', textColor=WHITE, leading=28)),
+        Paragraph(f'<font color="#34d399" size="24"><b>{acronym}</b></font><br/>'
+                  f'<font color="#ffffff" size="10"><b>{college}</b></font><br/>'
+                  f'<font color="#94a3b8" size="7.5">OFFICIAL COLLEGE DISCIPLINARY ASSESSMENT</font>',
+                  _s('Normal', textColor=WHITE, leading=16)),
         Paragraph(
-            f'<font size="8" color="#9ca3af">DE LA SALLE UNIVERSITY – DASMARIÑAS<br/>'
-            f'School of Welfare &amp; Formation Officers<br/>'
-            f'<b>Violation Management Report</b><br/>'
-            f'{today.strftime("%B %d, %Y")}</font>',
+            f'<font size="8" color="#a7f3d0"><b>DE LA SALLE UNIVERSITY – DASMARIÑAS</b></font><br/>'
+            f'<font size="7.5" color="#cbd5e1">Student Welfare and Formation Office (SWAFO)<br/>'
+            f'Violation Management &amp; Behavioral Report<br/>'
+            f'Generated: <b>{today.strftime("%B %d, %Y")}</b></font>',
             _s('Normal', textColor=WHITE, fontSize=8, leading=13, alignment=TA_RIGHT)),
-    ]], colWidths=[10*cm, 7.4*cm])
+    ]], colWidths=[10.2*cm, 7.2*cm])
     hdr.setStyle(TableStyle([
         ('BACKGROUND',    (0,0), (-1,-1), DLSUD_GREEN),
         ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING',    (0,0), (-1,-1), 16),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 16),
-        ('LEFTPADDING',   (0,0), (0,-1),  18),
-        ('RIGHTPADDING',  (-1,0),(-1,-1), 18),
+        ('TOPPADDING',    (0,0), (-1,-1), 14),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 14),
+        ('LEFTPADDING',   (0,0), (0,-1),  16),
+        ('RIGHTPADDING',  (-1,0),(-1,-1), 16),
     ]))
     story.append(hdr)
+    story.append(Spacer(1, 0.3*cm))
+
+    # ── Executive KPI Summary Row ─────────────────────────────────────────────
+    kpi_card_data = [
+        [
+            Paragraph('<font color="#64748b" size="7">TOTAL VIOLATIONS</font><br/><font color="#003624" size="14"><b>' + str(total_college) + '</b></font>', _s('Normal', alignment=TA_CENTER, leading=14)),
+            Paragraph('<font color="#64748b" size="7">OPEN / PENDING</font><br/><font color="#e11d48" size="14"><b>' + str(open_cases) + '</b></font>', _s('Normal', alignment=TA_CENTER, leading=14)),
+            Paragraph('<font color="#64748b" size="7">RESOLVED / CLOSED</font><br/><font color="#009b69" size="14"><b>' + str(closed_cases) + '</b></font>', _s('Normal', alignment=TA_CENTER, leading=14)),
+            Paragraph('<font color="#64748b" size="7">RESOLUTION RATE</font><br/><font color="#0f766e" size="14"><b>' + str(res_rate) + '%</b></font>', _s('Normal', alignment=TA_CENTER, leading=14)),
+        ]
+    ]
+    kpi_tbl = Table(kpi_card_data, colWidths=[4.35*cm, 4.35*cm, 4.35*cm, 4.35*cm])
+    kpi_tbl.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0), (-1,-1), colors.HexColor('#f8fafc')),
+        ('BOX',           (0,0), (-1,-1), 0.6, colors.HexColor('#e2e8f0')),
+        ('INNERGRID',     (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('TOPPADDING',    (0,0), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+        ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    story.append(kpi_tbl)
     story.append(Spacer(1, 0.4*cm))
 
     # ── Section helper ────────────────────────────────────────────────────────
     def section(title, subtitle=''):
-        elems = [Paragraph(title, _s('Heading2', textColor=DLSUD_GREEN, fontSize=12, spaceAfter=2))]
+        elems = [Paragraph(title, _s('Heading2', textColor=DLSUD_GREEN, fontSize=11, fontName='Helvetica-Bold', spaceAfter=2))]
         if subtitle:
-            elems.append(Paragraph(subtitle, _s('Normal', fontSize=7, textColor=SLATE, spaceAfter=4)))
+            elems.append(Paragraph(subtitle, _s('Normal', fontSize=7.5, textColor=SLATE, spaceAfter=4)))
         elems.append(HRFlowable(width='100%', thickness=0.8, color=LIGHT_GREEN, spaceAfter=6))
         return KeepTogether(elems)
 
@@ -254,7 +266,7 @@ def generate_college_report(college: str) -> bytes:
             ('BACKGROUND',    (0,0),  (-1,0),  DLSUD_GREEN),
             ('TEXTCOLOR',     (0,0),  (-1,0),  WHITE),
             ('FONTNAME',      (0,0),  (-1,0),  'Helvetica-Bold'),
-            ('FONTSIZE',      (0,0),  (-1,-1), 9),
+            ('FONTSIZE',      (0,0),  (-1,-1), 8.5),
             ('ALIGN',         (1,0),  (-1,-1), 'CENTER'),
             ('ROWBACKGROUNDS',(0,1),  (-1,-1 if not hl_last else -2), [WHITE, SLATE_LIGHT]),
             ('GRID',          (0,0),  (-1,-1), 0.4, colors.HexColor('#e2e8f0')),
@@ -277,113 +289,88 @@ def generate_college_report(college: str) -> bytes:
         return t
 
     # ── 1. Offense Classification ─────────────────────────────────────────────
-    story.append(section('1.  Offense Classification'))
+    story.append(section('1.  Offense Classification',
+                         'Comparative semester breakdown of student disciplinary infractions.'))
 
     sem_data = [
-        ['Period', 'Minor', 'Major', 'Total'],
-        ['Aug – Dec 2025 (1st Sem)', str(s1_min), str(s1_maj), str(s1_min+s1_maj)],
-        ['Jan 12 – Present 2026 (2nd Sem)', str(s2_min), str(s2_maj), str(s2_min+s2_maj)],
+        ['Academic Period', 'Minor Offenses', 'Major Offenses', 'Total Recorded'],
+        ['Aug – Dec 2025 (1st Semester)', str(s1_min), str(s1_maj), str(s1_min+s1_maj)],
+        ['Jan 12 – Present 2026 (2nd Semester)', str(s2_min), str(s2_maj), str(s2_min+s2_maj)],
         ['TOTAL', str(s1_min+s2_min), str(s1_maj+s2_maj), str(total_college)],
     ]
-    story.append(tbl_style(sem_data, [8.5*cm, 2.5*cm, 2.5*cm, 2.9*cm]))
-    story.append(Spacer(1, 0.25*cm))
+    story.append(tbl_style(sem_data, [8.4*cm, 3.0*cm, 3.0*cm, 3.0*cm]))
+    story.append(Spacer(1, 0.2*cm))
     story.append(_offense_bar_chart(s1_min, s1_maj, s2_min, s2_maj))
     story.append(Spacer(1, 0.4*cm))
 
     # ── 2. Institutional Position ─────────────────────────────────────────────
     story.append(section('2.  Institutional Position',
-                         'Other colleges are confidential per SWAFO data privacy policy.'))
+                         'Comparative unit distribution. Individual peer totals are confidential per SWAFO institutional privacy policies.'))
 
-    coll_rows = [['College', 'Violations']]
+    coll_rows = [['College / Academic Unit', 'Total Violations']]
     for c in ALL_COLLEGES:
-        val = str(by_college_totals.get(c, '')) if c == college else ''
+        val = str(by_college_totals.get(c, '')) if c == college else 'Confidential'
         coll_rows.append([c, val])
     coll_rows.append(['TOTAL — All Colleges', str(total_inst)])
     college_row_idx = next(i for i, r in enumerate(coll_rows) if r[0] == college)
-    story.append(tbl_style(coll_rows, [13.5*cm, 3.4*cm], hl_row=college_row_idx))
+    story.append(tbl_style(coll_rows, [13.4*cm, 4.0*cm], hl_row=college_row_idx))
     story.append(Spacer(1, 0.4*cm))
 
     # ── 3. Behavioral Risk & Institutional Standing ───────────────────────────
     story.append(section('3.  Behavioral Risk & Institutional Standing',
-                         'Temporal Decay Algorithm — score = severity × e^(−0.023 × days_ago) × 1.5 if unresolved · DLSU-D Student Handbook 2022–2027'))
+                         'Student handbook disciplinary status and clearance integrity oversight · DLSU-D Student Handbook 2022–2027'))
 
     # Distribution bar
     story.append(_risk_bar_chart(risk_buckets, risk_total))
-    story.append(Spacer(1, 0.3*cm))
+    story.append(Spacer(1, 0.25*cm))
 
-    # Top students table
+    # Top students table (Score column removed)
     if leaderboard:
-        lb_data = [['#', 'Student Name', 'Student No.', 'Score', 'Handbook Standing', 'Clearance (§14)']]
+        lb_data = [['#', 'Student Name', 'Student No.', 'Handbook Standing', 'Clearance (§14)']]
         for i, e in enumerate(leaderboard, 1):
-            lb_data.append([str(i), e['name'], e['id'], str(e['score']), e['standing'], e['clearance']])
-        story.append(tbl_style(lb_data, [1*cm, 5.5*cm, 3*cm, 2*cm, 3.5*cm, 2.4*cm], hl_last=False))
+            lb_data.append([
+                str(i),
+                e['name'],
+                e['id'],
+                e['standing'],
+                e['clearance']
+            ])
+        story.append(tbl_style(lb_data, [1.2*cm, 6.2*cm, 3.4*cm, 4.0*cm, 2.6*cm], hl_last=False))
     story.append(Spacer(1, 0.4*cm))
 
     # ── 4. Escalation Status ──────────────────────────────────────────────────
     story.append(section('4.  Disciplinary Escalation Status',
-                         'Handbook §27.3 — Minor Offense Ladder'))
+                         'Minor Offense Progression Tracking — DLSU-D Student Handbook §27.3 Sanction Ladder'))
 
     esc_data = [
-        ['Offense Instance', 'No. of Students', 'Disposition'],
-        ['1st Minor Offense',  str(tiers[1]), 'Verbal Warning'],
-        ['2nd Minor Offense',  str(tiers[2]), 'Written Reprimand'],
-        ['3rd Minor Offense',  str(tiers[3]), 'Escalated — Sanction Applied (§27.3.1.43)'],
-        ['4th+ Minor Offense', str(tiers[4]), 'Director Referral Required (§27.3.5)'],
+        ['Offense Instance', 'No. of Students', 'Prescribed Disposition'],
+        ['1st Minor Offense',  str(tiers[1]), 'Verbal Warning / Conference'],
+        ['2nd Minor Offense',  str(tiers[2]), 'Written Reprimand / Notice to Parents'],
+        ['3rd Minor Offense',  str(tiers[3]), 'Sanction Applied (§27.3.1.43)'],
+        ['4th+ Minor Offense', str(tiers[4]), 'Director Referral / Disciplinary Board (§27.3.5)'],
     ]
-    story.append(tbl_style(esc_data, [5*cm, 3.5*cm, 8.4*cm], hl_last=False))
+    story.append(tbl_style(esc_data, [5.2*cm, 3.5*cm, 8.7*cm], hl_last=False))
     story.append(Spacer(1, 0.4*cm))
 
-    # ── 5. Recidivism Patterns ────────────────────────────────────────────────
-    if patterns:
-        story.append(section('5.  Recidivism Pattern Detection',
-                             'Apriori-Based Association Mining — most common offense progressions among repeat offenders'))
-        cell_style = _s('Normal', fontSize=8, textColor=BLACK, leading=11)
-        hdr_style  = _s('Normal', fontSize=9, textColor=WHITE, fontName='Helvetica-Bold')
-        pat_data = [
-            [Paragraph('Gateway Offense', hdr_style),
-             Paragraph('Subsequent Risk', hdr_style),
-             Paragraph('Count', hdr_style)],
-        ]
-        for (a, b), cnt in patterns:
-            pat_data.append([
-                Paragraph(a, cell_style),
-                Paragraph(b, cell_style),
-                Paragraph(str(cnt), _s('Normal', fontSize=8, alignment=TA_CENTER)),
-            ])
-        pat_tbl = Table(pat_data, colWidths=[7.8*cm, 7.8*cm, 1.3*cm])
-        pat_tbl.setStyle(TableStyle([
-            ('BACKGROUND',    (0,0),  (-1,0),  DLSUD_GREEN),
-            ('FONTSIZE',      (0,0),  (-1,-1), 8),
-            ('ALIGN',         (2,0),  (2,-1),  'CENTER'),
-            ('ROWBACKGROUNDS',(0,1),  (-1,-1), [WHITE, SLATE_LIGHT]),
-            ('GRID',          (0,0),  (-1,-1), 0.4, colors.HexColor('#e2e8f0')),
-            ('TOPPADDING',    (0,0),  (-1,-1), 6),
-            ('BOTTOMPADDING', (0,0),  (-1,-1), 6),
-            ('LEFTPADDING',   (0,0),  (-1,-1), 8),
-            ('VALIGN',        (0,0),  (-1,-1), 'TOP'),
-        ]))
-        story.append(pat_tbl)
-        story.append(Spacer(1, 0.4*cm))
-
-
-    # ── 6. Case Summary ───────────────────────────────────────────────────────
-    story.append(section('6.  Case Resolution Summary'))
+    # ── 5. Case Resolution Summary ───────────────────────────────────────────
+    story.append(section('5.  Case Resolution Summary',
+                         'Overall disposition tracking and institutional case resolution efficiency.'))
 
     res_data = [
-        ['Metric', 'Value'],
-        ['Total Violations', str(total_college)],
-        ['Open / Pending',   str(open_cases)],
-        ['Resolved / Closed', str(closed_cases)],
-        ['Resolution Rate',  f'{res_rate}%'],
+        ['Metric Indicator', 'Institutional Value'],
+        ['Total Violations Recorded', str(total_college)],
+        ['Open / Pending Review Cases', str(open_cases)],
+        ['Resolved / Sanctioned Cases', str(closed_cases)],
+        ['Case Resolution Rate', f'{res_rate}%'],
     ]
-    story.append(tbl_style(res_data, [10*cm, 6.9*cm], hl_last=False))
+    story.append(tbl_style(res_data, [11.4*cm, 6.0*cm], hl_last=False))
     story.append(Spacer(1, 0.5*cm))
 
     # ── Footer ────────────────────────────────────────────────────────────────
     story.append(HRFlowable(width='100%', thickness=0.5, color=SLATE, spaceAfter=4))
     story.append(Paragraph(
         f'Auto-generated by SWAFO Violation Management System · {today.strftime("%B %d, %Y")} · '
-        f'Confidential — {college} only · Algorithmic outputs are CS Thesis research prototypes (DLSU-D SY 2025–2026).',
+        f'Official Document — Confidential · De La Salle University – Dasmariñas.',
         _s('Normal', fontSize=7, textColor=SLATE, alignment=TA_CENTER)
     ))
 
