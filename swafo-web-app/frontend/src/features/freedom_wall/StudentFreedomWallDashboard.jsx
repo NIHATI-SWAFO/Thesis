@@ -20,8 +20,6 @@ export default function StudentFreedomWallDashboard() {
     "General Feedback",
     "School Concern",
     "Officer Report",
-    "Professor",
-    "Subject",
     "Administration",
     "Student Services",
     "Facilities",

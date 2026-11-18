@@ -185,8 +185,6 @@ export default function DirectorFreedomWall() {
 
           <select name="category" value={filters.category || ""} onChange={handleFilterChange} className="w-full sm:w-auto bg-slate-50/50 border-0 ring-1 ring-slate-200/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 hover:bg-slate-50 cursor-pointer transition-all truncate">
             <option value="">All Categories</option>
-            <option value="Professor">Professor / Faculty</option>
-            <option value="Subject">Subject / Curriculum</option>
             <option value="Facilities">Facilities</option>
             <option value="Safety">Safety & Security</option>
             <option value="Bullying">Bullying / Harassment</option>

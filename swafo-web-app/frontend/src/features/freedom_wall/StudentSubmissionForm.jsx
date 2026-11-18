@@ -181,8 +181,6 @@ export default function StudentSubmissionForm() {
 
   const getTitlePlaceholder = () => {
       switch(formData.category) {
-          case 'Professor': return "e.g. Concern regarding a faculty member";
-          case 'Subject': return "e.g. Inquiry regarding a specific subject";
           case 'Administration': return "e.g. Inquiry regarding school administration";
           case 'Student Services': return "e.g. Concern regarding a student service";
           case 'Facilities': return "e.g. Report regarding a campus facility";
@@ -284,8 +282,6 @@ export default function StudentSubmissionForm() {
                             <div className="pl-0 md:pl-14">
                                 <div className="flex flex-wrap gap-3">
                                     {[
-                                        { id: 'Professor', label: 'Professor / Faculty' },
-                                        { id: 'Subject', label: 'Subject / Curriculum' },
                                         { id: 'Administration', label: 'School Administration' },
                                         { id: 'Student Services', label: 'Student Services' },
                                         { id: 'Facilities', label: 'Facilities' },

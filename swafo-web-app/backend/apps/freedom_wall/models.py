@@ -16,8 +16,6 @@ class FreedomWallSubmission(models.Model):
         ('General Feedback', 'General Feedback'),
         ('School Concern', 'School Concern'),
         ('Officer Report', 'Officer Report'),
-        ('Professor', 'Professor / Faculty'),
-        ('Subject', 'Subject / Curriculum'),
         ('Administration', 'School Administration'),
         ('Student Services', 'Student Services'),
         ('Facilities', 'Facilities'),
