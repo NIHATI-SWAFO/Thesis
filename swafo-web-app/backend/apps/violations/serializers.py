@@ -151,6 +151,20 @@ class ViolationSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'officer', 'timestamp']
 
+    def validate(self, attrs):
+        # Dismissing or closing a case must record a reason in director_remarks.
+        new_status = attrs.get('status')
+        if (
+            self.instance is not None
+            and new_status in ('DISMISSED', 'CLOSED')
+            and new_status != self.instance.status
+            and not (attrs.get('director_remarks') or '').strip()
+        ):
+            raise serializers.ValidationError(
+                {'director_remarks': 'A reason is required to dismiss or close a case.'}
+            )
+        return attrs
+
     def create(self, validated_data):
         request = self.context.get('request')
         officer_email = request.data.get('officer_email') if request else None
