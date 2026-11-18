@@ -444,14 +444,18 @@ export default function StudentDashboard() {
                   <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100">
                     <p className="text-[10px] font-bold uppercase text-emerald-800 tracking-wider mb-1">Prescribed Action / Sanction</p>
                     <p className="text-xs font-semibold text-[#003624] leading-relaxed">
-                      {selectedViolation.prescribed_sanction || selectedViolation.director_sanction || "Case is under review by SWAFO Disciplinary Board."}
+                      {selectedViolation.status === 'DISMISSED'
+                        ? "No sanction. This case was dismissed."
+                        : (selectedViolation.director_sanction
+                          || (selectedViolation.prescribed_sanction && !selectedViolation.prescribed_sanction.toUpperCase().startsWith('FOR SWAFO DIRECTOR DECISION') ? selectedViolation.prescribed_sanction : null)
+                          || "Case is under review by SWAFO Disciplinary Board.")}
                     </p>
                   </div>
 
                   {selectedViolation.director_remarks && (
                     <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
                       <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-1">Director's Notes</p>
-                      <p className="text-xs text-slate-600 italic">"{selectedViolation.director_remarks}"</p>
+                      <p className="text-xs text-slate-600 italic whitespace-pre-line">"{selectedViolation.director_remarks}"</p>
                     </div>
                   )}
                 </div>

@@ -137,7 +137,8 @@ export default function CaseManagement({ role }) {
   const [selectedCase, setSelectedCase] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleStatusUpdate = (caseId, newStatus) => {
+  // extra: optional fields saved with the status change, e.g. { director_remarks }
+  const handleStatusUpdate = (caseId, newStatus, extra = {}) => {
     const v = violations.find(v => v.id === caseId);
 
     // AUTO-ADJUDICATION LOGIC:
@@ -151,17 +152,22 @@ export default function CaseManagement({ role }) {
     fetch(API_ENDPOINTS.VIOLATIONS_UPDATE_STATUS(caseId), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus })
+      body: JSON.stringify({ status: newStatus, ...extra })
     })
-      .then(res => res.json())
+      .then(res => res.json().catch(() => ({})).then(data => {
+        // Do not show a status change the server rejected (e.g. a missing reason)
+        if (!res.ok) throw new Error(data?.director_remarks?.[0] || 'The case could not be updated.');
+        return data;
+      }))
       .then(updated => {
-        setViolations(prev => prev.map(v => v.id === caseId ? { ...v, status: newStatus } : v));
+        setViolations(prev => prev.map(v => v.id === caseId ? { ...v, status: newStatus, ...extra } : v));
         // Sync modal state
-        setSelectedCase(prev => prev ? { ...prev, status: newStatus } : null);
+        setSelectedCase(prev => prev ? { ...prev, status: newStatus, ...extra } : null);
         setIsUpdating(false);
       })
       .catch(err => {
         console.error("Update error:", err);
+        alert(err.message || 'The case could not be updated.');
         setIsUpdating(false);
       });
   };
@@ -177,7 +183,14 @@ export default function CaseManagement({ role }) {
         director_remarks: remarks
       })
     })
-      .then(res => res.json())
+      .then(res => res.json().catch(() => ({})).then(data => {
+        // Keep the case unchanged if the server rejected the decision
+        if (!res.ok) {
+          const msg = data?.director_sanction?.[0] || data?.director_remarks?.[0] || 'The decision could not be saved.';
+          throw new Error(msg);
+        }
+        return data;
+      }))
       .then(updated => {
         setViolations(prev => prev.map(v => v.id === caseId ? updated : v));
         setSelectedCase(updated);
@@ -185,6 +198,7 @@ export default function CaseManagement({ role }) {
       })
       .catch(err => {
         console.error("Adjudication error:", err);
+        alert(err.message || 'The decision could not be saved.');
         setIsUpdating(false);
       });
   };
@@ -852,6 +866,26 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
   const [selectedSanction, setSelectedSanction] = useState('');
   const [isAdjudicationOpen, setIsAdjudicationOpen] = useState(caseData.status === 'AWAITING_DECISION');
   const [isDelegationOpen, setIsDelegationOpen] = useState(!caseData.assigned_to_details && caseData.status === 'OPEN');
+  const [remarks, setRemarks] = useState('');
+  const [isClosing, setIsClosing] = useState(false);
+  const [closingNote, setClosingNote] = useState('');
+  const closingRef = React.useRef(null);
+
+  // Bring the closing-note box into view when "Close Case" is clicked
+  useEffect(() => {
+    if (isClosing && closingRef.current) closingRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [isClosing]);
+
+  const confirmClose = () => {
+    const note = closingNote.trim();
+    if (!note) return;
+    const combined = caseData.director_remarks
+      ? `${caseData.director_remarks}\n\nClosing note: ${note}`
+      : `Closing note: ${note}`;
+    onUpdate(caseData.id, 'CLOSED', { director_remarks: combined });
+    setIsClosing(false);
+    setClosingNote('');
+  };
 
   return (
     <div
@@ -970,7 +1004,8 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                     className="w-full bg-white border-2 border-rose-200 rounded-xl px-3.5 py-2.5 text-[12px] sm:text-[13.5px] font-bold text-rose-900 outline-none focus:border-rose-500 transition-all cursor-pointer"
                   >
                     <option value="">Select Formal Sanction...</option>
-                    {caseData.prescribed_sanction && (
+                    {/* Skip the engine placeholder "FOR SWAFO DIRECTOR DECISION ...": it is not a sanction */}
+                    {caseData.prescribed_sanction && !caseData.prescribed_sanction.toUpperCase().startsWith('FOR SWAFO DIRECTOR DECISION') && (
                       <option value={caseData.prescribed_sanction}>Recommended: {caseData.prescribed_sanction}</option>
                     )}
                     <option value="Sanction 1: Written Reprimand & Community Service">Sanction 1: Written Reprimand & Community Service</option>
@@ -979,33 +1014,54 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                     <option value="Sanction 4: Dismissal / Expulsion Recommendation">Sanction 4: Dismissal / Expulsion Recommendation</option>
                   </select>
 
+                  {/* Remarks: used by Render Decision (optional) and Dismiss Case (required) */}
+                  <div>
+                    <label className="block text-[10px] sm:text-[11px] font-black text-rose-800/80 uppercase tracking-widest mb-1.5">
+                      Remarks <span className="normal-case tracking-normal font-medium text-rose-700/60">(saved on the case record)</span>
+                    </label>
+                    <textarea
+                      value={remarks}
+                      onChange={(e) => setRemarks(e.target.value)}
+                      rows={3}
+                      maxLength={1000}
+                      placeholder={role === 'admin' ? 'Reason for the decision, or the reason for dismissing the case' : 'Reason for the decision'}
+                      className="w-full bg-white border-2 border-rose-200 rounded-xl px-3.5 py-2.5 text-[12px] sm:text-[13px] font-medium text-slate-800 outline-none focus:border-rose-500 transition-all resize-y"
+                    />
+                  </div>
+
                   {/* Render Decision */}
                   <button
                     disabled={!selectedSanction || isUpdating}
-                    onClick={() => onAdjudicate(caseData.id, selectedSanction, 'Institutional decision rendered by SWAFO Director.')}
+                    onClick={() => onAdjudicate(caseData.id, selectedSanction, remarks.trim() || 'Institutional decision rendered by SWAFO Director.')}
                     className="w-full bg-[#003624] text-white py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-[13px] font-black uppercase tracking-widest hover:bg-[#004d35] transition-all disabled:opacity-30 shadow-md shadow-emerald-950/10 flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[17px]">gavel</span>}
                     Render Decision
                   </button>
 
-                  {/* Dismiss row */}
+                  {/* Dismiss row (Director only, reason required) */}
+                  {role === 'admin' && (
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-2.5 border-t border-rose-100">
-                    <p className="text-[11px] text-rose-700/70 font-medium italic flex-1">Or if the violation is invalid or requires no action:</p>
+                    <p className="text-[11px] text-rose-700/70 font-medium italic flex-1">
+                      {remarks.trim()
+                        ? 'Or if the violation is invalid or requires no action:'
+                        : 'To dismiss, type the reason in Remarks first.'}
+                    </p>
                     <button
-                      disabled={isUpdating}
-                      onClick={() => onUpdate(caseData.id, 'DISMISSED')}
+                      disabled={isUpdating || !remarks.trim()}
+                      onClick={() => onUpdate(caseData.id, 'DISMISSED', { director_remarks: remarks.trim() })}
                       className="bg-rose-100 text-rose-700 px-4 py-1.5 rounded-lg text-[10.5px] sm:text-[11.5px] font-black uppercase tracking-wider hover:bg-rose-200 transition-all disabled:opacity-30 whitespace-nowrap self-start sm:self-auto cursor-pointer"
                     >
                       Dismiss Case
                     </button>
                   </div>
+                  )}
                 </div>
               )}
             </div>
           )}
 
-          {(caseData.status === 'DECISION_RENDERED' || isTerminal) && caseData.director_sanction && (
+          {(caseData.status === 'DECISION_RENDERED' || caseData.status === 'CLOSED') && caseData.director_sanction && (
             <div className="bg-emerald-50 border-2 border-emerald-100 rounded-xl sm:rounded-2xl p-4 sm:p-6">
               <div className="flex items-center gap-2.5 mb-2.5 sm:mb-3">
                 <span className="material-symbols-outlined text-emerald-600 fill-1 text-[20px]">verified</span>
@@ -1014,9 +1070,66 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
               <div className="p-3.5 sm:p-5 bg-white rounded-xl border border-emerald-100 shadow-xs">
                 <p className="text-[9.5px] sm:text-[10.5px] font-black text-emerald-600 uppercase tracking-widest mb-1">Prescribed Sanction</p>
                 <p className="text-[14px] sm:text-[16px] font-bold text-slate-800 mb-2">{caseData.director_sanction}</p>
-                <p className="text-[11.5px] sm:text-[12.5px] font-medium text-slate-500 bg-slate-50 p-2.5 sm:p-3 rounded-lg italic">
-                  "{caseData.director_remarks}"
+                {caseData.director_remarks && (
+                  <p className="text-[11.5px] sm:text-[12.5px] font-medium text-slate-500 bg-slate-50 p-2.5 sm:p-3 rounded-lg italic whitespace-pre-line">
+                    "{caseData.director_remarks}"
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Dismissal reason */}
+          {caseData.status === 'DISMISSED' && (
+            <div className="bg-slate-50 border-2 border-slate-200 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="flex items-center gap-2.5 mb-2.5 sm:mb-3">
+                <span className="material-symbols-outlined text-slate-500 text-[20px]">block</span>
+                <h3 className="text-[13px] sm:text-[15px] font-black text-slate-700 uppercase tracking-widest">Dismissal Reason</h3>
+              </div>
+              <p className="text-[12.5px] sm:text-[14px] font-medium text-slate-700 bg-white p-3 sm:p-4 rounded-xl border border-slate-200 whitespace-pre-line">
+                {caseData.director_remarks || 'No reason was recorded for this dismissal.'}
+              </p>
+              {caseData.director_sanction && (
+                <p className="mt-2.5 text-[11px] sm:text-[12px] font-medium text-slate-500">
+                  Sanction lifted: <span className="line-through">{caseData.director_sanction}</span>
                 </p>
+              )}
+            </div>
+          )}
+
+          {/* Closing note (shown after "Close Case" is clicked) */}
+          {isClosing && caseData.status === 'DECISION_RENDERED' && (
+            <div ref={closingRef} className="bg-emerald-50/60 border-2 border-emerald-200 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="flex items-center gap-2.5 mb-2.5">
+                <span className="material-symbols-outlined text-emerald-600 text-[20px]">task_alt</span>
+                <h3 className="text-[13px] sm:text-[15px] font-black text-emerald-900 uppercase tracking-widest">Close Case: Closing Note</h3>
+              </div>
+              <p className="text-[11.5px] sm:text-[12.5px] text-slate-500 mb-2.5">
+                Describe how the sanction was fulfilled. This note is added to the case record.
+              </p>
+              <textarea
+                value={closingNote}
+                onChange={(e) => setClosingNote(e.target.value)}
+                rows={3}
+                maxLength={1000}
+                autoFocus
+                placeholder="e.g. Community service completed on Nov 20, verified by the assigned officer."
+                className="w-full bg-white border-2 border-emerald-200 rounded-xl px-3.5 py-2.5 text-[12px] sm:text-[13px] font-medium text-slate-800 outline-none focus:border-emerald-500 transition-all resize-y"
+              />
+              <div className="flex flex-col sm:flex-row gap-2 sm:justify-end mt-3">
+                <button
+                  onClick={() => { setIsClosing(false); setClosingNote(''); }}
+                  className="px-5 py-2.5 rounded-xl text-[11px] sm:text-[12px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={isUpdating || !closingNote.trim()}
+                  onClick={confirmClose}
+                  className="px-5 py-2.5 rounded-xl text-[11px] sm:text-[12px] font-black uppercase tracking-wider text-white bg-[#003624] hover:bg-[#004d35] transition-all disabled:opacity-30 cursor-pointer"
+                >
+                  Confirm Close
+                </button>
               </div>
             </div>
           )}
@@ -1148,7 +1261,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                   {caseData.status === 'DECISION_RENDERED' && (
                     <button
                       disabled={isUpdating}
-                      onClick={() => onUpdate(caseData.id, 'CLOSED')}
+                      onClick={() => setIsClosing(true)}
                       className="w-full sm:w-auto bg-[#003624] text-white px-5 sm:px-7 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-[13px] font-pjs font-bold hover:bg-[#004d35] transition-all shadow-md shadow-emerald-950/10 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
                       {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[17px] sm:text-[19px]">task_alt</span>}
@@ -1199,7 +1312,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                   {caseData.status === 'DECISION_RENDERED' && (
                     <button
                       disabled={isUpdating}
-                      onClick={() => onUpdate(caseData.id, 'CLOSED')}
+                      onClick={() => setIsClosing(true)}
                       className="w-full sm:w-auto bg-[#003624] text-white px-5 sm:px-7 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-[13px] font-pjs font-bold hover:bg-[#004d35] transition-all shadow-md shadow-emerald-950/10 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
                       {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[17px] sm:text-[19px]">task_alt</span>}
@@ -1213,7 +1326,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                   {caseData.status === 'DECISION_RENDERED' && (
                     <button
                       disabled={isUpdating}
-                      onClick={() => onUpdate(caseData.id, 'CLOSED')}
+                      onClick={() => setIsClosing(true)}
                       className="w-full sm:w-auto bg-[#003624] text-white px-5 sm:px-7 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-[13px] font-pjs font-bold hover:bg-[#004d35] transition-all shadow-md shadow-emerald-950/10 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
                       {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[17px] sm:text-[19px]">task_alt</span>}

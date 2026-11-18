@@ -50,6 +50,13 @@ class AppealUpdateSerializer(serializers.ModelSerializer):
         model = Appeal
         fields = ['status', 'reviewer_remarks']
 
+    def validate(self, attrs):
+        # Approving or rejecting an appeal must explain the decision to the student,
+        # and an approval may dismiss the case, so the remarks become the dismissal reason.
+        if attrs.get('status') in ('APPROVED', 'REJECTED') and not (attrs.get('reviewer_remarks') or '').strip():
+            raise serializers.ValidationError({'reviewer_remarks': 'Remarks are required to approve or reject an appeal.'})
+        return attrs
+
 class ViolationSerializer(serializers.ModelSerializer):
     student_details = StudentProfileSerializer(source='student', read_only=True)
     rule_details = HandbookEntrySerializer(source='rule', read_only=True)
@@ -150,6 +157,25 @@ class ViolationSerializer(serializers.ModelSerializer):
             'director_sanction', 'director_remarks', 'timestamp'
         ]
         read_only_fields = ['id', 'officer', 'timestamp']
+
+    def validate(self, attrs):
+        # Dismissing or closing a case must record a reason in director_remarks.
+        new_status = attrs.get('status')
+        if (
+            self.instance is not None
+            and new_status in ('DISMISSED', 'CLOSED')
+            and new_status != self.instance.status
+            and not (attrs.get('director_remarks') or '').strip()
+        ):
+            raise serializers.ValidationError(
+                {'director_remarks': 'A reason is required to dismiss or close a case.'}
+            )
+        # "FOR SWAFO DIRECTOR DECISION ..." means the Director must choose; it is not a sanction.
+        if (attrs.get('director_sanction') or '').strip().upper().startswith('FOR SWAFO DIRECTOR DECISION'):
+            raise serializers.ValidationError(
+                {'director_sanction': 'Choose an actual sanction for this case.'}
+            )
+        return attrs
 
     def create(self, validated_data):
         request = self.context.get('request')

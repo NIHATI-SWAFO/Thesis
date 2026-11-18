@@ -72,7 +72,10 @@ export default function StudentViolations() {
           const results = Array.isArray(data) ? data : (data.results || []);
           const transformed = results.map(v => {
             const isClosed = ['CLOSED', 'DISMISSED'].includes(v.status);
-            const sanctionText = v.director_sanction || v.prescribed_sanction || v.corrective_action || (isClosed ? 'This incident record is officially resolved and closed.' : 'Under Institutional Board Review');
+            const engineText = [v.prescribed_sanction, v.corrective_action].find(t => t && !t.toUpperCase().startsWith('FOR SWAFO DIRECTOR DECISION'));
+            const sanctionText = v.status === 'DISMISSED'
+              ? 'No sanction. This case was dismissed.'
+              : (v.director_sanction || engineText || (isClosed ? 'This incident record is officially resolved and closed.' : 'Under Institutional Board Review'));
             
             return {
               id: `VR-${new Date(v.timestamp).getFullYear()}-${v.id.toString().padStart(3, '0')}`,
@@ -401,7 +404,7 @@ export default function StudentViolations() {
                           {violation.directorRemarks && (
                             <div className="mt-4 p-4 bg-white/40 rounded-xl border border-emerald-100/30 w-full">
                               <p className="text-[10px] font-pjs font-black text-emerald-800/40 uppercase tracking-widest mb-1">Institutional Justification</p>
-                              <p className="text-[13px] font-manrope font-medium text-emerald-900/70 italic leading-relaxed">"{violation.directorRemarks}"</p>
+                              <p className="text-[13px] font-manrope font-medium text-emerald-900/70 italic leading-relaxed whitespace-pre-line">"{violation.directorRemarks}"</p>
                             </div>
                           )}
                         </div>
