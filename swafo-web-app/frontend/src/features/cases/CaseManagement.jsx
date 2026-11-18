@@ -143,7 +143,7 @@ export default function CaseManagement({ role }) {
 
     // AUTO-ADJUDICATION LOGIC:
     // If submitting for decision and it's a "Clear Table" case, bypass the Director queue
-    if (newStatus === 'AWAITING_DECISION' && v && !v.requires_director_decision) {
+    if (role !== 'admin' && newStatus === 'AWAITING_DECISION' && v && !v.requires_director_decision) {
       handleRenderDecision(caseId, v.prescribed_sanction, 'Institutional decision automatically rendered based on Handbook Section 27 Sanction Table.');
       return;
     }
@@ -869,12 +869,32 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
   const [remarks, setRemarks] = useState('');
   const [isClosing, setIsClosing] = useState(false);
   const [closingNote, setClosingNote] = useState('');
+  const [isDismissing, setIsDismissing] = useState(false);
+  const [dismissReason, setDismissReason] = useState('');
+  const dismissRef = React.useRef(null);
   const closingRef = React.useRef(null);
 
   // Bring the closing-note box into view when "Close Case" is clicked
   useEffect(() => {
     if (isClosing && closingRef.current) closingRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [isClosing]);
+
+  // Open the decision panel as soon as a case moves to Awaiting Decision (e.g. after Escalate)
+  useEffect(() => {
+    if (caseData.status === 'AWAITING_DECISION') setIsAdjudicationOpen(true);
+  }, [caseData.status]);
+
+  useEffect(() => {
+    if (isDismissing && dismissRef.current) dismissRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [isDismissing]);
+
+  const confirmDismiss = () => {
+    const reason = dismissReason.trim();
+    if (!reason) return;
+    onUpdate(caseData.id, 'DISMISSED', { director_remarks: reason });
+    setIsDismissing(false);
+    setDismissReason('');
+  };
 
   const confirmClose = () => {
     const note = closingNote.trim();
@@ -989,7 +1009,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                 <div className="flex items-center gap-2.5 sm:gap-3">
                   <span className={`material-symbols-outlined text-[20px] ${isAdjudicationOpen ? 'text-rose-500' : 'text-rose-300'}`}>gavel</span>
                   <h3 className={`text-[12px] sm:text-[15px] font-black uppercase tracking-wider ${isAdjudicationOpen ? 'text-rose-900' : 'text-rose-400'}`}>
-                    {caseData.requires_director_decision ? "Director's Adjudication" : "Staff Adjudication"}
+                    {(caseData.requires_director_decision || role === 'admin') ? "Director's Adjudication" : "Staff Adjudication"}
                   </h3>
                 </div>
                 <span className={`material-symbols-outlined transition-transform duration-300 ${isAdjudicationOpen ? 'rotate-180' : ''}`}>expand_more</span>
@@ -1094,6 +1114,43 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                   Sanction lifted: <span className="line-through">{caseData.director_sanction}</span>
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Dismissal reason box (Director, from the footer on open or decided cases) */}
+          {isDismissing && role === 'admin' && ['OPEN', 'DECISION_RENDERED'].includes(caseData.status) && (
+            <div ref={dismissRef} className="bg-rose-50/60 border-2 border-rose-200 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="flex items-center gap-2.5 mb-2.5">
+                <span className="material-symbols-outlined text-rose-600 text-[20px]">block</span>
+                <h3 className="text-[13px] sm:text-[15px] font-black text-rose-900 uppercase tracking-widest">Dismiss Case: Reason</h3>
+              </div>
+              <p className="text-[11.5px] sm:text-[12.5px] text-slate-500 mb-2.5">
+                Explain why this case is dismissed. The reason is saved on the case record and shown to the student.
+              </p>
+              <textarea
+                value={dismissReason}
+                onChange={(e) => setDismissReason(e.target.value)}
+                rows={3}
+                maxLength={1000}
+                autoFocus
+                placeholder="e.g. Dismissed after review: the flagged detection was not confirmed by the officer."
+                className="w-full bg-white border-2 border-rose-200 rounded-xl px-3.5 py-2.5 text-[12px] sm:text-[13px] font-medium text-slate-800 outline-none focus:border-rose-500 transition-all resize-y"
+              />
+              <div className="flex flex-col sm:flex-row gap-2 sm:justify-end mt-3">
+                <button
+                  onClick={() => { setIsDismissing(false); setDismissReason(''); }}
+                  className="px-5 py-2.5 rounded-xl text-[11px] sm:text-[12px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={isUpdating || !dismissReason.trim()}
+                  onClick={confirmDismiss}
+                  className="px-5 py-2.5 rounded-xl text-[11px] sm:text-[12px] font-black uppercase tracking-wider text-white bg-rose-600 hover:bg-rose-700 transition-all disabled:opacity-30 cursor-pointer"
+                >
+                  Confirm Dismiss
+                </button>
+              </div>
             </div>
           )}
 
@@ -1219,7 +1276,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                       : (caseData.requires_director_decision && role === 'admin') ? "Director's Executive Case"
                         : isUnassigned ? 'Unclaimed Violation'
                           : caseData.requires_director_decision ? 'Reserved for Director'
-                            : 'Ready for Auto-Sanction'}
+                            : 'Under Investigation'}
               </h4>
               <p className="text-[10.5px] sm:text-[12px] text-slate-400 font-medium">
                 {isTerminal ? 'This institutional record is closed and archived.'
@@ -1228,7 +1285,9 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                       : (caseData.requires_director_decision && role === 'admin') ? 'Multi-nature major offense — only you may adjudicate.'
                         : isUnassigned ? 'Review details and take action to begin resolution.'
                           : caseData.requires_director_decision ? 'This case is reserved for the SWAFO Director.'
-                            : 'Submit to apply handbook-prescribed sanction.'}
+                            : role === 'admin'
+                              ? `Assigned to ${caseData.assigned_to_details?.full_name || 'an officer'}. You can escalate it for your decision or dismiss it.`
+                              : 'Submit for decision to apply the handbook-prescribed sanction.'}
               </p>
             </div>
 
@@ -1245,9 +1304,19 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                   </button>
                 )
 
-              ) : (caseData.requires_director_decision && role === 'admin') ? (
-                // Director fast-track: skip self-claim, show actions directly
+              ) : role === 'admin' ? (
+                // Director: act on any open or decided case, whoever it is assigned to
                 <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
+                  {['OPEN', 'DECISION_RENDERED'].includes(caseData.status) && (
+                    <button
+                      disabled={isUpdating}
+                      onClick={() => { setIsClosing(false); setIsDismissing(true); }}
+                      className="w-full sm:w-auto bg-rose-50 text-rose-700 border border-rose-200 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-[13px] font-pjs font-bold hover:bg-rose-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[17px] sm:text-[19px]">block</span>
+                      DISMISS CASE
+                    </button>
+                  )}
                   {caseData.status === 'OPEN' && (
                     <button
                       disabled={isUpdating}
@@ -1261,7 +1330,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                   {caseData.status === 'DECISION_RENDERED' && (
                     <button
                       disabled={isUpdating}
-                      onClick={() => setIsClosing(true)}
+                      onClick={() => { setIsDismissing(false); setIsClosing(true); }}
                       className="w-full sm:w-auto bg-[#003624] text-white px-5 sm:px-7 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-[13px] font-pjs font-bold hover:bg-[#004d35] transition-all shadow-md shadow-emerald-950/10 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
                       {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[17px] sm:text-[19px]">task_alt</span>}
@@ -1312,7 +1381,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                   {caseData.status === 'DECISION_RENDERED' && (
                     <button
                       disabled={isUpdating}
-                      onClick={() => setIsClosing(true)}
+                      onClick={() => { setIsDismissing(false); setIsClosing(true); }}
                       className="w-full sm:w-auto bg-[#003624] text-white px-5 sm:px-7 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-[13px] font-pjs font-bold hover:bg-[#004d35] transition-all shadow-md shadow-emerald-950/10 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
                       {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[17px] sm:text-[19px]">task_alt</span>}
@@ -1326,7 +1395,7 @@ function CaseDetailModal({ caseData, onClose, onUpdate, onClaim, onAssign, onAdj
                   {caseData.status === 'DECISION_RENDERED' && (
                     <button
                       disabled={isUpdating}
-                      onClick={() => setIsClosing(true)}
+                      onClick={() => { setIsDismissing(false); setIsClosing(true); }}
                       className="w-full sm:w-auto bg-[#003624] text-white px-5 sm:px-7 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-[13px] font-pjs font-bold hover:bg-[#004d35] transition-all shadow-md shadow-emerald-950/10 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
                       {isUpdating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <span className="material-symbols-outlined text-[17px] sm:text-[19px]">task_alt</span>}
