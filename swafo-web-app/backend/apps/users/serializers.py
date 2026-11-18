@@ -44,8 +44,9 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         return obj.violations.count()
 
     def get_is_repeat_offender(self, obj):
-        # Strict Institutional Standard: Non-Compliant if 2+ total violations
-        return obj.violations.count() >= 2
+        # Strict Institutional Standard: Non-Compliant if 2+ violations.
+        # Dismissed cases are not counted, since the student was cleared of them.
+        return obj.violations.exclude(status='DISMISSED').count() >= 2
 
     def get_has_pending_violations(self, obj):
         # Terminal states are CLOSED and DISMISSED — anything else is still active
